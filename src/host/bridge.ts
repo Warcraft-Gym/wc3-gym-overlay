@@ -21,6 +21,8 @@ export type ShortcutRegistrationResult = {
   error?: string;
 };
 
+export type WindowBounds = { x: number; y: number; width: number; height: number };
+
 export interface Host {
   readonly kind: "tauri" | "browser";
   showWindow(label: string): Promise<void>;
@@ -36,4 +38,10 @@ export interface Host {
   notifyStateChanged(): Promise<void>;
   onStateChanged(cb: () => void): () => void;
   openExternal(url: string): Promise<void>;
+  /** Current window position/size, or null when unsupported (browser host). */
+  getWindowBounds(): Promise<WindowBounds | null>;
+  setWindowBounds(bounds: WindowBounds): Promise<void>;
+  /** Fires whenever the current window moves or is resized. No-op
+   *  unsubscribe / never fires in the browser host. */
+  onWindowBoundsChanged(cb: () => void): () => void;
 }

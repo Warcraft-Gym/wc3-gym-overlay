@@ -8,9 +8,10 @@
 import { host } from "./host";
 import type { ShortcutAction, ShortcutRegistrationResult } from "./host/bridge";
 import { WINDOW_OVERLAY } from "./config";
-import { BUILDS_CACHE, SELECTED_BUILD_SLUG, SETTINGS, TIMER } from "./store/keys";
-import { readKey, updateKey } from "./store/state";
-import { isRunning, jumpToStep, pauseTimer, resetTimer, startTimer, type TimedStep } from "./store/timer";
+import { reset, stepNext, stepPrev, togglePlayPause } from "./lib/timerActions";
+import { BUILDS_CACHE, SELECTED_BUILD_SLUG, SETTINGS } from "./store/keys";
+import { readKey } from "./store/state";
+import type { TimedStep } from "./store/timer";
 
 function currentSteps(): TimedStep[] {
   const slug = readKey(SELECTED_BUILD_SLUG);
@@ -21,22 +22,21 @@ function currentSteps(): TimedStep[] {
 }
 
 async function dispatch(action: ShortcutAction): Promise<void> {
-  const now = Date.now();
   switch (action) {
     case "toggle_overlay":
       await host.toggleWindow(WINDOW_OVERLAY);
       return;
     case "timer_play_pause":
-      await updateKey(TIMER, (t) => (isRunning(t) ? pauseTimer(t, now) : startTimer(t, now)));
+      await togglePlayPause();
       return;
     case "timer_reset":
-      await updateKey(TIMER, () => resetTimer());
+      await reset();
       return;
     case "step_next":
-      await updateKey(TIMER, (t) => jumpToStep(t, currentSteps(), 1, now));
+      await stepNext(currentSteps());
       return;
     case "step_prev":
-      await updateKey(TIMER, (t) => jumpToStep(t, currentSteps(), -1, now));
+      await stepPrev(currentSteps());
       return;
   }
 }

@@ -4,7 +4,7 @@
  * hidden (not a CSS trick), so it never appears in the taskbar/dock.
  */
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, PhysicalPosition, PhysicalSize } from "@tauri-apps/api/window";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { emit, listen } from "@tauri-apps/api/event";
 import {
@@ -19,6 +19,7 @@ import type {
   ShortcutAction,
   ShortcutMap,
   ShortcutRegistrationResult,
+  WindowBounds,
 } from "./bridge";
 
 const STATE_CHANGED_EVENT = "wc3gym:state-changed";
@@ -128,6 +129,40 @@ async function openExternal(url: string): Promise<void> {
   await openUrl(url);
 }
 
+async function getWindowBounds(): Promise<WindowBounds | null> {
+  const win = getCurrentWindow();
+  const [position, size] = await Promise.all([win.outerPosition(), win.outerSize()]);
+  return { x: position.x, y: position.y, width: size.width, height: size.height };
+}
+
+async function setWindowBounds(bounds: WindowBounds): Promise<void> {
+  const win = getCurrentWindow();
+  await win.setPosition(new PhysicalPosition(bounds.x, bounds.y));
+  await win.setSize(new PhysicalSize(bounds.width, bounds.height));
+}
+
+function onWindowBoundsChanged(cb: () => void): () => void {
+  const win = getCurrentWindow();
+  let cancelled = false;
+  let unlistenMoved: (() => void) | undefined;
+  let unlistenResized: (() => void) | undefined;
+
+  win.onMoved(() => cb()).then((fn) => {
+    if (cancelled) fn();
+    else unlistenMoved = fn;
+  });
+  win.onResized(() => cb()).then((fn) => {
+    if (cancelled) fn();
+    else unlistenResized = fn;
+  });
+
+  return () => {
+    cancelled = true;
+    unlistenMoved?.();
+    unlistenResized?.();
+  };
+}
+
 export function createTauriHost(): Host {
   return {
     kind: "tauri",
@@ -141,5 +176,8 @@ export function createTauriHost(): Host {
     notifyStateChanged,
     onStateChanged,
     openExternal,
+    getWindowBounds,
+    setWindowBounds,
+    onWindowBoundsChanged,
   };
 }

@@ -13,15 +13,6 @@ body {
   font-family: var(--wg-font-sans);
 }
 
-[data-overlay-root] {
-  background: rgb(10 10 14 / 0.72);
-  color: white;
-  border-radius: 0.5rem;
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 0.75rem;
-}
-
 [data-tauri-drag-region] {
   cursor: move;
   user-select: none;

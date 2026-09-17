@@ -1,26 +1,27 @@
-import { useStoreValue } from "../../store/useStore";
-import { BUILDS_CACHE, SELECTED_BUILD_SLUG, SETTINGS, TIMER } from "../../store/keys";
-import { elapsedMs, formatClock } from "../../store/timer";
+import { useEffect } from "react";
+import { useOverlayBounds } from "../../data/useOverlayBounds";
+import { host } from "../../host";
+import { applyShortcuts } from "../../shortcuts";
+import { OverlayPanel } from "./OverlayPanel";
+import "./overlay.css";
 
 /**
- * Placeholder overlay window. F004 replaces this with the real build-order
- * panel; this scaffold proves the transparent, draggable, always-on-top
- * window plus the shared clock/store wiring works.
+ * The real in-game build-order panel: a transparent, draggable,
+ * always-on-top window driven by the shared store, the header buttons and
+ * the global shortcuts.
+ *
+ * In Tauri, only the picker window registers global shortcuts (they're
+ * app-wide OS registrations); this window just re-renders when the store
+ * changes. In a plain browser tab there is no OS-level shortcut, so this
+ * page registers its own `keydown` listener.
  */
 export function App() {
-  const selectedBuildSlug = useStoreValue(SELECTED_BUILD_SLUG);
-  const buildsCache = useStoreValue(BUILDS_CACHE);
-  const timer = useStoreValue(TIMER);
-  const settings = useStoreValue(SETTINGS);
+  useOverlayBounds();
 
-  const elapsedSeconds = elapsedMs(timer, Date.now()) / 1000;
-  const snapshot = { selectedBuildSlug, buildsCache, timer, settings };
+  useEffect(() => {
+    if (host.kind !== "browser") return;
+    void applyShortcuts();
+  }, []);
 
-  return (
-    <div data-overlay-root>
-      <header data-tauri-drag-region>Overlay</header>
-      <div>{formatClock(elapsedSeconds)}</div>
-      <pre>{JSON.stringify(snapshot, null, 2)}</pre>
-    </div>
-  );
+  return <OverlayPanel />;
 }

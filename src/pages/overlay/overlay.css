@@ -1,0 +1,175 @@
+/**
+ * In-game panel styling — this window sits over a running game, so it must
+ * read at a glance: high-contrast text on translucent obsidian, gold
+ * reserved for the clock and the active step, no borders between rows (the
+ * gold rail + dimming carry state instead). `html`/`body` stay transparent
+ * (see overlay.html / shared.css); only `[data-overlay-root]` paints.
+ */
+
+[data-overlay-root] {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  border: 1px solid var(--wg-line);
+  border-radius: var(--wg-radius-lg);
+  /* 0.92, not the design note's 0.78 — high enough alpha that text stays
+     WCAG-AA-legible over any backdrop (a bright loading screen included),
+     while still reading as translucent (alpha < 1, per C-023). */
+  background: rgb(6 6 10 / 0.92);
+  color: var(--wg-text);
+  font-family: var(--wg-font-sans);
+}
+
+.overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--wg-line);
+  cursor: move;
+  user-select: none;
+}
+
+.overlay-header__title {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.overlay-header__build-title {
+  overflow: hidden;
+  font-family: var(--wg-font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--wg-text);
+}
+
+.overlay-header__build-title--empty {
+  font-family: var(--wg-font-sans);
+  font-weight: 600;
+  text-transform: none;
+  color: var(--wg-text-muted);
+}
+
+.overlay-header__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.overlay-clock {
+  min-width: 2.6em;
+  margin-right: 0.15rem;
+  font-family: var(--wg-font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--wg-gold);
+}
+
+.overlay-steps {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.overlay-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 38px;
+  padding: 0 0.65rem 0 0.5rem;
+  border-left: 3px solid transparent;
+  font-size: 13px;
+  line-height: 1.25;
+  transition:
+    background-color var(--wg-dur) var(--wg-ease),
+    color var(--wg-dur) var(--wg-ease);
+}
+
+.overlay-step--compact {
+  height: 28px;
+}
+
+.overlay-step__index {
+  width: 1.3em;
+  flex-shrink: 0;
+  font-family: var(--wg-font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--wg-text-muted);
+}
+
+.overlay-step__time {
+  width: 3rem;
+  flex-shrink: 0;
+  font-family: var(--wg-font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--wg-text-muted);
+}
+
+.overlay-step__supply {
+  width: 1.8em;
+  flex-shrink: 0;
+  font-family: var(--wg-font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--wg-text-muted);
+}
+
+.overlay-step__instruction {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wg-text);
+}
+
+.overlay-step--past {
+  color: var(--wg-text-faint);
+}
+
+.overlay-step--past .overlay-step__instruction {
+  color: var(--wg-text-faint);
+}
+
+.overlay-step--active {
+  border-left-color: var(--wg-gold);
+  background: color-mix(in oklab, var(--wg-gold) 12%, transparent);
+}
+
+.overlay-step--active .overlay-step__instruction {
+  font-weight: 700;
+  color: var(--wg-text);
+}
+
+.overlay-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 1rem 0.75rem;
+  font-size: 13px;
+  color: var(--wg-text-muted);
+}

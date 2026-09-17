@@ -8,4 +8,10 @@ function isTauri(): boolean {
 
 export const host: Host = isTauri() ? createTauriHost() : createBrowserHost();
 
-export type { Host, ShortcutAction, ShortcutMap, ShortcutRegistrationResult } from "./bridge";
+export type {
+  Host,
+  ShortcutAction,
+  ShortcutMap,
+  ShortcutRegistrationResult,
+  WindowBounds,
+} from "./bridge";

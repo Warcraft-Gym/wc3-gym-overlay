@@ -10,6 +10,7 @@ import type {
   ShortcutAction,
   ShortcutMap,
   ShortcutRegistrationResult,
+  WindowBounds,
 } from "./bridge";
 
 const BROADCAST_CHANNEL = "wc3gym";
@@ -128,6 +129,19 @@ async function openExternal(url: string): Promise<void> {
   window.open(url, "_blank", "noopener");
 }
 
+/** No native window to measure/move in a plain browser tab. */
+async function getWindowBounds(): Promise<WindowBounds | null> {
+  return null;
+}
+
+async function setWindowBounds(): Promise<void> {
+  // No-op — there is no native window to position.
+}
+
+function onWindowBoundsChanged(): () => void {
+  return () => {};
+}
+
 export function createBrowserHost(): Host {
   return {
     kind: "browser",
@@ -141,5 +155,8 @@ export function createBrowserHost(): Host {
     notifyStateChanged,
     onStateChanged,
     openExternal,
+    getWindowBounds,
+    setWindowBounds,
+    onWindowBoundsChanged,
   };
 }
