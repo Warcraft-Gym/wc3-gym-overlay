@@ -41,4 +41,20 @@ describe("apiBuildListItemSchema (via buildsListResponseSchema)", () => {
     const result = buildsListResponseSchema.safeParse(broken);
     expect(result.success).toBe(false);
   });
+
+  it("accepts null for patch/authorDiscord/maintainer/sourceUrl (the live API's shape for an unset optional field)", () => {
+    const withNulls = {
+      builds: [
+        {
+          ...fixtureListResponse.builds[0],
+          patch: null,
+          authorDiscord: null,
+          maintainer: null,
+          sourceUrl: null,
+        },
+      ],
+    };
+    const result = buildsListResponseSchema.safeParse(withNulls);
+    expect(result.success).toBe(true);
+  });
 });

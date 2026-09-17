@@ -1,0 +1,148 @@
+/**
+ * War Room design tokens — ported from the site's `src/app/globals.css`
+ * `:root` block and `@theme inline` mapping, trimmed to what the overlay
+ * actually uses (no key-art / rivets / grain textures — those are page
+ * chrome the overlay windows don't have room for). Same token names, same
+ * values, so anything copied from the site's components keeps working.
+ *
+ * Fonts: the site loads "Cinzel" / "Lato" via `next/font`. The overlay ships
+ * no font files — `--wg-font-display` / `--wg-font-sans` fall straight
+ * through to the named web-safe fallback stack per the feature spec.
+ */
+
+:root {
+  /* --- Surfaces --- */
+  --wg-bg: oklch(0% 0 0);
+  --wg-surface: oklch(8% 0.004 60);
+  --wg-surface-2: oklch(12% 0.005 60);
+  --wg-surface-3: oklch(17% 0.006 60);
+  --wg-line: oklch(70% 0.03 75 / 0.18);
+  --wg-line-strong: oklch(80% 0.06 80 / 0.4);
+
+  /* --- Text --- */
+  --wg-text: oklch(98% 0 0);
+  --wg-text-muted: oklch(79% 0.02 280);
+  --wg-text-faint: oklch(62% 0.015 280);
+
+  /* --- Accent: burnished gold. Secondary: Lordaeron blue. --- */
+  --wg-gold: oklch(80% 0.14 85);
+  --wg-gold-deep: oklch(64% 0.13 78);
+  --wg-gold-glow: oklch(80% 0.14 85 / 0.35);
+  --wg-arcane: oklch(70% 0.14 245);
+  --wg-arcane-deep: oklch(48% 0.14 255);
+
+  /* --- Status --- */
+  --wg-win: oklch(80% 0.18 150);
+  --wg-loss: oklch(64% 0.19 25);
+
+  /* --- Race / faction semantic color --- */
+  --wg-human: oklch(68% 0.15 250);
+  --wg-orc: oklch(63% 0.19 30);
+  --wg-nightelf: oklch(72% 0.15 300);
+  --wg-undead: oklch(78% 0.17 155);
+  --wg-random: oklch(72% 0.02 265);
+
+  /* --- Type --- */
+  --wg-font-display: "Cinzel", "Friz Quadrata", Georgia, serif;
+  --wg-font-sans: "Lato", system-ui, sans-serif;
+  --wg-font-mono: ui-monospace, "SFMono-Regular", monospace;
+
+  /* --- Rhythm --- */
+  --wg-radius: 4px;
+  --wg-radius-lg: 6px;
+
+  /* --- Motion --- */
+  --wg-dur-fast: 140ms;
+  --wg-dur: 260ms;
+  --wg-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+  --color-bg: var(--wg-bg);
+  --color-surface: var(--wg-surface);
+  --color-surface-2: var(--wg-surface-2);
+  --color-surface-3: var(--wg-surface-3);
+  --color-line: var(--wg-line);
+  --color-line-strong: var(--wg-line-strong);
+
+  --color-fg: var(--wg-text);
+  --color-muted: var(--wg-text-muted);
+  --color-faint: var(--wg-text-faint);
+
+  --color-gold: var(--wg-gold);
+  --color-gold-deep: var(--wg-gold-deep);
+  --color-arcane: var(--wg-arcane);
+  --color-arcane-deep: var(--wg-arcane-deep);
+
+  --color-win: var(--wg-win);
+  --color-loss: var(--wg-loss);
+
+  --color-human: var(--wg-human);
+  --color-orc: var(--wg-orc);
+  --color-nightelf: var(--wg-nightelf);
+  --color-undead: var(--wg-undead);
+  --color-random: var(--wg-random);
+
+  --font-display: var(--wg-font-display);
+  --font-sans: var(--wg-font-sans);
+  --font-mono: var(--wg-font-mono);
+
+  --radius-DEFAULT: var(--wg-radius);
+  --radius-lg: var(--wg-radius-lg);
+
+  --ease-out-expo: var(--wg-ease);
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--wg-gold);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--wg-font-display);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+}
+
+@layer utilities {
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--wg-font-display);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--wg-gold);
+  }
+
+  .tnum {
+    font-family: var(--wg-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel {
+    border-radius: var(--wg-radius-lg);
+    border: 1px solid var(--wg-line);
+    background: color-mix(in oklab, var(--wg-surface) 82%, transparent);
+    box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

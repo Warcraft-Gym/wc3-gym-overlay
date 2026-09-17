@@ -1,9 +1,16 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
 html,
 body {
   margin: 0;
   padding: 0;
+}
+
+body {
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-family: var(--wg-font-sans);
 }
 
 [data-overlay-root] {

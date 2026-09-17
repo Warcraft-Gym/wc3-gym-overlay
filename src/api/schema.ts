@@ -3,6 +3,14 @@
  * `src/lib/builds/serialize.ts` and `src/lib/builds/types.ts` in the Next
  * site. Unknown extra keys are stripped (default `z.object` behaviour), not
  * rejected, so the overlay tolerates additive API changes.
+ *
+ * `patch` / `authorDiscord` / `maintainer` / `sourceUrl` are `.nullable()` in
+ * addition to `.optional()`: the live API (backed by Sanity, which stores an
+ * unset optional field as `null` rather than omitting the key) serializes
+ * every build with these four keys present and `null` when unset. Every
+ * build fetched from `http://localhost:3111/api/builds` failed validation
+ * with `expected string, received null` before this fix — see the F003
+ * handoff for the repro.
  */
 
 import { z } from "zod";
@@ -33,13 +41,13 @@ export const apiBuildListItemSchema = z.object({
   race: raceSchema,
   vsRace: vsRaceSchema,
   difficulty: difficultySchema,
-  patch: z.string().optional(),
+  patch: z.string().nullable().optional(),
   tags: z.array(z.string()),
   summary: z.string(),
   author: z.string(),
-  authorDiscord: z.string().optional(),
-  maintainer: z.string().optional(),
-  sourceUrl: z.string().optional(),
+  authorDiscord: z.string().nullable().optional(),
+  maintainer: z.string().nullable().optional(),
+  sourceUrl: z.string().nullable().optional(),
   guide: guideSchema,
   featured: z.boolean(),
   publishedAt: z.string(),
