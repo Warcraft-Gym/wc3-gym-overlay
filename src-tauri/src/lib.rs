@@ -53,18 +53,28 @@ fn quit_app(app: tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        // Registered first per the plugin's own README: a second launch's
-        // args/cwd are forwarded here instead of opening a second window
-        // set, so we just re-show and focus the picker that's already
-        // running.
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-            if let Some(window) = app.get_webview_window("picker") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-            }
-        }))
+    let builder = tauri::Builder::default();
+    // Registered first per the plugin's own README: a second launch's
+    // args/cwd are forwarded here instead of opening a second window set,
+    // so we just re-show and focus the picker that's already running.
+    //
+    // macOS-only exclusion (bisected 2026-09-18): registering this plugin
+    // renders the picker window permanently blank/white on macOS debug
+    // builds — even a Windows-only-looking failure like "everything is a
+    // blank WebView" traced back to this one `.plugin(...)` call. macOS
+    // `.app` bundles are already single-instance via Launch Services, so
+    // the guard is redundant there anyway. Do not re-enable this on macOS
+    // without re-verifying the WebView renders.
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        if let Some(window) = app.get_webview_window("picker") {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+
+    builder
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
