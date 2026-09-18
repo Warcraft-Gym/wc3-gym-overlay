@@ -27,6 +27,22 @@ export function isRunning(t: TimerState): boolean {
   return t.startedAtMs !== null;
 }
 
+/**
+ * Single source of truth for "does the panel show an active row right now".
+ * `engaged` alone can't cover every path a `TimerState` reaches this shape
+ * through (values written directly to the store by tests, or persisted
+ * before `engaged` existed) — `isRunning`/`baseElapsedMs > 0` are kept as a
+ * fallback so any state that looks like "playing" or "sitting past 0:00" is
+ * still treated as engaged. Used by both `jumpToStep` (to decide whether the
+ * next `step_next`/`step_prev` press should target "the first timed step"
+ * or "the neighbour of the currently active one") and `useClock.active` (to
+ * decide whether any row should render as active) — the two must agree, or
+ * step navigation and the active-row highlight can disagree with each other.
+ */
+export function isEngaged(t: TimerState): boolean {
+  return Boolean(t.engaged) || isRunning(t) || t.baseElapsedMs > 0;
+}
+
 export function elapsedMs(t: TimerState, now: number): number {
   if (t.startedAtMs === null) return t.baseElapsedMs;
   return t.baseElapsedMs + (now - t.startedAtMs);
@@ -34,12 +50,11 @@ export function elapsedMs(t: TimerState, now: number): number {
 
 export function startTimer(t: TimerState, now: number): TimerState {
   if (isRunning(t)) return t;
-  // Deliberately does NOT set `engaged: true`: `engaged` gates jumpToStep's
-  // "first press" branch specifically, and Play running for a while before
-  // the player's first `step_next` press must not pre-empt that branch —
-  // see jumpToStep's doc comment. `useClock.active` still lights up while
-  // running via its own `isRunning` check, independent of `engaged`.
-  return { startedAtMs: now, baseElapsedMs: t.baseElapsedMs, engaged: t.engaged };
+  // Playing engages: once Play has been pressed, the panel is showing a
+  // running clock, so the next step_next/step_prev press must treat the
+  // currently active row (derived from elapsed time via `isEngaged`) as the
+  // reference point rather than rewinding to the first timed step.
+  return { startedAtMs: now, baseElapsedMs: t.baseElapsedMs, engaged: true };
 }
 
 export function pauseTimer(t: TimerState, now: number): TimerState {
@@ -80,18 +95,18 @@ function jumpTo(t: TimerState, now: number, targetMs: number): TimerState {
  * Jumps the clock to the neighbouring timed step in direction `dir`,
  * clamped at both ends. Preserves whether the timer is running.
  *
- * A fresh/reset timer (`!t.engaged`) is a special case: `elapsedSec` alone
- * can't distinguish "never touched" from "sitting on a step timed at
- * 0:00", so deriving `currentPos` purely from elapsed time would make the
- * very first `step_next` press skip straight past a build's first step
- * whenever that step is timed `0:00` (the common case). Instead, the first
- * `+1` since the last reset always lands on the first timed step itself,
- * and the first `-1` is a no-op (there's nothing before "fresh"). This
- * holds even if Play has already been running for a while: `engaged` here
- * tracks "has step_next/step_prev been used since reset", not "has Play
- * been pressed" — otherwise a player who presses Play and waits a moment
- * before their first `step_next` would see it skip step 1 exactly like the
- * original defect, just with the clock started instead of at boot.
+ * `currentPos` is derived from `isEngaged(t)`, not from elapsed time alone:
+ * elapsed time can't distinguish "never touched" from "sitting on a step
+ * timed at 0:00" (both are `elapsedSec === 0`). When the panel is not
+ * engaged (fresh or freshly reset), `currentPos` starts at -1 regardless of
+ * elapsed time, so `+1` always lands on the first timed step itself (even
+ * when it's timed 0:00) and `-1` is a no-op (there's nothing before
+ * "fresh"). Once engaged — whether by Play running, a prior jump, or a
+ * paused nonzero elapsed — `currentPos` is the last timed step at-or-before
+ * the current elapsed time, so `+1`/`-1` move to its neighbour without ever
+ * rewinding a step_next press back past the row that's already active (the
+ * C-015 step 5 defect this replaces: pressing Play, waiting, then
+ * step_next must advance from the active row, not snap back to step 0).
  */
 export function jumpToStep(
   t: TimerState,
@@ -102,7 +117,7 @@ export function jumpToStep(
   const timed = timedEntries(steps);
   if (timed.length === 0) return t;
 
-  if (!t.engaged) {
+  if (!isEngaged(t)) {
     if (dir === -1) return t;
     return jumpTo(t, now, timed[0].seconds * 1000);
   }

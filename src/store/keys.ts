@@ -55,9 +55,11 @@ export type TimerState = {
   /** Whether the user has pressed Play or a step shortcut since the last
    *  reset. `{ startedAtMs: null, baseElapsedMs: 0 }` alone can't tell
    *  "fresh, never touched" apart from "jumped to a step timed at 0:00 and
-   *  paused" — both have identical `startedAtMs`/`baseElapsedMs`. Optional
-   *  (defaults to `false`) so values persisted before this field existed
-   *  still parse. */
+   *  paused" — both have identical `startedAtMs`/`baseElapsedMs`. Read
+   *  through `isEngaged()` (`store/timer.ts`), which additionally treats a
+   *  running timer or a nonzero `baseElapsedMs` as engaged, so this raw
+   *  field alone is not the full signal. Optional (defaults to `false`) so
+   *  values persisted before this field existed still parse. */
   engaged?: boolean;
 };
 

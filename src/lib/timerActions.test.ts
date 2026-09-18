@@ -10,28 +10,28 @@ describe("timerActions", () => {
     localStorage.clear();
   });
 
-  it("togglePlayPause starts the timer, then pauses it accumulating elapsed", async () => {
+  it("togglePlayPause starts the timer (engaging it), then pauses it accumulating elapsed", async () => {
     await togglePlayPause(0);
-    expect(readKey(TIMER)).toEqual({ startedAtMs: 0, baseElapsedMs: 0, engaged: false });
+    expect(readKey(TIMER)).toEqual({ startedAtMs: 0, baseElapsedMs: 0, engaged: true });
 
     await togglePlayPause(1000);
-    expect(readKey(TIMER)).toEqual({ startedAtMs: null, baseElapsedMs: 1000, engaged: false });
+    expect(readKey(TIMER)).toEqual({ startedAtMs: null, baseElapsedMs: 1000, engaged: true });
   });
 
-  it("a stepNext press after Play has already been running for a while still lands on the first timed step, not the second (C-015 step 5 regression)", async () => {
+  it("a stepNext press after Play has already been running for a while lands on the step after the active one, not back at the first step (C-015 step 5, corrected semantics)", async () => {
     // Play is clicked, the clock runs for 1.5s (elapsed > the first step's
     // own 0:00 timestamp) — this is exactly the sequence a real player
-    // follows, and exactly the sequence the original defect reproduced
-    // (C-015 step 5), even though the pure `jumpToStep` unit tests only
-    // ever start from a freshly-reset timer.
+    // follows. Play engages the timer, so the next step_next press must
+    // advance from the row that's already active (0:00) to its neighbour
+    // (0:30), not rewind back to 0:00.
     await togglePlayPause(0);
-
-    await stepNext(steps, 1500);
-    expect(readKey(TIMER).baseElapsedMs).toBe(0);
-    expect(readKey(TIMER).engaged).toBe(true);
 
     await stepNext(steps, 1500);
     expect(readKey(TIMER).baseElapsedMs).toBe(30_000);
+    expect(readKey(TIMER).engaged).toBe(true);
+
+    await stepNext(steps, 1500);
+    expect(readKey(TIMER).baseElapsedMs).toBe(75_000);
   });
 
   it("reset returns elapsed to 0, running=false, and not engaged", async () => {

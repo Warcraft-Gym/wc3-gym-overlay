@@ -3,6 +3,8 @@ import { timerStateSchema, type TimerState } from "./keys";
 import {
   activeStepIndex,
   elapsedMs,
+  isEngaged,
+  isRunning,
   jumpToStep,
   pauseTimer,
   resetTimer,
@@ -104,16 +106,30 @@ describe("jumpToStep", () => {
     expect(t.startedAtMs).not.toBeNull();
   });
 
-  it("the first +1 still lands on the first timed step even after Play has been running a while (C-015 step 5)", () => {
-    // startTimer() deliberately leaves `engaged` untouched — only
-    // jumpToStep() flips it. Otherwise a player who presses Play and waits
-    // before their first step_next would see the very defect this feature
-    // fixes, just triggered by wall-clock time instead of boot state.
+  it("after Play has been running for a while, +1 lands on the step after the currently active one, not back at the first step (C-015 step 5, corrected semantics)", () => {
+    // startTimer() now sets `engaged: true` — playing engages. `jumpToStep`
+    // must therefore derive `currentPos` from elapsed time (via
+    // `isEngaged`) rather than rewinding to the first timed step: a player
+    // who presses Play, waits, and then presses step_next expects the clock
+    // to advance from the row that's already active, not snap backward.
     let t = startTimer(resetTimer(), 0);
-    const elapsedSecAtPress = 1.5; // clock has been running for 1.5s
-    t = jumpToStep(t, steps, 1, elapsedSecAtPress * 1000);
-    expect(elapsedMs(t, elapsedSecAtPress * 1000)).toBe(0); // snapped back to 0:00
-    expect(activeStepIndex(steps, elapsedMs(t, elapsedSecAtPress * 1000) / 1000)).toBe(0);
+    const nowMs = 1500; // clock has been running for 1.5s, past the 0:00 step
+    t = jumpToStep(t, steps, 1, nowMs);
+    expect(elapsedMs(t, nowMs)).toBe(30_000); // the step after the active 0:00 row
+    expect(activeStepIndex(steps, elapsedMs(t, nowMs) / 1000)).toBe(2);
+  });
+
+  it("from reset, +1 lands on the first timed step (paused, engaged); starting Play from there advances the clock and keeps the first row active until the next timed step", () => {
+    let t = jumpToStep(resetTimer(), steps, 1, 0);
+    expect(isRunning(t)).toBe(false);
+    expect(isEngaged(t)).toBe(true);
+    expect(elapsedMs(t, 0)).toBe(0);
+
+    t = startTimer(t, 1000);
+    expect(isRunning(t)).toBe(true);
+    expect(elapsedMs(t, 1500)).toBe(500); // advancing from 0:00, not restarted from scratch
+    expect(isEngaged(t)).toBe(true);
+    expect(activeStepIndex(steps, elapsedMs(t, 1500) / 1000)).toBe(0); // still the first row
   });
 });
 
