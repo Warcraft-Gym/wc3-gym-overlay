@@ -7,7 +7,7 @@ function build(overrides: Partial<ApiBuildListItem>): ApiBuildListItem {
     slug: "slug",
     title: "Title",
     race: "human",
-    vsRace: "any",
+    vsRaces: [],
     difficulty: "beginner",
     tags: [],
     summary: "Summary",
@@ -21,10 +21,10 @@ function build(overrides: Partial<ApiBuildListItem>): ApiBuildListItem {
 }
 
 const builds: ApiBuildListItem[] = [
-  build({ slug: "human-vs-orc", race: "human", vsRace: "orc", title: "Human Fast Expand", summary: "Safe opener", author: "Coach A", tags: ["fast-expand"] }),
-  build({ slug: "human-vs-any", race: "human", vsRace: "any", title: "Human Rifle Push", summary: "Aggressive rifles", author: "Coach B", tags: ["rifle"] }),
-  build({ slug: "orc-vs-human", race: "orc", vsRace: "human", title: "Orc Grunt Rush", summary: "Early pressure", author: "Coach C", tags: ["rush"] }),
-  build({ slug: "undead-vs-nightelf", race: "undead", vsRace: "nightelf", title: "Ghoul Pull", summary: "Fast tech into fiends", author: "Coach A", tags: [] }),
+  build({ slug: "human-vs-orc", race: "human", vsRaces: ["orc"], title: "Human Fast Expand", summary: "Safe opener", author: "Coach A", tags: ["fast-expand"] }),
+  build({ slug: "human-vs-any", race: "human", vsRaces: [], title: "Human Rifle Push", summary: "Aggressive rifles", author: "Coach B", tags: ["rifle"] }),
+  build({ slug: "orc-vs-human", race: "orc", vsRaces: ["human"], title: "Orc Grunt Rush", summary: "Early pressure", author: "Coach C", tags: ["rush"] }),
+  build({ slug: "undead-vs-nightelf-or-human", race: "undead", vsRaces: ["nightelf", "human"], title: "Ghoul Pull", summary: "Fast tech into fiends", author: "Coach A", tags: [] }),
 ];
 
 describe("filterBuilds", () => {
@@ -37,18 +37,32 @@ describe("filterBuilds", () => {
     expect(result.map((b) => b.slug)).toEqual(["human-vs-orc", "human-vs-any"]);
   });
 
-  it("matches vsRace builds for that opponent or any", () => {
+  it("matches vsRace builds that include that opponent, or have no restriction", () => {
     const result = filterBuilds(builds, { vsRace: "orc" });
     expect(result.map((b) => b.slug)).toEqual(["human-vs-orc", "human-vs-any"]);
+  });
+
+  it("matches a multi-race build when the filter is one of its races", () => {
+    const result = filterBuilds(builds, { vsRace: "human" });
+    expect(result.map((b) => b.slug)).toEqual([
+      "human-vs-any",
+      "orc-vs-human",
+      "undead-vs-nightelf-or-human",
+    ]);
   });
 
   it("treats an explicit vsRace filter of 'any' as no filter", () => {
     expect(filterBuilds(builds, { vsRace: "any" })).toHaveLength(4);
   });
 
+  it("treats a build with empty vsRaces as matching every opponent filter", () => {
+    const anyBuild = build({ slug: "any-only", vsRaces: [] });
+    expect(filterBuilds([anyBuild], { vsRace: "undead" })).toEqual([anyBuild]);
+  });
+
   it("searches title, summary, author and tags, case-insensitively", () => {
     expect(filterBuilds(builds, { q: "RIFLE" }).map((b) => b.slug)).toEqual(["human-vs-any"]);
-    expect(filterBuilds(builds, { q: "coach a" }).map((b) => b.slug)).toEqual(["human-vs-orc", "undead-vs-nightelf"]);
+    expect(filterBuilds(builds, { q: "coach a" }).map((b) => b.slug)).toEqual(["human-vs-orc", "undead-vs-nightelf-or-human"]);
     expect(filterBuilds(builds, { q: "fast-expand" }).map((b) => b.slug)).toEqual(["human-vs-orc"]);
   });
 

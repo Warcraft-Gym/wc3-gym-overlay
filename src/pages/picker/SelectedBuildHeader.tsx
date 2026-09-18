@@ -83,7 +83,7 @@ export function SelectedBuildHeader({ build, apiBase }: { build: ApiBuildListIte
           </h2>
           <p className="mt-2 line-clamp-2 max-w-2xl text-sm text-muted">{build.summary}</p>
           <div className="tnum mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
-            <Matchup race={build.race} vsRace={build.vsRace} />
+            <Matchup race={build.race} vsRaces={build.vsRaces} apiBase={apiBase} />
             <DifficultyBadge level={build.difficulty} />
             <span>
               by {build.author} · updated {relativeTime(build.updatedAt, Date.now())}

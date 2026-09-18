@@ -10,7 +10,7 @@ function fakeBuild(slug: string): ApiBuildListItem {
     slug,
     title: slug,
     race: "human",
-    vsRace: "any",
+    vsRaces: [],
     difficulty: "beginner",
     tags: [],
     summary: "s",

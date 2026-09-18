@@ -36,7 +36,7 @@ export function PanelHeader({
       <div className="overlay-header__title">
         {build ? (
           <>
-            <Matchup race={build.race} vsRace={build.vsRace} apiBase={apiBase} size={16} />
+            <Matchup race={build.race} vsRaces={build.vsRaces} apiBase={apiBase} size={16} />
             <span className="overlay-header__build-title" title={build.title}>
               {build.title}
             </span>

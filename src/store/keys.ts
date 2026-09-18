@@ -9,6 +9,34 @@ import { apiBuildListItemSchema, type ApiBuildListItem } from "../api/schema";
 import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS } from "../config";
 import type { ShortcutMap } from "../host/bridge";
 
+/** JSON key name of the pre-F005 single-opponent field, before the site's
+ *  `vsRaces` array model shipped. */
+const LEGACY_SINGLE_OPPONENT_KEY = "vsRace"; // legacy key, pre-F005
+
+/**
+ * F005 legacy-migration: a cache written before the site's `vsRaces` array
+ * model shipped carries a single opponent field (see
+ * `LEGACY_SINGLE_OPPONENT_KEY`) and no `vsRaces` array, so migrate it in
+ * place before validating against the current API schema — same mapping as
+ * the site's GROQ projection: `"any"`/unset → `[]`, otherwise a
+ * single-element array.
+ */
+function migrateLegacyVsRace(raw: unknown): unknown {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const record = raw as Record<string, unknown>;
+  if ("vsRaces" in record || !(LEGACY_SINGLE_OPPONENT_KEY in record)) return raw;
+  const { [LEGACY_SINGLE_OPPONENT_KEY]: legacyOpponent, ...rest } = record;
+  return {
+    ...rest,
+    vsRaces: legacyOpponent === "any" || legacyOpponent === undefined ? [] : [legacyOpponent],
+  };
+}
+
+const migratedBuildListItemSchema: z.ZodType<ApiBuildListItem> = z.preprocess(
+  migrateLegacyVsRace,
+  apiBuildListItemSchema,
+);
+
 export type StoreKey<T> = {
   readonly name: string;
   readonly schema: z.ZodType<T>;
@@ -38,7 +66,7 @@ export type BuildsCache = {
 export const buildsCacheSchema: z.ZodType<BuildsCache> = z.object({
   fetchedAt: z.string(),
   apiBase: z.string(),
-  builds: z.array(apiBuildListItemSchema),
+  builds: z.array(migratedBuildListItemSchema),
 });
 
 export const BUILDS_CACHE: StoreKey<BuildsCache> = {

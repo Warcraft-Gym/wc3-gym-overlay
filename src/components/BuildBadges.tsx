@@ -1,38 +1,67 @@
 import { cn } from "../lib/cn";
-import { RACE_LABEL, raceTextClass, type Race } from "./RaceCrest";
+import { RACE_LABEL, RaceCrest, raceTextClass, type Race } from "./RaceCrest";
 
 /**
  * Ported from `src/components/builds/BuildBadges.tsx` on the site — same
- * classes. Unlike the picker's crest-based `Matchup` in `RaceCrest.tsx`
- * (used by the header/panel), this is the site's *text-form* matchup used
- * inline in row meta lines: bold race, gold serif "vs", muted opponent.
+ * classes. Unlike the picker's crest-only `Matchup` in `components/Matchup.tsx`
+ * (used by the compact in-game panel header), this is the site's row/header
+ * matchup: bold race, gold serif "vs", then `VsRaces` (one small crest per
+ * opponent race, or the "random" crest for "Any") plus the text label.
+ *
+ * F005: a build's opponent is `vsRaces: BuildRace[]` (empty means "any
+ * opponent") — no longer a single value.
  */
 
 export type BuildRace = Exclude<Race, "random">;
 export type BuildVsRace = BuildRace | "any";
 
-const VS_LABEL: Record<BuildVsRace, string> = {
-  human: "Human",
-  orc: "Orc",
-  nightelf: "Night Elf",
-  undead: "Undead",
-  any: "Any",
-};
+/** Human-readable opponent list: "Any", "Orc", "Orc / Undead". */
+export function vsLabel(vsRaces: BuildRace[]): string {
+  if (!vsRaces.length) return "Any";
+  return vsRaces.map((r) => RACE_LABEL[r]).join(" / ");
+}
+
+/** The opponent side of a matchup: one crest per race, or the "random"
+ *  crest and "Any" when the build has no opponent restriction. */
+export function VsRaces({
+  vsRaces,
+  apiBase,
+  size = 14,
+  className,
+}: {
+  vsRaces: BuildRace[];
+  apiBase: string;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <span className={cn("inline-flex items-center gap-1", className)}>
+      {vsRaces.length ? (
+        vsRaces.map((r) => <RaceCrest key={r} race={r} apiBase={apiBase} size={size} />)
+      ) : (
+        <RaceCrest race="random" apiBase={apiBase} size={size} />
+      )}
+      <span className="text-muted">{vsLabel(vsRaces)}</span>
+    </span>
+  );
+}
 
 export function Matchup({
   race,
-  vsRace,
+  vsRaces,
+  apiBase,
   className,
 }: {
   race: BuildRace;
-  vsRace: BuildVsRace;
+  vsRaces: BuildRace[];
+  apiBase: string;
   className?: string;
 }) {
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1.5 text-sm", className)}>
       <span className={cn("font-bold", raceTextClass(race))}>{RACE_LABEL[race]}</span>
       <span className="mx-0.5 font-display text-[0.6rem] font-bold uppercase tracking-widest text-gold">vs</span>
-      <span className="text-muted">{VS_LABEL[vsRace]}</span>
+      <VsRaces vsRaces={vsRaces} apiBase={apiBase} />
     </span>
   );
 }

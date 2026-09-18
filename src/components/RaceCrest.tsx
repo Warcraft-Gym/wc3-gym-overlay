@@ -28,7 +28,8 @@ const RACE_TEXT_CLASS: Record<Race, string> = {
 };
 
 /** Semantic text-color utility class for a race, shared by anything that
- *  labels a build's race/vsRace outside of a crest (matchup text, rails). */
+ *  labels a build's race or opponent races outside of a crest (matchup
+ *  text, rails). */
 export function raceTextClass(race: Race): string {
   return RACE_TEXT_CLASS[race];
 }

@@ -16,7 +16,7 @@ const build: ApiBuildListItem = {
   slug: "human-fast-expand",
   title: "Human Fast Expand",
   race: "human",
-  vsRace: "any",
+  vsRaces: [],
   difficulty: "beginner",
   tags: [],
   summary: "Safe opener",

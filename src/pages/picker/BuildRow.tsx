@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { Button } from "../../components/Button";
-import { DifficultyBadge, TagChip, type Difficulty } from "../../components/BuildBadges";
+import { DifficultyBadge, TagChip, vsLabel, type Difficulty } from "../../components/BuildBadges";
 import { RaceCrest as SmallRaceCrest, RACE_LABEL, raceTextClass, type Race } from "../../components/RaceCrest";
 import { cn } from "../../lib/cn";
 import type { ApiBuildListItem } from "../../api/schema";
@@ -77,9 +77,6 @@ export function BuildRow({
     }
   }
 
-  const vsRace: Race = build.vsRace === "any" ? "random" : build.vsRace;
-  const vsLabel = build.vsRace === "any" ? "Any" : RACE_LABEL[vsRace];
-
   return (
     <li
       data-build={build.slug}
@@ -103,8 +100,12 @@ export function BuildRow({
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           <span className="inline-flex items-center gap-1">
             <span className="text-faint">vs</span>
-            <SmallRaceCrest race={vsRace} apiBase={apiBase} size={14} />
-            <span>{vsLabel}</span>
+            {build.vsRaces.length ? (
+              build.vsRaces.map((r) => <SmallRaceCrest key={r} race={r} apiBase={apiBase} size={14} />)
+            ) : (
+              <SmallRaceCrest race="random" apiBase={apiBase} size={14} />
+            )}
+            <span>{vsLabel(build.vsRaces)}</span>
           </span>
           <span className="text-faint">·</span>
           <span>by {build.author}</span>

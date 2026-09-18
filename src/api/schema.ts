@@ -11,6 +11,14 @@
  * build fetched from `http://localhost:3111/api/builds` failed validation
  * with `expected string, received null` before this fix — see the F003
  * handoff for the repro.
+ *
+ * `vsRaces` (F005): the site changed a build's opponent from a single value
+ * to `vsRaces: BuildRace[]` (empty means "any opponent"). The API only
+ * emits the array field now — the old singular field is dropped from the
+ * schema entirely. Because unknown extra keys are stripped rather than
+ * rejected, a payload that still carries the legacy singular key (with no
+ * array field) parses fine and simply falls back to the `.default([])` —
+ * "any" — rather than failing validation.
  */
 
 import { z } from "zod";
@@ -24,7 +32,6 @@ export const apiBuildStepSchema = z.object({
 });
 
 const raceSchema = z.enum(["human", "orc", "nightelf", "undead"]);
-const vsRaceSchema = z.enum(["human", "orc", "nightelf", "undead", "any"]);
 const difficultySchema = z.enum(["beginner", "intermediate", "advanced"]);
 
 const guideSchema = z
@@ -39,7 +46,7 @@ export const apiBuildListItemSchema = z.object({
   slug: z.string(),
   title: z.string(),
   race: raceSchema,
-  vsRace: vsRaceSchema,
+  vsRaces: z.array(raceSchema).default([]),
   difficulty: difficultySchema,
   patch: z.string().nullable().optional(),
   tags: z.array(z.string()),

@@ -1,0 +1,801 @@
+{
+  "builds": [
+    {
+      "author": "Barren",
+      "authorDiscord": "Barren_",
+      "difficulty": "advanced",
+      "featured": false,
+      "maintainer": null,
+      "patch": null,
+      "publishedAt": "2026-09-16T21:07:02.373Z",
+      "race": "undead",
+      "slug": "ghoul-pull-vs-ne-b3a3",
+      "sourceUrl": null,
+      "steps": [
+        {
+          "_key": "1a0342ed-dda",
+          "_type": "step",
+          "icon": "ud-acolyte",
+          "instruction": "Make an acolyte",
+          "supply": 10,
+          "time": "0:05",
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-acolyte.webp"
+        },
+        {
+          "_key": "c4d79bd2-647",
+          "_type": "step",
+          "icon": "ud-altar",
+          "instruction": "build an altar",
+          "supply": 10,
+          "time": "0:05",
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-altar.webp"
+        },
+        {
+          "_key": "d637c2c9-a6d",
+          "_type": "step",
+          "icon": "ud-crypt",
+          "instruction": "Build a crypt",
+          "supply": 10,
+          "time": "0:05",
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-crypt.webp"
+        }
+      ],
+      "summary": "This is just a test. I do not know what to put here.  i am making things up.",
+      "tags": [],
+      "title": "Ghoul Pull vs NE",
+      "updatedAt": "2026-09-18T08:57:43Z",
+      "vsRaces": []
+    },
+    {
+      "author": "Gym Coaches",
+      "authorDiscord": null,
+      "difficulty": "beginner",
+      "featured": false,
+      "maintainer": null,
+      "patch": null,
+      "publishedAt": "2026-09-17T00:00:00Z",
+      "race": "nightelf",
+      "slug": "1-aow-fast-hunts-tech",
+      "sourceUrl": null,
+      "steps": [
+        {
+          "_key": "3969e2f751a0",
+          "_type": "step",
+          "icon": "ne-altar",
+          "instruction": "Send 4 of your 5 Wisps to the gold mine. The 5th Wisp builds an Altar, then scouts the enemy once the Altar is up.",
+          "supply": 5,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-altar.webp"
+        },
+        {
+          "_key": "3090ba583460",
+          "_type": "step",
+          "icon": "ne-wisp",
+          "instruction": "Queue 2 Wisps.",
+          "supply": 5,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-wisp.webp"
+        },
+        {
+          "_key": "7bc6c30124a8",
+          "_type": "step",
+          "icon": "ne-moon-well",
+          "instruction": "Your 1st Wisp produced builds a Moon Well, then shift-click it onto a tree so it harvests lumber after.",
+          "supply": 6,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-moon-well.webp"
+        },
+        {
+          "_key": "a16a3d03eb96",
+          "_type": "step",
+          "icon": "nt-gold",
+          "instruction": "Rally your 2nd produced Wisp to the gold mine so you have 5/5 on gold.",
+          "supply": 7,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-gold.webp"
+        },
+        {
+          "_key": "2cd63e2619ae",
+          "_type": "step",
+          "icon": "ne-wisp",
+          "instruction": "Queue as many Wisps as you can (8 more, for 10 on wood including the scout). Rally all of them to harvest wood.",
+          "supply": 7,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-wisp.webp"
+        },
+        {
+          "_key": "48ebe57ff628",
+          "_type": "step",
+          "icon": "ne-keeper-of-the-grove",
+          "instruction": "Start training your first hero (Keeper of the Grove is good with Huntresses for lockdown).",
+          "supply": 10,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-keeper-of-the-grove.webp"
+        },
+        {
+          "_key": "6c81128a8f5a",
+          "_type": "step",
+          "icon": "ne-hunters-hall",
+          "instruction": "When you have 160 wood build a Hunter's Hall and an Ancient of War.",
+          "supply": 18,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-hunters-hall.webp"
+        },
+        {
+          "_key": "1725cedeb43f",
+          "_type": "step",
+          "icon": "ne-moon-well",
+          "instruction": "When you have 40 wood get a 2nd Moon Well.",
+          "supply": 17,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-moon-well.webp"
+        },
+        {
+          "_key": "fe497cf7d22e",
+          "_type": "step",
+          "icon": "ne-huntress",
+          "instruction": "Train a Huntress.",
+          "supply": 20,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-huntress.webp"
+        },
+        {
+          "_key": "648ae17385d6",
+          "_type": "step",
+          "icon": "ne-tree-of-ages",
+          "instruction": "Start the tech to tier 2 as soon as possible.",
+          "supply": 23,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-tree-of-ages.webp"
+        },
+        {
+          "_key": "04fdf7de361b",
+          "_type": "step",
+          "icon": "ne-moon-well",
+          "instruction": "At 40 wood build Moon Well #3.",
+          "supply": 23,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-moon-well.webp"
+        },
+        {
+          "_key": "fe2b03280214",
+          "_type": "step",
+          "icon": "nt-upgrade",
+          "instruction": "Research Ultravision as soon as possible.",
+          "supply": 23,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-upgrade.webp"
+        },
+        {
+          "_key": "811af5c064e9",
+          "_type": "step",
+          "icon": "ne-huntress",
+          "instruction": "Continue Huntress production. By tier 2 you should have 4-5 Huntresses.",
+          "supply": 23,
+          "iconUrl": "http://localhost:3111/wc3-icons/ne-huntress.webp"
+        }
+      ],
+      "summary": "A beginner friendly Night Elf build: Keeper of the Grove, Hunter's Hall and a single Ancient of War into Huntresses, tech at 23 food with Ultravision. Sturdy units that forgive weak micro.",
+      "tags": [
+        "huntresses",
+        "keeper of the grove",
+        "beginner"
+      ],
+      "title": "1 AoW Fast Hunts Tech",
+      "updatedAt": "2026-09-18T08:57:43Z",
+      "vsRaces": [
+        "orc"
+      ]
+    },
+    {
+      "author": "EchoGoodman",
+      "authorDiscord": null,
+      "difficulty": "intermediate",
+      "featured": false,
+      "maintainer": null,
+      "patch": null,
+      "publishedAt": "2026-09-17T00:00:00Z",
+      "race": "undead",
+      "slug": "facing-paladin-rifle-as-undead",
+      "sourceUrl": null,
+      "steps": [
+        {
+          "_key": "1749be1d8f1e",
+          "_type": "step",
+          "icon": "ud-acolyte",
+          "instruction": "Send Acolytes to gold, the Ghoul to lumber.",
+          "supply": 5,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-acolyte.webp"
+        },
+        {
+          "_key": "76eefb561578",
+          "_type": "step",
+          "icon": "ud-acolyte",
+          "instruction": "Produce a 4th Acolyte, send it to the gold mine.",
+          "supply": 5,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-acolyte.webp"
+        },
+        {
+          "_key": "a304f90be542",
+          "_type": "step",
+          "icon": "ud-crypt",
+          "instruction": "Build a Crypt and an Altar.",
+          "supply": 6,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-crypt.webp"
+        },
+        {
+          "_key": "828dbd4185f0",
+          "_type": "step",
+          "icon": "ud-ziggurat",
+          "instruction": "Build a Ziggurat.",
+          "supply": 6,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ziggurat.webp"
+        },
+        {
+          "_key": "55ee5f77cf5c",
+          "_type": "step",
+          "icon": "ud-acolyte",
+          "instruction": "Build a 5th Acolyte, send it to the gold mine.",
+          "supply": 6,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-acolyte.webp"
+        },
+        {
+          "_key": "cd6010aff8b6",
+          "_type": "step",
+          "icon": "ud-acolyte",
+          "instruction": "Build a 6th Acolyte.",
+          "supply": 7,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-acolyte.webp"
+        },
+        {
+          "_key": "75214cdd5222",
+          "_type": "step",
+          "icon": "ud-tomb-of-relics",
+          "instruction": "Build a Tomb of Relics with the 6th Acolyte.",
+          "supply": 8,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-tomb-of-relics.webp"
+        },
+        {
+          "_key": "09c43f66c7eb",
+          "_type": "step",
+          "icon": "nt-scout",
+          "instruction": "The 6th Acolyte kills a critter near the closest big creep camp, then goes to scout the Human base.",
+          "supply": 8,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-scout.webp"
+        },
+        {
+          "_key": "28449f056331",
+          "_type": "step",
+          "icon": "ud-ghoul",
+          "instruction": "Produce a 2nd Ghoul.",
+          "supply": 10,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ghoul.webp"
+        },
+        {
+          "_key": "cad84d2c080e",
+          "_type": "step",
+          "icon": "ud-crypt-lord",
+          "instruction": "Produce the Crypt Lord.",
+          "supply": 10,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-crypt-lord.webp"
+        },
+        {
+          "_key": "e9439b9ed048",
+          "_type": "step",
+          "icon": "ud-ziggurat",
+          "instruction": "Build a 2nd Ziggurat.",
+          "supply": 15,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ziggurat.webp"
+        },
+        {
+          "_key": "a3a0ac954a66",
+          "_type": "step",
+          "icon": "ud-ghoul",
+          "instruction": "Produce 2 Ghouls.",
+          "supply": 15,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ghoul.webp"
+        },
+        {
+          "_key": "e6b63bc4d693",
+          "_type": "step",
+          "icon": "nt-scout",
+          "instruction": "By now the scout has seen the Paladin Rifle build. Send the scouting Acolyte back to your closest natural expansion gold mine.",
+          "supply": 19,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-scout.webp"
+        },
+        {
+          "_key": "767614a0f704",
+          "_type": "step",
+          "icon": "ud-crypt-lord",
+          "instruction": "The Crypt Lord sells the Town Portal and buys a Rod, a Sacrificial Skull and a Dagger.",
+          "supply": 19,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-crypt-lord.webp"
+        },
+        {
+          "_key": "64e1da2c9b22",
+          "_type": "step",
+          "icon": "nt-creep",
+          "instruction": "Summon skeletons from the critter body. Pull 1 Ghoul from lumber and creep a green camp with the Crypt Lord (or skip straight to the expansion with 2 Ghouls).",
+          "supply": 19,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-creep.webp"
+        },
+        {
+          "_key": "9fa7a14840df",
+          "_type": "step",
+          "icon": "ud-ghoul",
+          "instruction": "Produce 4 Ghouls up to 27/30.",
+          "supply": 21,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ghoul.webp"
+        },
+        {
+          "_key": "40f3c15b1712",
+          "_type": "step",
+          "icon": "nt-expansion",
+          "instruction": "After the green camp, pull 3 more Ghouls (4 total) and creep your natural. Get as many beetles and skeletons as you can on the way.",
+          "supply": 27,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-expansion.webp"
+        },
+        {
+          "_key": "8a1f109b656f",
+          "_type": "step",
+          "icon": "ud-haunted-mine",
+          "instruction": "Use the Skull near the gold mine to build a Ziggurat, haunt the mine as soon as you can afford it and upgrade the Ziggurat to a Nerubian Tower.",
+          "supply": 27,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-haunted-mine.webp"
+        },
+        {
+          "_key": "315fc8651435",
+          "_type": "step",
+          "icon": "ud-halls-of-the-dead",
+          "instruction": "When the expansion saturates (around 5:10-5:30): tech tier 2, Graveyard, Necropolis at the expo, 2nd Crypt, 2 Ziggurats at the expo, towers in both bases.",
+          "supply": 40,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-halls-of-the-dead.webp"
+        },
+        {
+          "_key": "f2dda8a3aff8",
+          "_type": "step",
+          "icon": "ud-ghoul",
+          "instruction": "Keep producing Ghouls throughout, up to 45 supply at most, leaving 5 supply for the 2nd hero before upkeep.",
+          "supply": 50,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ghoul.webp"
+        },
+        {
+          "_key": "6cecf7714b70",
+          "_type": "step",
+          "icon": "ud-black-citadel",
+          "instruction": "At tier 2 immediately tech tier 3, make the Death Knight and build a Slaughterhouse. You are aiming for Ghoul Frenzy and a Lich with orb as 3rd hero.",
+          "supply": 50,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-black-citadel.webp"
+        }
+      ],
+      "summary": "Crypt Lord Ghoul opening that scouts the Paladin, creeps the natural with skeletons and beetles, expands and towers up, then out-produces the Rifles with Ghoul Frenzy and a Lich orb at tier 3.",
+      "tags": [
+        "crypt lord",
+        "ghouls",
+        "expansion",
+        "anti-rifle"
+      ],
+      "title": "Facing Paladin Rifle as Undead",
+      "updatedAt": "2026-09-18T08:57:43Z",
+      "vsRaces": [
+        "human"
+      ]
+    },
+    {
+      "author": "Gym Coaches",
+      "authorDiscord": null,
+      "difficulty": "intermediate",
+      "featured": false,
+      "maintainer": null,
+      "patch": null,
+      "publishedAt": "2026-09-17T00:00:00Z",
+      "race": "undead",
+      "slug": "dk-ghoul-expo-vs-ne--multi-fixture",
+      "sourceUrl": null,
+      "steps": [
+        {
+          "_key": "a756b4a73061",
+          "_type": "step",
+          "icon": "ud-acolyte",
+          "instruction": "Queue the 1st Acolyte immediately, send Acolytes to gold and your Ghoul to wood.",
+          "supply": 5,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-acolyte.webp"
+        },
+        {
+          "_key": "ceddaf757b5e",
+          "_type": "step",
+          "icon": "ud-altar",
+          "instruction": "Use the starting Acolyte to build an Altar and a Crypt.",
+          "supply": 6,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-altar.webp"
+        },
+        {
+          "_key": "593eef018abf",
+          "_type": "step",
+          "icon": "ud-ziggurat",
+          "instruction": "Build a Ziggurat as soon as gold allows (150).",
+          "supply": 6,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ziggurat.webp"
+        },
+        {
+          "_key": "c1484bb39c43",
+          "_type": "step",
+          "icon": "ud-acolyte",
+          "instruction": "Build a 5th Acolyte (you should have 5/5 on gold now).",
+          "supply": 6,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-acolyte.webp"
+        },
+        {
+          "_key": "2807fdec74a6",
+          "_type": "step",
+          "icon": "ud-tomb-of-relics",
+          "instruction": "Build a 6th Acolyte to build the shop, kill any critters between your base and your natural, then return to base.",
+          "supply": 7,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-tomb-of-relics.webp"
+        },
+        {
+          "_key": "7a4af80e0e6c",
+          "_type": "step",
+          "icon": "ud-death-knight",
+          "instruction": "Start the Death Knight and the 1st Ghoul from your Crypt.",
+          "supply": 8,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-death-knight.webp"
+        },
+        {
+          "_key": "c9a7df1c7457",
+          "_type": "step",
+          "icon": "ud-ziggurat",
+          "instruction": "Make a 2nd Ziggurat and continue making Ghouls that you send to harvest lumber.",
+          "supply": 15,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ziggurat.webp"
+        },
+        {
+          "_key": "c65e29e2cc4a",
+          "_type": "step",
+          "icon": "nt-creep",
+          "instruction": "DK out: sell the TP, buy a Rod, 2 Sacrificial Skulls and Dust, creep your expansion with 4 Ghouls. Sell the Altar, bring the 6th Acolyte. Coil aggressively.",
+          "supply": 19,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-creep.webp"
+        },
+        {
+          "_key": "9985f41b9651",
+          "_type": "step",
+          "icon": "ud-haunted-mine",
+          "instruction": "While creeping, plant a Skull and place a Ziggurat facing the Night Elf side before the Haunted Gold Mine. Scout mid, their expansion and main with a skeleton.",
+          "supply": 19,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-haunted-mine.webp"
+        },
+        {
+          "_key": "4a7b0f7f2c75",
+          "_type": "step",
+          "icon": "ud-ghoul",
+          "instruction": "Continue to make Ghouls, rally them to wood and get another Acolyte.",
+          "supply": 19,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ghoul.webp"
+        },
+        {
+          "_key": "105538856d61",
+          "_type": "step",
+          "icon": "ud-ghoul",
+          "instruction": "Continue to make Ghouls to 28 food. Weave in Acolytes whenever gold allows, but prioritise Ghouls.",
+          "supply": 22,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-ghoul.webp"
+        },
+        {
+          "_key": "559e2e366918",
+          "_type": "step",
+          "icon": "ud-nerubian-tower",
+          "instruction": "7-8 Ghouls and 3-4 Acolytes on the expansion by now. Upgrade the expo Ziggurat to a Nerubian Tower, get a Graveyard in base and the last expo Acolytes.",
+          "supply": 30,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-nerubian-tower.webp"
+        },
+        {
+          "_key": "36ae9d20e0f0",
+          "_type": "step",
+          "icon": "ud-halls-of-the-dead",
+          "instruction": "Tech to tier 2. Add a 2nd Crypt and another tower at your expansion. Rebuild the Altar in main. Get Creature Attack.",
+          "supply": 35,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-halls-of-the-dead.webp"
+        },
+        {
+          "_key": "1d870da11b58",
+          "_type": "step",
+          "icon": "ud-crypt",
+          "instruction": "This is where you decide between 3 Crypt Gargoyles or standard play.",
+          "supply": 35,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-crypt.webp"
+        },
+        {
+          "_key": "c0fb7fddc716",
+          "_type": "step",
+          "icon": "nt-scout",
+          "instruction": "Scout proactively for a counter expansion. If the Night Elf is creeping it, run to their main and destroy the lumber economy and buildings in progress.",
+          "supply": 35,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-scout.webp"
+        },
+        {
+          "_key": "57ed0a664e0d",
+          "_type": "step",
+          "icon": "ud-gargoyle",
+          "instruction": "Make Gargoyles and a Lich immediately at tier 2. Tech tier 3 immediately as well and add a Slaughterhouse.",
+          "supply": 35,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-gargoyle.webp"
+        },
+        {
+          "_key": "f22c2291ce97",
+          "_type": "step",
+          "icon": "ud-obsidian-statue",
+          "instruction": "Get 1 more Gargoyle and 1 Statue. Get the 2nd Creature Attack upgrade. Add 2 more Ziggurats. Continue to creep safely.",
+          "supply": 44,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-obsidian-statue.webp"
+        },
+        {
+          "_key": "ba123ab5bfcc",
+          "_type": "step",
+          "icon": "ud-frost-wyrm",
+          "instruction": "Many compositions work against Night Elf; the simplest is Gargoyles from 2 Crypts, 2 Statues, 2 Frost Wyrms and Dreadlord third.",
+          "supply": 49,
+          "iconUrl": "http://localhost:3111/wc3-icons/ud-frost-wyrm.webp"
+        }
+      ],
+      "summary": "Death Knight and four Ghouls creep your natural at 19 food and drop a haunted mine on a Sacrificial Skull, then tower it up and tech to Gargoyles, Statues and Frost Wyrms for the ultra-late game.",
+      "tags": [
+        "ghouls",
+        "death knight",
+        "expansion"
+      ],
+      "title": "DK Ghoul Expo vs NE",
+      "updatedAt": "2026-09-18T08:57:43Z",
+      "vsRaces": [
+        "nightelf",
+        "human"
+      ]
+    },
+    {
+      "author": "Gym Coaches",
+      "authorDiscord": null,
+      "difficulty": "intermediate",
+      "featured": false,
+      "maintainer": null,
+      "patch": null,
+      "publishedAt": "2026-09-17T00:00:00Z",
+      "race": "human",
+      "slug": "paladin-rifle-build",
+      "sourceUrl": null,
+      "steps": [
+        {
+          "_key": "92088fb18930",
+          "_type": "step",
+          "icon": "hu-peasant",
+          "instruction": "Send 4 of your first Peasants to gold and 1 to wood.",
+          "supply": 5,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-peasant.webp"
+        },
+        {
+          "_key": "7d8266162689",
+          "_type": "step",
+          "icon": "hu-peasant",
+          "instruction": "Queue up 4 Peasants.",
+          "supply": 5,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-peasant.webp"
+        },
+        {
+          "_key": "c9e51a66356b",
+          "_type": "step",
+          "icon": "nt-lumber",
+          "instruction": "Send the 1st created Peasant to wood.",
+          "supply": 7,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-lumber.webp"
+        },
+        {
+          "_key": "050c8f84faf0",
+          "_type": "step",
+          "icon": "hu-altar",
+          "instruction": "When the 1st created Peasant mines 10 wood and returns it, build an Altar.",
+          "supply": 7,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-altar.webp"
+        },
+        {
+          "_key": "4d8cd1b455c4",
+          "_type": "step",
+          "icon": "hu-blacksmith",
+          "instruction": "With the 2nd created Peasant start a Farm; at roughly 100 hit points stop building it and build a Blacksmith with that Peasant.",
+          "supply": 8,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-blacksmith.webp"
+        },
+        {
+          "_key": "3aec47000101",
+          "_type": "step",
+          "icon": "hu-barracks",
+          "instruction": "The 3rd created Peasant builds a Barracks. Queue up a Peasant (5th of the game).",
+          "supply": 9,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-barracks.webp"
+        },
+        {
+          "_key": "8e0653c37abb",
+          "_type": "step",
+          "icon": "hu-farm",
+          "instruction": "The 4th created Peasant finishes the Farm.",
+          "supply": 10,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-farm.webp"
+        },
+        {
+          "_key": "6b0482a27930",
+          "_type": "step",
+          "icon": "hu-peasant",
+          "instruction": "Queue another Peasant.",
+          "supply": 10,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-peasant.webp"
+        },
+        {
+          "_key": "f94a2d5f9b16",
+          "_type": "step",
+          "icon": "nt-gold",
+          "instruction": "When you have 20 wood, take the Peasant on wood and put it on gold for 5 total on gold.",
+          "supply": 10,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-gold.webp"
+        },
+        {
+          "_key": "621e85719517",
+          "_type": "step",
+          "icon": "hu-farm",
+          "instruction": "The 5th created Peasant builds a 2nd Farm.",
+          "supply": 11,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-farm.webp"
+        },
+        {
+          "_key": "506363adb16a",
+          "_type": "step",
+          "icon": "hu-peasant",
+          "instruction": "Queue another Peasant. The 6th created Peasant goes to wood.",
+          "supply": 11,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-peasant.webp"
+        },
+        {
+          "_key": "73167fab78ce",
+          "_type": "step",
+          "icon": "hu-paladin",
+          "instruction": "Build a Paladin. All Peasants that were building go to mine wood after.",
+          "supply": 12,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-paladin.webp"
+        },
+        {
+          "_key": "4bdbd3a78718",
+          "_type": "step",
+          "icon": "hu-peasant",
+          "instruction": "Queue a Peasant (8 queued so far). 5 on gold and 8 will be on wood.",
+          "supply": 17,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-peasant.webp"
+        },
+        {
+          "_key": "2ed05bf014a2",
+          "_type": "step",
+          "icon": "hu-rifleman",
+          "instruction": "Build a Rifleman.",
+          "supply": 18,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-rifleman.webp"
+        },
+        {
+          "_key": "37dafd5ebebb",
+          "_type": "step",
+          "icon": "hu-rifleman",
+          "instruction": "Queue a 2nd Rifleman as soon as you have the resources.",
+          "supply": 21,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-rifleman.webp"
+        },
+        {
+          "_key": "973175201b5e",
+          "_type": "step",
+          "icon": "hu-farm",
+          "instruction": "Build a 3rd Farm with a wood Peasant as soon as you have the resources.",
+          "supply": 21,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-farm.webp"
+        },
+        {
+          "_key": "83b6d3dc9b22",
+          "_type": "step",
+          "icon": "hu-militia",
+          "instruction": "Paladin and first Rifle are out. Use 2 wood Peasants as Militia to help creep small camps.",
+          "supply": 24,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-militia.webp"
+        },
+        {
+          "_key": "45f1212df536",
+          "_type": "step",
+          "icon": "hu-paladin",
+          "instruction": "The Paladin skills Holy Light and Devotion Aura: Holy Light at levels 1 and 3.",
+          "supply": 24,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-paladin.webp"
+        },
+        {
+          "_key": "412445cd40fd",
+          "_type": "step",
+          "icon": "hu-keep",
+          "instruction": "Tech to tier 2 as soon as you have the resources.",
+          "supply": 24,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-keep.webp"
+        },
+        {
+          "_key": "c1d1816c611a",
+          "_type": "step",
+          "icon": "nt-scout",
+          "instruction": "Scout the enemy with one wood Peasant in Militia form.",
+          "supply": 24,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-scout.webp"
+        },
+        {
+          "_key": "ae47fab961c3",
+          "_type": "step",
+          "icon": "hu-rifleman",
+          "instruction": "Build a 3rd Rifleman. Continue creeping with Paladin and Riflemen.",
+          "supply": 24,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-rifleman.webp"
+        },
+        {
+          "_key": "ca515697de77",
+          "_type": "step",
+          "icon": "hu-scout-tower",
+          "instruction": "Build a 4th Rifleman, a Farm and a Scout Tower in main (upgrade the tower if necessary).",
+          "supply": 27,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-scout-tower.webp"
+        },
+        {
+          "_key": "b3766323e86e",
+          "_type": "step",
+          "icon": "nt-upgrade",
+          "instruction": "Build another Rifleman (29/36 if the scout died). Start +1 attack for ranged units.",
+          "supply": 30,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-upgrade.webp"
+        },
+        {
+          "_key": "7423bb2badfc",
+          "_type": "step",
+          "icon": "hu-farm",
+          "instruction": "Build a Farm.",
+          "supply": 33,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-farm.webp"
+        },
+        {
+          "_key": "c6581f3c7fc1",
+          "_type": "step",
+          "icon": "hu-blood-mage",
+          "instruction": "When tier 2 finishes get the Blood Mage and Long Rifles. The Paladin should be level 3 or near it.",
+          "supply": 33,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-blood-mage.webp"
+        },
+        {
+          "_key": "f1343afff12a",
+          "_type": "step",
+          "icon": "hu-peasant",
+          "instruction": "Queue more wood Peasants (amount depends on your game plan) and build a Farm.",
+          "supply": 38,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-peasant.webp"
+        },
+        {
+          "_key": "0276999cb580",
+          "_type": "step",
+          "icon": "nt-upgrade",
+          "instruction": "Get the level 1 armour upgrade for Riflemen.",
+          "supply": 38,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-upgrade.webp"
+        },
+        {
+          "_key": "cfd8afbc0239",
+          "_type": "step",
+          "icon": "nt-creep",
+          "instruction": "Begin power creeping your Blood Mage after the Paladin hits level 3. Siphon Mana levels are critical.",
+          "supply": 39,
+          "iconUrl": "http://localhost:3111/wc3-icons/nt-creep.webp"
+        },
+        {
+          "_key": "8650eefb79ec",
+          "_type": "step",
+          "icon": "hu-rifleman",
+          "instruction": "From 40 food continue making Riflemen and decide how you will approach the late game.",
+          "supply": 50,
+          "iconUrl": "http://localhost:3111/wc3-icons/hu-rifleman.webp"
+        }
+      ],
+      "summary": "Blacksmith before Barracks, Paladin at 12 food and Riflemen from 18: a sustain build around Holy Light and Devotion Aura, with the Blood Mage feeding mana at tier 2. Strongest versus Undead.",
+      "tags": [
+        "paladin",
+        "riflemen",
+        "blood mage",
+        "sustain"
+      ],
+      "title": "Paladin Rifle Build",
+      "updatedAt": "2026-09-18T08:57:43Z",
+      "vsRaces": [
+        "undead"
+      ]
+    }
+  ]
+}
