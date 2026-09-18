@@ -17,8 +17,10 @@
 import {
   buildResponseSchema,
   buildsListResponseSchema,
+  iconsResponseSchema,
   type ApiBuild,
   type ApiBuildListItem,
+  type GameIconEntry,
 } from "./schema";
 
 export type ApiErrorKind = "network" | "http" | "invalid";
@@ -68,4 +70,15 @@ export async function fetchBuild(apiBase: string, slug: string): Promise<ApiBuil
     throw new ApiError("invalid", `build response failed validation: ${parsed.error.message}`);
   }
   return parsed.data.build;
+}
+
+/** F003: fetches the WC3 icon manifest the editor's icon picker renders,
+ *  same offline-safe shape as `fetchBuilds`. */
+export async function fetchIcons(apiBase: string): Promise<GameIconEntry[]> {
+  const body = await fetchJson(`${apiBase}/api/icons`);
+  const parsed = iconsResponseSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError("invalid", `icons response failed validation: ${parsed.error.message}`);
+  }
+  return parsed.data.icons;
 }

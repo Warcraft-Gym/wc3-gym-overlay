@@ -18,15 +18,34 @@ export function Modal({
   label,
   id,
   onClose,
+  /** F003: `BuildEditorModal` needs a much wider dialog than the default
+   *  32rem — its dense steps grid (time/food/icon/instruction/row-actions)
+   *  truncates badly at the default width. Every other caller (Settings,
+   *  icon picker) keeps the compact default. */
+  widthClassName = "w-[min(32rem,calc(100vw-2rem))]",
   children,
 }: {
   label: string;
   id?: string;
   onClose: () => void;
+  widthClassName?: string;
   children?: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  // The focus-trap/lock effect below deliberately runs once per mount (see
+  // its own comment) so it never steals focus back or re-locks scroll on
+  // every parent re-render. But its `keydown` listener still needs whatever
+  // `onClose` the *latest* render passed — a caller like
+  // `BuildEditorModal`'s `requestClose` closes over state (`dirty`) that
+  // changes after mount, and a handler captured once at mount would keep
+  // reading that first render's stale value forever. Routing through a ref
+  // that's updated every render keeps the listener itself stable while
+  // always calling the current `onClose`.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     previouslyFocused.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -40,7 +59,7 @@ export function Modal({
 
     function handleKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key === "Tab" && dialogRef.current) {
@@ -64,7 +83,6 @@ export function Modal({
       document.body.style.overflow = previousOverflow;
       previouslyFocused.current?.focus();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return createPortal(
@@ -80,7 +98,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="panel w-[min(32rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto p-6"
+        className={`panel ${widthClassName} max-h-[calc(100vh-2rem)] overflow-y-auto p-6`}
         onClick={(event) => event.stopPropagation()}
       >
         {children}

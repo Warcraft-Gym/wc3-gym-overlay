@@ -75,6 +75,8 @@ export function duplicateAsLocal(build: ApiBuildListItem | LocalBuild): LocalBui
     tags: [...build.tags],
     summary: build.summary,
     author: build.author,
+    authorDiscord: build.authorDiscord ?? undefined,
+    sourceUrl: build.sourceUrl ?? undefined,
     steps: build.steps.map((step): ApiBuildStep => ({ ...step })),
     description: "description" in build ? build.description : undefined,
     source: "local",

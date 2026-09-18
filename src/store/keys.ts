@@ -9,8 +9,10 @@ import {
   apiBuildListItemSchema,
   apiBuildStepSchema,
   difficultySchema,
+  gameIconEntrySchema,
   raceSchema,
   type ApiBuildListItem,
+  type GameIconEntry,
 } from "../api/schema";
 import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES } from "../config";
 import type { ShortcutMap } from "../host/bridge";
@@ -184,10 +186,14 @@ export const SETTINGS: StoreKey<Settings> = {
  * from the string alone.
  *
  * Deliberately its own shape, not `apiBuildSchema` extended: local builds
- * have no `guide`/`featured`/`publishedAt`/`authorDiscord`/`maintainer`/
- * `sourceUrl` (site-only concepts), and `description` here is a plain
- * string (no editor for the site's rich-text `description` yet), not the
- * site's portable-text array.
+ * have no `guide`/`featured`/`publishedAt`/`maintainer` (site-only
+ * concepts), and `description` here is a plain string (no editor for the
+ * site's rich-text `description` yet), not the site's portable-text array.
+ *
+ * F003: `authorDiscord`/`sourceUrl` were added (both optional, matching the
+ * site submission form's own optional fields) so a private build already
+ * carries everything the site's submission schema asks for and "Submit to
+ * site" (a later feature) can send it unchanged.
  */
 export const LOCAL_SLUG_PATTERN = /^local-[0-9a-f-]{36}$/;
 
@@ -201,6 +207,8 @@ export const localBuildSchema = z.object({
   tags: z.array(z.string()),
   summary: z.string(),
   author: z.string(),
+  authorDiscord: z.string().optional(),
+  sourceUrl: z.string().optional(),
   steps: z.array(apiBuildStepSchema).min(1),
   description: z.string().optional(),
   source: z.literal("local"),
@@ -214,4 +222,31 @@ export const LOCAL_BUILDS: StoreKey<LocalBuild[]> = {
   name: "wc3gym.localBuilds",
   schema: z.array(localBuildSchema),
   defaultValue: () => [],
+};
+
+// --- wc3gym.iconsCache (F003) ------------------------------------------------
+
+/**
+ * See `data/useIcons.ts`, the only consumer — it fetches the site's
+ * `/api/icons` (schema: `gameIconEntrySchema` in `api/schema.ts`) once per
+ * `apiBase` and caches the result here so the editor's icon picker opens
+ * instantly (and still works offline) on every subsequent picker/editor
+ * launch.
+ */
+export type IconsCache = {
+  fetchedAt: string;
+  apiBase: string;
+  icons: GameIconEntry[];
+};
+
+export const iconsCacheSchema: z.ZodType<IconsCache> = z.object({
+  fetchedAt: z.string(),
+  apiBase: z.string(),
+  icons: z.array(gameIconEntrySchema),
+});
+
+export const ICONS_CACHE: StoreKey<IconsCache> = {
+  name: "wc3gym.iconsCache",
+  schema: iconsCacheSchema,
+  defaultValue: () => ({ fetchedAt: "", apiBase: DEFAULT_API_BASE, icons: [] }),
 };

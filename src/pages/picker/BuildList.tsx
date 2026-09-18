@@ -1,5 +1,5 @@
 import { BuildRow } from "./BuildRow";
-import type { AnyBuild } from "../../data/useAllBuilds";
+import { isLocalBuild, type AnyBuild } from "../../data/useAllBuilds";
 
 function SkeletonRow({ index }: { index: number }) {
   return (
@@ -22,12 +22,18 @@ export function BuildList({
   apiBase,
   selectedSlug,
   onSelect,
+  onDuplicate,
+  onEdit,
+  onDelete,
   loading,
 }: {
   builds: AnyBuild[];
   apiBase: string;
   selectedSlug: string | null;
   onSelect: (slug: string) => void;
+  onDuplicate: (build: AnyBuild) => void;
+  onEdit: (build: AnyBuild) => void;
+  onDelete: (build: AnyBuild) => void;
   loading: boolean;
 }) {
   return (
@@ -41,6 +47,9 @@ export function BuildList({
               apiBase={apiBase}
               selected={build.slug === selectedSlug}
               onSelect={() => onSelect(build.slug)}
+              onDuplicate={() => onDuplicate(build)}
+              onEdit={isLocalBuild(build) ? () => onEdit(build) : undefined}
+              onDelete={isLocalBuild(build) ? () => onDelete(build) : undefined}
             />
           ))}
     </ul>

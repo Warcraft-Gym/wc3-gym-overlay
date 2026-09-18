@@ -19,7 +19,17 @@ import type { AnyBuild } from "../../data/useAllBuilds";
  * both states — there's a hint even before anything is selected, since the
  * shortcut works either way once the app has a selected build in storage.
  */
-export function SelectedBuildHeader({ build, apiBase }: { build: AnyBuild | null; apiBase: string }) {
+export function SelectedBuildHeader({
+  build,
+  apiBase,
+  onEdit,
+}: {
+  build: AnyBuild | null;
+  apiBase: string;
+  /** F003: only ever called for a local build — the header renders no Edit
+   *  action for a site build. */
+  onEdit?: () => void;
+}) {
   const settings = useStoreValue(SETTINGS);
   const hint = (
     <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em] text-faint">
@@ -96,7 +106,13 @@ export function SelectedBuildHeader({ build, apiBase }: { build: AnyBuild | null
             <Button variant="gold" onClick={() => void host.showWindow(WINDOW_OVERLAY)}>
               Show overlay
             </Button>
-            {build.source === "local" ? null : (
+            {build.source === "local" ? (
+              onEdit ? (
+                <Button variant="ghost" onClick={onEdit}>
+                  Edit
+                </Button>
+              ) : null
+            ) : (
               <Button
                 variant="ghost"
                 onClick={() => void host.openExternal(`${apiBase}/learn/builds/${build.slug}`)}

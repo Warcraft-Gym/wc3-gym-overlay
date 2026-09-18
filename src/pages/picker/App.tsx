@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/Button";
 import type { BuildRace, BuildVsRace } from "../../components/BuildBadges";
-import { useAllBuilds } from "../../data/useAllBuilds";
+import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
+import { isLocalBuild, useAllBuilds, type AnyBuild } from "../../data/useAllBuilds";
 import type { ShortcutRegistrationResult } from "../../host/bridge";
+import { deleteLocalBuild } from "../../lib/localBuilds";
 import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
@@ -10,11 +12,19 @@ import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
 import { BuildList } from "./BuildList";
+import type { BuildEditorMode } from "./editor/BuildEditorModal";
 import { EmptyState } from "./EmptyState";
 import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
 import { SETTINGS_DIALOG_ID, SettingsModal } from "./SettingsModal";
+
+// F003: the editor (schema, icon picker, steps editor) is only ever needed
+// once the user actually opens it — code-split so "New private build" /
+// "Duplicate" / "Edit" don't add to the picker's initial bundle.
+const BuildEditorModal = lazy(() => import("./editor/BuildEditorModal").then((m) => ({ default: m.BuildEditorModal })));
+
+type EditorState = { mode: BuildEditorMode; sourceBuild: AnyBuild | null };
 
 const RACE_VALUES: readonly BuildRace[] = ["human", "orc", "nightelf", "undead"];
 const DIFFICULTY_VALUES = ["beginner", "intermediate", "advanced"] as const;
@@ -82,6 +92,7 @@ export function App() {
   const [registrations, setRegistrations] = useState<ShortcutRegistrationResult[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(() => parseHashFilters(location.hash));
+  const [editor, setEditor] = useState<EditorState | null>(null);
 
   useEffect(() => {
     applySelftestShortcutOverride()
@@ -125,6 +136,10 @@ export function App() {
     void writeKey(SELECTED_BUILD_SLUG, slug);
   }
 
+  function handleDeleteRow(build: AnyBuild): void {
+    void writeLocalBuilds(deleteLocalBuild(readLocalBuilds(), build.slug));
+  }
+
   return (
     <>
       <header className="flex items-center justify-between gap-3 border-b border-line/60 px-6 py-4">
@@ -134,19 +149,32 @@ export function App() {
           </h1>
           <p className="text-xs text-muted">Build picker</p>
         </div>
-        <Button
-          variant="ghost"
-          aria-expanded={settingsOpen}
-          aria-controls={SETTINGS_DIALOG_ID}
-          onClick={() => setSettingsOpen((v) => !v)}
-        >
-          Settings
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="gold" onClick={() => setEditor({ mode: "new", sourceBuild: null })}>
+            New private build
+          </Button>
+          <Button
+            variant="ghost"
+            aria-expanded={settingsOpen}
+            aria-controls={SETTINGS_DIALOG_ID}
+            onClick={() => setSettingsOpen((v) => !v)}
+          >
+            Settings
+          </Button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="flex flex-col gap-5">
-          <SelectedBuildHeader build={selectedBuild} apiBase={settings.apiBase} />
+          <SelectedBuildHeader
+            build={selectedBuild}
+            apiBase={settings.apiBase}
+            onEdit={
+              selectedBuild && isLocalBuild(selectedBuild)
+                ? () => setEditor({ mode: "edit", sourceBuild: selectedBuild })
+                : undefined
+            }
+          />
 
           <FilterBar apiBase={settings.apiBase} filters={filters} onChange={updateFilters} matchCount={filtered.length} />
 
@@ -160,6 +188,9 @@ export function App() {
               apiBase={settings.apiBase}
               selectedSlug={selectedSlug}
               onSelect={selectBuild}
+              onDuplicate={(build) => setEditor({ mode: "duplicate", sourceBuild: build })}
+              onEdit={(build) => setEditor({ mode: "edit", sourceBuild: build })}
+              onDelete={handleDeleteRow}
               loading={status === "loading"}
             />
           )}
@@ -172,6 +203,18 @@ export function App() {
             onRegistrations={setRegistrations}
             onClose={() => setSettingsOpen(false)}
           />
+        ) : null}
+
+        {editor ? (
+          <Suspense fallback={null}>
+            <BuildEditorModal
+              mode={editor.mode}
+              sourceBuild={editor.sourceBuild}
+              apiBase={settings.apiBase}
+              allBuilds={builds}
+              onClose={() => setEditor(null)}
+            />
+          </Suspense>
         ) : null}
       </main>
     </>

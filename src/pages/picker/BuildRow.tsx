@@ -1,5 +1,7 @@
 import { useState, type KeyboardEvent } from "react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import { Button } from "../../components/Button";
+import { IconButton } from "../../components/IconButton";
 import { DifficultyBadge, PrivateBadge, TagChip, vsLabel, type Difficulty } from "../../components/BuildBadges";
 import { RaceCrest as SmallRaceCrest, RACE_LABEL, raceTextClass, type Race } from "../../components/RaceCrest";
 import { cn } from "../../lib/cn";
@@ -64,12 +66,24 @@ export function BuildRow({
   apiBase,
   selected,
   onSelect,
+  onDuplicate,
+  onEdit,
+  onDelete,
 }: {
   build: AnyBuild;
   apiBase: string;
   selected: boolean;
   onSelect: () => void;
+  /** F003: opens the editor pre-filled from this build, for any row (site
+   *  or private). */
+  onDuplicate: () => void;
+  /** F003: local rows only — opens the editor in place. */
+  onEdit?: () => void;
+  /** F003: local rows only — deletes after an inline confirm. */
+  onDelete?: () => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   function handleKeyDown(event: KeyboardEvent<HTMLLIElement>) {
     if (event.key === "Enter" && event.target === event.currentTarget) {
       event.preventDefault();
@@ -120,6 +134,35 @@ export function BuildRow({
           {build.source === "local" ? <PrivateBadge /> : null}
           <DifficultyBadge level={build.difficulty} />
         </div>
+
+        {confirmDelete ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-loss">Delete?</span>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
+              Keep
+            </Button>
+            <Button variant="danger" size="sm" onClick={() => onDelete?.()}>
+              Delete
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <IconButton aria-label={`Duplicate ${build.title}`} onClick={onDuplicate}>
+              <Copy size={13} />
+            </IconButton>
+            {onEdit ? (
+              <IconButton aria-label={`Edit ${build.title}`} onClick={onEdit}>
+                <Pencil size={13} />
+              </IconButton>
+            ) : null}
+            {onDelete ? (
+              <IconButton aria-label={`Delete ${build.title}`} onClick={() => setConfirmDelete(true)}>
+                <Trash2 size={13} />
+              </IconButton>
+            ) : null}
+          </div>
+        )}
+
         <span className="tnum text-xs text-faint">
           {build.steps.length} steps{build.patch ? ` · ${build.patch}` : ""} · {formatDate(build.updatedAt)}
         </span>
