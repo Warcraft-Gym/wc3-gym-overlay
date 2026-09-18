@@ -4,7 +4,7 @@ import type { BuildRace, BuildVsRace } from "../../components/BuildBadges";
 import { useBuilds } from "../../data/useBuilds";
 import type { ShortcutRegistrationResult } from "../../host/bridge";
 import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
-import { runSelftest } from "../../selftest";
+import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
@@ -73,10 +73,12 @@ export function App() {
   const [filters, setFilters] = useState<Filters>(() => parseHashFilters(location.hash));
 
   useEffect(() => {
-    applyShortcuts().then((results) => {
-      setRegistrations(results);
-      void runSelftest("picker", results);
-    });
+    applySelftestShortcutOverride()
+      .then(() => applyShortcuts())
+      .then((results) => {
+        setRegistrations(results);
+        void runSelftest("picker", results);
+      });
   }, []);
 
   function updateFilters(next: Filters): void {

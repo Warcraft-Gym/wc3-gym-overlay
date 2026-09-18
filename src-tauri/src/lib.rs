@@ -8,6 +8,17 @@ fn selftest_enabled() -> bool {
     std::env::var("WC3GYM_SELFTEST").as_deref() == Ok("1")
 }
 
+/// Optional single-shortcut override for the QA selftest, e.g.
+/// `WC3GYM_SELFTEST_SHORTCUT_OVERRIDE=toggle_overlay=F9` makes the selftest
+/// register `toggle_overlay` as the standalone `F9` key instead of its
+/// default combo — lets a native selftest run assert a standalone
+/// function-key shortcut registers without seeding the webview's
+/// localStorage from the launcher.
+#[tauri::command]
+fn selftest_shortcut_override() -> Option<String> {
+    std::env::var("WC3GYM_SELFTEST_SHORTCUT_OVERRIDE").ok()
+}
+
 /// Forwards a line of webview console output to the process's real stdout,
 /// so a launcher capturing the binary's stdout sees the selftest JSON lines
 /// without needing to scrape the webview devtools console.
@@ -34,6 +45,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             selftest_enabled,
+            selftest_shortcut_override,
             selftest_log,
             selftest_done
         ])

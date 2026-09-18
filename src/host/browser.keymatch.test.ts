@@ -84,4 +84,64 @@ describe("browser host shortcut matching", () => {
 
     expect(calls).toEqual([]);
   });
+
+  it("fires a standalone F9 shortcut with no modifier held", async () => {
+    stubPlatform("Win32");
+    const host = createBrowserHost();
+    await host.registerShortcuts(shortcutMap({ toggle_overlay: "F9" }), onAction);
+
+    keydown({ key: "F9", code: "F9" });
+
+    expect(calls).toEqual(["toggle_overlay"]);
+  });
+
+  it("fires a standalone PageUp shortcut", async () => {
+    stubPlatform("Win32");
+    const host = createBrowserHost();
+    await host.registerShortcuts(shortcutMap({ step_prev: "PageUp" }), onAction);
+
+    keydown({ key: "PageUp", code: "PageUp" });
+
+    expect(calls).toEqual(["step_prev"]);
+  });
+
+  it("does not fire a standalone F9 shortcut when Ctrl is held", async () => {
+    stubPlatform("Win32");
+    const host = createBrowserHost();
+    await host.registerShortcuts(shortcutMap({ toggle_overlay: "F9" }), onAction);
+
+    keydown({ key: "F9", code: "F9", ctrlKey: true });
+
+    expect(calls).toEqual([]);
+  });
+});
+
+describe("browser host registerShortcuts failShortcut test hook", () => {
+  afterEach(async () => {
+    await createBrowserHost().unregisterAllShortcuts();
+    window.history.pushState({}, "", "/");
+  });
+
+  it("reports the named action as a failed registration with the simulated error", async () => {
+    window.history.pushState({}, "", "?failShortcut=timer_reset");
+    const host = createBrowserHost();
+
+    const results = await host.registerShortcuts(DEFAULT_SHORTCUTS, () => {});
+
+    const timerReset = results.find((r) => r.action === "timer_reset");
+    const others = results.filter((r) => r.action !== "timer_reset");
+    expect(timerReset).toEqual({
+      action: "timer_reset",
+      combo: DEFAULT_SHORTCUTS.timer_reset,
+      registered: false,
+      error: "already registered by another application",
+    });
+    expect(others.every((r) => r.registered === true)).toBe(true);
+  });
+
+  it("is a no-op when the query param is absent", async () => {
+    const host = createBrowserHost();
+    const results = await host.registerShortcuts(DEFAULT_SHORTCUTS, () => {});
+    expect(results.every((r) => r.registered === true)).toBe(true);
+  });
 });

@@ -10,7 +10,9 @@
 
 import { WINDOW_OVERLAY, WINDOW_PICKER } from "./config";
 import { host } from "./host";
-import type { ShortcutRegistrationResult } from "./host/bridge";
+import type { ShortcutAction, ShortcutRegistrationResult } from "./host/bridge";
+import { SETTINGS } from "./store/keys";
+import { updateKey } from "./store/state";
 
 export type SelftestPage = "picker" | "overlay";
 
@@ -58,6 +60,34 @@ async function logWindowState(label: string): Promise<void> {
     decorations: await win.isDecorated(),
     visible: await win.isVisible(),
   });
+}
+
+/**
+ * Applies `WC3GYM_SELFTEST_SHORTCUT_OVERRIDE=<action>=<combo>` (native
+ * selftest runs only) to the stored settings *before* `applyShortcuts()`
+ * runs, so C-403's F9-override selftest run registers a standalone
+ * function-key combo without needing a separate localStorage-seeding path.
+ * A no-op whenever selftest mode or the override env var is absent.
+ */
+export async function applySelftestShortcutOverride(): Promise<void> {
+  if (host.kind !== "tauri") return;
+  if (!(await isSelftestEnabled())) return;
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const raw = await invoke<string | null>("selftest_shortcut_override");
+    if (!raw) return;
+
+    const [action, combo] = raw.split("=");
+    if (!action || !combo) return;
+
+    await updateKey(SETTINGS, (s) => ({
+      ...s,
+      shortcuts: { ...s.shortcuts, [action as ShortcutAction]: combo },
+    }));
+  } catch {
+    // Override is a QA-only convenience — never block normal startup on it.
+  }
 }
 
 /** Call once `applyShortcuts()` has resolved, passing its results. */

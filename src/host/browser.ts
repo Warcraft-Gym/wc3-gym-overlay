@@ -99,6 +99,19 @@ function matchesKeyToken(token: string, event: KeyboardEvent): boolean {
   return unshiftKey(event.key).toLowerCase() === wanted;
 }
 
+/**
+ * Test hook (no native equivalent): `?failShortcut=<action>` on the URL
+ * makes the browser host report that one action as a failed registration,
+ * with the same error shape `tauri.ts` produces for a real OS-level
+ * conflict — lets the diagnostics UI (warning text, Re-register) be tested
+ * without an actual second application holding the combo. No-op otherwise.
+ */
+const SIMULATED_REGISTRATION_ERROR = "already registered by another application";
+
+function failShortcutOverride(): string | null {
+  return new URLSearchParams(location.search).get("failShortcut");
+}
+
 async function registerShortcuts(
   map: ShortcutMap,
   onAction: (action: ShortcutAction) => void,
@@ -117,7 +130,12 @@ async function registerShortcuts(
   window.addEventListener("keydown", handler);
   browserKeydownHandler = handler;
 
-  return entries.map(([action, combo]) => ({ action, combo, registered: true }));
+  const failing = failShortcutOverride();
+  return entries.map(([action, combo]) =>
+    action === failing
+      ? { action, combo, registered: false, error: SIMULATED_REGISTRATION_ERROR }
+      : { action, combo, registered: true },
+  );
 }
 
 let browserKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
