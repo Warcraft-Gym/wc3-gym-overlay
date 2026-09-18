@@ -1,6 +1,6 @@
 [package]
 name = "wc3gym-overlay"
-version = "0.1.0"
+version = "0.1.1"
 description = "Warcraft 3 Gym build-order overlay"
 edition = "2021"
 
