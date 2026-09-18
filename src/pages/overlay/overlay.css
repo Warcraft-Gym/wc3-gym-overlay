@@ -80,16 +80,52 @@
   color: var(--wg-gold);
 }
 
+.overlay-steps-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  outline: none;
+}
+
+.overlay-step-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  display: grid;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.5rem;
+  /* Same translucent obsidian as the panel root, so the sticky header reads
+     cleanly over rows scrolling beneath it. */
+  background: rgb(6 6 10 / 0.92);
+  border-bottom: 1px solid var(--wg-line);
+}
+
+.overlay-step-header__cell {
+  font-family: var(--wg-font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wg-text-faint);
+}
+
+.overlay-step-header__cell--index,
+.overlay-step-header__cell--supply {
+  text-align: right;
+}
+
 .overlay-steps {
   flex: 1 1 auto;
   margin: 0;
   padding: 0.25rem 0;
   list-style: none;
-  overflow-y: auto;
 }
 
 .overlay-step {
-  display: flex;
+  display: grid;
   align-items: center;
   gap: 0.5rem;
   min-height: 38px;
@@ -104,11 +140,10 @@
 
 .overlay-step--compact {
   height: 28px;
+  min-height: 28px;
 }
 
 .overlay-step__index {
-  width: 1.3em;
-  flex-shrink: 0;
   font-family: var(--wg-font-mono);
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
@@ -117,8 +152,6 @@
 }
 
 .overlay-step__time {
-  width: 3rem;
-  flex-shrink: 0;
   font-family: var(--wg-font-mono);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
@@ -126,13 +159,18 @@
 }
 
 .overlay-step__supply {
-  width: 1.8em;
-  flex-shrink: 0;
   font-family: var(--wg-font-mono);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--wg-text-muted);
+}
+
+.overlay-step__content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .overlay-step__instruction {
