@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { filterBuilds, sortBuilds } from "./filterBuilds";
 import type { ApiBuildListItem } from "../api/schema";
+import type { AnyBuild } from "../data/useAllBuilds";
 
 function build(overrides: Partial<ApiBuildListItem>): ApiBuildListItem {
   return {
@@ -82,6 +83,38 @@ describe("filterBuilds", () => {
       build({ slug: "adv", difficulty: "advanced" }),
     ];
     expect(filterBuilds(mixed, { difficulty: "intermediate" }).map((b) => b.slug)).toEqual(["int"]);
+  });
+
+  it("treats an unstamped build as 'site' for the source filter", () => {
+    expect(filterBuilds(builds, { source: "site" })).toHaveLength(4);
+    expect(filterBuilds(builds, { source: "local" })).toHaveLength(0);
+    expect(filterBuilds(builds, { source: "all" })).toHaveLength(4);
+  });
+
+  it("filters a merged AnyBuild[] list by source", () => {
+    const mixed: AnyBuild[] = [
+      { ...build({ slug: "site-a" }), source: "site" },
+      {
+        slug: "local-11111111-1111-1111-1111-111111111111",
+        title: "Private",
+        race: "human",
+        vsRaces: [],
+        difficulty: "beginner",
+        tags: [],
+        summary: "s",
+        author: "a",
+        steps: [{ instruction: "go" }],
+        source: "local",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    expect(filterBuilds(mixed, { source: "local" }).map((b) => b.slug)).toEqual([
+      "local-11111111-1111-1111-1111-111111111111",
+    ]);
+    expect(filterBuilds(mixed, { source: "site" }).map((b) => b.slug)).toEqual(["site-a"]);
+    expect(filterBuilds(mixed, { source: "all" })).toHaveLength(2);
   });
 });
 

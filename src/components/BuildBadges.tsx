@@ -95,3 +95,21 @@ export function TagChip({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+/**
+ * F002: marks a build as a private local build order — never sent to the
+ * site. Mono micro-label chip with a gold border, matching the
+ * `DifficultyBadge` shape so the two sit naturally side by side.
+ */
+export function PrivateBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded border border-gold/60 px-2 py-0.5 font-mono text-[0.62rem] font-bold uppercase tracking-[0.16em] text-gold",
+        className,
+      )}
+    >
+      Private
+    </span>
+  );
+}

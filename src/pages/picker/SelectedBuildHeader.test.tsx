@@ -6,13 +6,14 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ApiBuildListItem } from "../../api/schema";
 import { DEFAULT_SHORTCUTS } from "../../config";
+import type { AnyBuild } from "../../data/useAllBuilds";
+import { createLocalBuild } from "../../lib/localBuilds";
 import { SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
 
-const build: ApiBuildListItem = {
+const build: AnyBuild = {
   slug: "human-fast-expand",
   title: "Human Fast Expand",
   race: "human",
@@ -25,6 +26,7 @@ const build: ApiBuildListItem = {
   publishedAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
   steps: [],
+  source: "site",
 };
 
 async function setToggleCombo(combo: string): Promise<void> {
@@ -70,5 +72,43 @@ describe("SelectedBuildHeader — toggle-overlay hint", () => {
     rerender(<SelectedBuildHeader build={build} apiBase="https://wc3-gnl-website.vercel.app" />);
 
     expect(screen.getByText(/F10/)).toBeTruthy();
+  });
+});
+
+describe("SelectedBuildHeader — private builds (F002)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows a PRIVATE badge and hides 'Open on site' for a local build", async () => {
+    await setToggleCombo("CommandOrControl+Shift+F9");
+    const local: AnyBuild = createLocalBuild({
+      title: "My private opener",
+      race: "orc",
+      vsRaces: [],
+      difficulty: "beginner",
+      tags: [],
+      summary: "s",
+      author: "a",
+      steps: [{ instruction: "go" }],
+    });
+
+    render(<SelectedBuildHeader build={local} apiBase="https://wc3-gnl-website.vercel.app" />);
+
+    expect(screen.getByText("Private")).toBeTruthy();
+    expect(screen.queryByText("Open on site")).toBeNull();
+  });
+
+  it("shows 'Open on site' and no PRIVATE badge for a site build", async () => {
+    await setToggleCombo("CommandOrControl+Shift+F9");
+
+    render(<SelectedBuildHeader build={build} apiBase="https://wc3-gnl-website.vercel.app" />);
+
+    expect(screen.getByText("Open on site")).toBeTruthy();
+    expect(screen.queryByText("Private")).toBeNull();
   });
 });

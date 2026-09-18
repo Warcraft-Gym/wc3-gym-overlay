@@ -31,8 +31,10 @@ export const apiBuildStepSchema = z.object({
   iconUrl: z.string().optional(),
 });
 
-const raceSchema = z.enum(["human", "orc", "nightelf", "undead"]);
-const difficultySchema = z.enum(["beginner", "intermediate", "advanced"]);
+// Exported so `store/keys.ts` can build the local-build schema (F002) off
+// the same race/difficulty enums instead of re-declaring them.
+export const raceSchema = z.enum(["human", "orc", "nightelf", "undead"]);
+export const difficultySchema = z.enum(["beginner", "intermediate", "advanced"]);
 
 const guideSchema = z
   .object({

@@ -5,7 +5,13 @@
  */
 
 import { z } from "zod";
-import { apiBuildListItemSchema, type ApiBuildListItem } from "../api/schema";
+import {
+  apiBuildListItemSchema,
+  apiBuildStepSchema,
+  difficultySchema,
+  raceSchema,
+  type ApiBuildListItem,
+} from "../api/schema";
 import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES } from "../config";
 import type { ShortcutMap } from "../host/bridge";
 
@@ -166,4 +172,46 @@ export const SETTINGS: StoreKey<Settings> = {
     scale: 1,
     shortcuts: { ...DEFAULT_SHORTCUTS },
   }),
+};
+
+// --- wc3gym.localBuilds (F002) ----------------------------------------------
+
+/**
+ * Private build orders, created and edited entirely on this machine (F003
+ * ships the editor) — never sent to the site. Slugs are minted as
+ * `local-<uuid>` (see `lib/localBuilds.ts::createLocalBuild`) so they can
+ * never collide with a site slug, and `isLocalSlug` can tell the two apart
+ * from the string alone.
+ *
+ * Deliberately its own shape, not `apiBuildSchema` extended: local builds
+ * have no `guide`/`featured`/`publishedAt`/`authorDiscord`/`maintainer`/
+ * `sourceUrl` (site-only concepts), and `description` here is a plain
+ * string (no editor for the site's rich-text `description` yet), not the
+ * site's portable-text array.
+ */
+export const LOCAL_SLUG_PATTERN = /^local-[0-9a-f-]{36}$/;
+
+export const localBuildSchema = z.object({
+  slug: z.string().regex(LOCAL_SLUG_PATTERN),
+  title: z.string(),
+  race: raceSchema,
+  vsRaces: z.array(raceSchema).default([]),
+  difficulty: difficultySchema,
+  patch: z.string().optional(),
+  tags: z.array(z.string()),
+  summary: z.string(),
+  author: z.string(),
+  steps: z.array(apiBuildStepSchema).min(1),
+  description: z.string().optional(),
+  source: z.literal("local"),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type LocalBuild = z.infer<typeof localBuildSchema>;
+
+export const LOCAL_BUILDS: StoreKey<LocalBuild[]> = {
+  name: "wc3gym.localBuilds",
+  schema: z.array(localBuildSchema),
+  defaultValue: () => [],
 };

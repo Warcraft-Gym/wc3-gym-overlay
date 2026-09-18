@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import type { ApiBuildListItem } from "../../api/schema";
+import type { AnyBuild } from "../../data/useAllBuilds";
 import type { ClockState } from "../../data/useClock";
 import { columnsFor, gridTemplateColumns } from "../../lib/stepColumns";
 import { activeStepIndex } from "../../store/timer";
@@ -17,7 +17,7 @@ export function StepList({
   clock,
   compact,
 }: {
-  build: ApiBuildListItem;
+  build: AnyBuild;
   clock: ClockState;
   compact: boolean;
 }) {

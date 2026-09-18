@@ -62,6 +62,22 @@
   color: var(--wg-text-muted);
 }
 
+/* F002: marks a private local build order in the compact in-game header —
+   same gold-on-dark treatment as the picker's PRIVATE badge, shrunk to fit
+   this always-on-top window's tight vertical rhythm. */
+.overlay-header__private {
+  flex-shrink: 0;
+  border: 1px solid var(--wg-gold);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  font-family: var(--wg-font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wg-gold);
+}
+
 .overlay-header__actions {
   display: flex;
   flex-shrink: 0;

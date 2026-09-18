@@ -1,9 +1,9 @@
 import { useState, type KeyboardEvent } from "react";
 import { Button } from "../../components/Button";
-import { DifficultyBadge, TagChip, vsLabel, type Difficulty } from "../../components/BuildBadges";
+import { DifficultyBadge, PrivateBadge, TagChip, vsLabel, type Difficulty } from "../../components/BuildBadges";
 import { RaceCrest as SmallRaceCrest, RACE_LABEL, raceTextClass, type Race } from "../../components/RaceCrest";
 import { cn } from "../../lib/cn";
-import type { ApiBuildListItem } from "../../api/schema";
+import type { AnyBuild } from "../../data/useAllBuilds";
 
 const DIFFICULTY_RAIL: Record<Difficulty, string> = {
   beginner: "before:bg-win",
@@ -65,7 +65,7 @@ export function BuildRow({
   selected,
   onSelect,
 }: {
-  build: ApiBuildListItem;
+  build: AnyBuild;
   apiBase: string;
   selected: boolean;
   onSelect: () => void;
@@ -116,7 +116,10 @@ export function BuildRow({
       </div>
 
       <div className="flex flex-col items-end gap-1.5">
-        <DifficultyBadge level={build.difficulty} />
+        <div className="flex items-center gap-1.5">
+          {build.source === "local" ? <PrivateBadge /> : null}
+          <DifficultyBadge level={build.difficulty} />
+        </div>
         <span className="tnum text-xs text-faint">
           {build.steps.length} steps{build.patch ? ` · ${build.patch}` : ""} · {formatDate(build.updatedAt)}
         </span>

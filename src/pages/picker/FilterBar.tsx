@@ -1,7 +1,10 @@
 import { Search } from "lucide-react";
 import type { BuildRace, BuildVsRace } from "../../components/BuildBadges";
+import { cn } from "../../lib/cn";
 import type { BuildSort } from "../../lib/filterBuilds";
 import { CREST_OPTIONS, RaceCrest } from "./RaceCrestPicker";
+
+export type SourceFilter = "all" | "local" | "site";
 
 export type Filters = {
   race?: BuildRace;
@@ -9,10 +12,41 @@ export type Filters = {
   q?: string;
   difficulty?: "beginner" | "intermediate" | "advanced";
   sort?: BuildSort;
+  source?: SourceFilter;
 };
 
 const selectClass =
   "h-10 rounded border border-line bg-surface/60 px-3 text-sm text-fg focus:border-gold/60 focus:outline-none";
+
+const SOURCE_OPTIONS: { id: SourceFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "local", label: "Private" },
+  { id: "site", label: "Site" },
+];
+
+/** Three-segment "All / Private / Site" toggle — ported loosely from the
+ *  site's segmented-toggle pattern, `aria-pressed` per segment so each
+ *  choice reads as a distinct on/off button rather than a single control. */
+function SourceToggle({ value, onChange }: { value: SourceFilter; onChange: (next: SourceFilter) => void }) {
+  return (
+    <div role="group" aria-label="Source" className="inline-flex overflow-hidden rounded border border-line">
+      {SOURCE_OPTIONS.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={value === id}
+          onClick={() => onChange(id)}
+          className={cn(
+            "h-10 px-3 font-display text-[0.68rem] font-bold uppercase tracking-[0.1em] transition-colors",
+            value === id ? "bg-gold/15 text-gold" : "bg-surface/60 text-muted hover:text-fg",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Ported from the site's `MatchupPicker` (`src/components/builds/MatchupPicker.tsx`)
@@ -89,6 +123,7 @@ export function FilterBar({
           />
         </label>
         <div className="flex items-center gap-2">
+          <SourceToggle value={filters.source ?? "all"} onChange={(source) => onChange({ ...filters, source })} />
           <select
             aria-label="Difficulty"
             value={filters.difficulty ?? ""}

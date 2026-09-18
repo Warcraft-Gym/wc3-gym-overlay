@@ -1,12 +1,12 @@
 import { Button } from "../../components/Button";
-import { DifficultyBadge, Matchup } from "../../components/BuildBadges";
+import { DifficultyBadge, Matchup, PrivateBadge } from "../../components/BuildBadges";
 import { relativeTime } from "../../lib/relativeTime";
 import { WINDOW_OVERLAY } from "../../config";
 import { host } from "../../host";
 import { SETTINGS } from "../../store/keys";
 import { useStoreValue } from "../../store/useStore";
 import { formatCombo } from "../../shortcuts";
-import type { ApiBuildListItem } from "../../api/schema";
+import type { AnyBuild } from "../../data/useAllBuilds";
 
 /**
  * The visually dominant panel at the top of the picker, ported from the
@@ -19,7 +19,7 @@ import type { ApiBuildListItem } from "../../api/schema";
  * both states — there's a hint even before anything is selected, since the
  * shortcut works either way once the app has a selected build in storage.
  */
-export function SelectedBuildHeader({ build, apiBase }: { build: ApiBuildListItem | null; apiBase: string }) {
+export function SelectedBuildHeader({ build, apiBase }: { build: AnyBuild | null; apiBase: string }) {
   const settings = useStoreValue(SETTINGS);
   const hint = (
     <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em] text-faint">
@@ -85,6 +85,7 @@ export function SelectedBuildHeader({ build, apiBase }: { build: ApiBuildListIte
           <div className="tnum mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
             <Matchup race={build.race} vsRaces={build.vsRaces} apiBase={apiBase} />
             <DifficultyBadge level={build.difficulty} />
+            {build.source === "local" ? <PrivateBadge /> : null}
             <span>
               by {build.author} · updated {relativeTime(build.updatedAt, Date.now())}
             </span>
@@ -95,9 +96,14 @@ export function SelectedBuildHeader({ build, apiBase }: { build: ApiBuildListIte
             <Button variant="gold" onClick={() => void host.showWindow(WINDOW_OVERLAY)}>
               Show overlay
             </Button>
-            <Button variant="ghost" onClick={() => void host.openExternal(`${apiBase}/learn/builds/${build.slug}`)}>
-              Open on site
-            </Button>
+            {build.source === "local" ? null : (
+              <Button
+                variant="ghost"
+                onClick={() => void host.openExternal(`${apiBase}/learn/builds/${build.slug}`)}
+              >
+                Open on site
+              </Button>
+            )}
           </div>
           {hint}
         </div>

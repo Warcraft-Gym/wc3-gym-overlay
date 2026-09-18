@@ -1,8 +1,8 @@
 import type { MouseEvent } from "react";
-import type { ApiBuildListItem } from "../../api/schema";
 import { IconButton } from "../../components/IconButton";
 import { Matchup } from "../../components/Matchup";
 import { WINDOW_OVERLAY } from "../../config";
+import type { AnyBuild } from "../../data/useAllBuilds";
 import type { ClockState } from "../../data/useClock";
 import { host } from "../../host";
 import { reset, togglePlayPause } from "../../lib/timerActions";
@@ -21,7 +21,7 @@ export function PanelHeader({
   compact,
   onToggleCompact,
 }: {
-  build: ApiBuildListItem | null;
+  build: AnyBuild | null;
   apiBase: string;
   clock: ClockState;
   compact: boolean;
@@ -40,6 +40,7 @@ export function PanelHeader({
             <span className="overlay-header__build-title" title={build.title}>
               {build.title}
             </span>
+            {build.source === "local" ? <span className="overlay-header__private">Private</span> : null}
           </>
         ) : (
           <span className="overlay-header__build-title overlay-header__build-title--empty">

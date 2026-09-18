@@ -1,5 +1,5 @@
 import { BuildRow } from "./BuildRow";
-import type { ApiBuildListItem } from "../../api/schema";
+import type { AnyBuild } from "../../data/useAllBuilds";
 
 function SkeletonRow({ index }: { index: number }) {
   return (
@@ -24,7 +24,7 @@ export function BuildList({
   onSelect,
   loading,
 }: {
-  builds: ApiBuildListItem[];
+  builds: AnyBuild[];
   apiBase: string;
   selectedSlug: string | null;
   onSelect: (slug: string) => void;
