@@ -29,7 +29,7 @@ const build: ApiBuildListItem = {
 
 async function setToggleCombo(combo: string): Promise<void> {
   await writeKey(SETTINGS, {
-    apiBase: "https://warcraft3.gym",
+    apiBase: "https://wc3-gnl-website.vercel.app",
     opacity: 1,
     scale: 1,
     shortcuts: { ...DEFAULT_SHORTCUTS, toggle_overlay: combo },
@@ -48,7 +48,7 @@ describe("SelectedBuildHeader — toggle-overlay hint", () => {
   it("shows the current combo when a build is selected", async () => {
     await setToggleCombo("CommandOrControl+Shift+F9");
 
-    render(<SelectedBuildHeader build={build} apiBase="https://warcraft3.gym" />);
+    render(<SelectedBuildHeader build={build} apiBase="https://wc3-gnl-website.vercel.app" />);
 
     expect(screen.getByText(/F9/)).toBeTruthy();
   });
@@ -56,18 +56,18 @@ describe("SelectedBuildHeader — toggle-overlay hint", () => {
   it("shows the current combo when nothing is selected", async () => {
     await setToggleCombo("CommandOrControl+Shift+F9");
 
-    render(<SelectedBuildHeader build={null} apiBase="https://warcraft3.gym" />);
+    render(<SelectedBuildHeader build={null} apiBase="https://wc3-gnl-website.vercel.app" />);
 
     expect(screen.getByText(/F9/)).toBeTruthy();
   });
 
   it("updates the hint after the combo changes", async () => {
     await setToggleCombo("CommandOrControl+Shift+F9");
-    const { rerender } = render(<SelectedBuildHeader build={build} apiBase="https://warcraft3.gym" />);
+    const { rerender } = render(<SelectedBuildHeader build={build} apiBase="https://wc3-gnl-website.vercel.app" />);
     expect(screen.getByText(/F9/)).toBeTruthy();
 
     await setToggleCombo("CommandOrControl+Shift+F10");
-    rerender(<SelectedBuildHeader build={build} apiBase="https://warcraft3.gym" />);
+    rerender(<SelectedBuildHeader build={build} apiBase="https://wc3-gnl-website.vercel.app" />);
 
     expect(screen.getByText(/F10/)).toBeTruthy();
   });

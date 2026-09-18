@@ -26,7 +26,7 @@
     {
       "identifier": "opener:allow-open-url",
       "allow": [
-        { "url": "https://warcraft3.gym/*" },
+        { "url": "https://wc3-gnl-website.vercel.app/*" },
         { "url": "https://discord.gg/*" },
         { "url": "https://discord.com/*" }
       ]

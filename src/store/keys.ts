@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { apiBuildListItemSchema, type ApiBuildListItem } from "../api/schema";
-import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS } from "../config";
+import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES } from "../config";
 import type { ShortcutMap } from "../host/bridge";
 
 /** JSON key name of the pre-F005 single-opponent field, before the site's
@@ -130,13 +130,32 @@ const overlayBoundsSchema: z.ZodType<OverlayBounds> = z.object({
   height: z.number(),
 });
 
-export const settingsSchema: z.ZodType<Settings> = z.object({
-  apiBase: z.string(),
-  opacity: z.number(),
-  scale: z.number(),
-  shortcuts: shortcutMapSchema,
-  overlayBounds: overlayBoundsSchema.optional(),
-});
+/**
+ * F004 legacy-migration: settings written while a now-dead host (see
+ * `config.ts`'s `LEGACY_API_BASES`) was still the default carry it as
+ * `apiBase` — migrate it to the current `DEFAULT_API_BASE` on read (same
+ * `z.preprocess` shape as `migrateLegacyVsRace` above). A custom `apiBase`
+ * the user actually set (e.g. a local dev server) is left untouched.
+ */
+function migrateLegacyApiBase(raw: unknown): unknown {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const record = raw as Record<string, unknown>;
+  if (typeof record.apiBase !== "string" || !LEGACY_API_BASES.includes(record.apiBase)) {
+    return raw;
+  }
+  return { ...record, apiBase: DEFAULT_API_BASE };
+}
+
+export const settingsSchema: z.ZodType<Settings> = z.preprocess(
+  migrateLegacyApiBase,
+  z.object({
+    apiBase: z.string(),
+    opacity: z.number(),
+    scale: z.number(),
+    shortcuts: shortcutMapSchema,
+    overlayBounds: overlayBoundsSchema.optional(),
+  }),
+);
 
 export const SETTINGS: StoreKey<Settings> = {
   name: "wc3gym.settings",
