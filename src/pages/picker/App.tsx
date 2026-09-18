@@ -14,7 +14,7 @@ import { EmptyState } from "./EmptyState";
 import { FilterBar, type Filters } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
-import { SettingsDrawer } from "./SettingsDrawer";
+import { SETTINGS_DIALOG_ID, SettingsModal } from "./SettingsModal";
 
 const RACE_VALUES: readonly BuildRace[] = ["human", "orc", "nightelf", "undead"];
 const DIFFICULTY_VALUES = ["beginner", "intermediate", "advanced"] as const;
@@ -103,7 +103,12 @@ export function App() {
           </h1>
           <p className="text-xs text-muted">Build picker</p>
         </div>
-        <Button variant="ghost" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((v) => !v)}>
+        <Button
+          variant="ghost"
+          aria-expanded={settingsOpen}
+          aria-controls={SETTINGS_DIALOG_ID}
+          onClick={() => setSettingsOpen((v) => !v)}
+        >
           Settings
         </Button>
       </header>
@@ -130,7 +135,7 @@ export function App() {
         </div>
 
         {settingsOpen ? (
-          <SettingsDrawer
+          <SettingsModal
             settings={settings}
             registrations={registrations}
             onRegistrations={setRegistrations}

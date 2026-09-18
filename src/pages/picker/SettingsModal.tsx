@@ -1,10 +1,13 @@
-import { useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import { IconButton } from "../../components/IconButton";
+import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import type { ShortcutRegistrationResult } from "../../host/bridge";
 import { SETTINGS, type Settings } from "../../store/keys";
 import { updateKey } from "../../store/state";
 import { ShortcutEditor } from "./ShortcutEditor";
+
+export const SETTINGS_DIALOG_ID = "settings-dialog";
 
 function RangeField({
   label,
@@ -43,8 +46,12 @@ function RangeField({
 /** Settings dialog: API base override, overlay opacity/scale and the
  *  shortcut editor. The API base is only written to the store once it
  *  parses as a valid URL — an invalid draft stays local and shows an
- *  inline error instead of clobbering the working value. */
-export function SettingsDrawer({
+ *  inline error instead of clobbering the working value.
+ *
+ *  Renders as a centred modal (see `Modal`) portalled onto `document.body`,
+ *  so it stays correctly positioned regardless of any containing block
+ *  (transform/filter/backdrop-filter) an ancestor in the page tree forms. */
+export function SettingsModal({
   settings,
   registrations,
   onRegistrations,
@@ -69,17 +76,8 @@ export function SettingsDrawer({
     }
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") onClose();
-  }
-
   return (
-    <div
-      role="dialog"
-      aria-label="Settings"
-      onKeyDown={handleKeyDown}
-      className="panel fixed inset-y-0 right-0 z-20 w-full max-w-sm overflow-y-auto p-5 sm:w-96"
-    >
+    <Modal label="Settings" id={SETTINGS_DIALOG_ID} onClose={onClose}>
       <div className="flex items-center justify-between">
         <h2 className="text-base">Settings</h2>
         <IconButton aria-label="Close settings" onClick={onClose}>
@@ -125,6 +123,6 @@ export function SettingsDrawer({
           Warcraft III must run in windowed or borderless mode for the overlay to be visible.
         </p>
       </div>
-    </div>
+    </Modal>
   );
 }
