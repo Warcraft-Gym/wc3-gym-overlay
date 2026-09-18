@@ -96,6 +96,11 @@ function main() {
     report("overlay.visible === false", overlay.visible === false);
     report("overlay.minWidth >= 280", (overlay.minWidth ?? 0) >= 280);
     report("overlay.minHeight >= 240", (overlay.minHeight ?? 0) >= 240);
+    // F001: the overlay must never take keyboard focus — an activated
+    // overlay steals focus from Warcraft III and pauses the game.
+    report("overlay.focusable === false", overlay.focusable === false);
+    report("overlay.focus === false", overlay.focus === false);
+    report("overlay.acceptFirstMouse === true", overlay.acceptFirstMouse === true);
   } else {
     report("overlay window declared", false, "missing");
   }
@@ -104,6 +109,7 @@ function main() {
   if (picker) {
     report("picker.decorations true or absent", picker.decorations === true || picker.decorations === undefined);
     report("picker.visible === true", picker.visible === true);
+    report("picker.focusable !== false", picker.focusable !== false);
   } else {
     report("picker window declared", false, "missing");
   }

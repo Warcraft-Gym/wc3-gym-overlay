@@ -21,6 +21,7 @@ import type {
   ShortcutRegistrationResult,
   WindowBounds,
 } from "./bridge";
+import { WINDOW_OVERLAY } from "../config";
 
 const STATE_CHANGED_EVENT = "wc3gym:state-changed";
 
@@ -30,10 +31,16 @@ async function getWindow(label: string): Promise<WebviewWindow> {
   return win;
 }
 
+/** The overlay must never take keyboard focus — stealing focus from a
+ *  focused Warcraft III window pauses the (single-player) game. The window
+ *  is also `focusable: false` / `focus: false` in `tauri.conf.json`, but
+ *  `setFocus()` would still be a no-op-that-shouldn't-be-called on it, so
+ *  it's guarded here too (`toggleWindow` delegates to this, so it inherits
+ *  the guard for free). */
 async function showWindow(label: string): Promise<void> {
   const win = await getWindow(label);
   await win.show();
-  await win.setFocus();
+  if (label !== WINDOW_OVERLAY) await win.setFocus();
 }
 
 async function hideWindow(label: string): Promise<void> {

@@ -37,7 +37,10 @@
         "skipTaskbar": true,
         "resizable": true,
         "visible": false,
-        "shadow": false
+        "shadow": false,
+        "focusable": false,
+        "focus": false,
+        "acceptFirstMouse": true
       }
     ],
     "security": {

@@ -14,6 +14,17 @@ import type { ShortcutRegistrationResult } from "./host/bridge";
 
 export type SelftestPage = "picker" | "overlay";
 
+/** F001 regression guard: after showing the overlay through the real host
+ *  API, both windows must report their actual OS focus state, and the
+ *  overlay's must be `false` — an activated overlay steals focus from
+ *  Warcraft III and pauses the game. `FOCUS_SETTLE_MS` gives the OS window
+ *  manager time to settle the (non-)activation before we read it back. */
+const FOCUS_SETTLE_MS = 400;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function isSelftestEnabled(): Promise<boolean> {
   const urlFlag = new URLSearchParams(location.search).get("selftest") === "1";
   if (urlFlag) return true;
@@ -68,6 +79,26 @@ export async function runSelftest(
   if (page === "picker" && host.kind === "tauri") {
     await logWindowState(WINDOW_PICKER);
     await logWindowState(WINDOW_OVERLAY);
+
+    const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+    await host.showWindow(WINDOW_OVERLAY);
+    await delay(FOCUS_SETTLE_MS);
+
+    const overlayWin = await WebviewWindow.getByLabel(WINDOW_OVERLAY);
+    if (overlayWin) {
+      await logLine({
+        selftest: "focus",
+        label: WINDOW_OVERLAY,
+        shownViaHost: true,
+        visible: await overlayWin.isVisible(),
+        focused: await overlayWin.isFocused(),
+      });
+    }
+
+    const pickerWin = await WebviewWindow.getByLabel(WINDOW_PICKER);
+    if (pickerWin) {
+      await logLine({ selftest: "focus", label: WINDOW_PICKER, focused: await pickerWin.isFocused() });
+    }
   }
 
   if (host.kind === "tauri") {
