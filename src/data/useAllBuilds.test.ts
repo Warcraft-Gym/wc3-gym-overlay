@@ -75,27 +75,38 @@ describe("useAllBuilds", () => {
       apiBase: "http://x",
       builds: site,
     });
-    const older = createLocalBuild({
-      title: "Older",
-      race: "orc",
-      vsRaces: [],
-      difficulty: "beginner",
-      tags: [],
-      summary: "s",
-      author: "a",
-      steps: [{ instruction: "go" }],
-    });
-    await new Promise((resolve) => setTimeout(resolve, 2));
-    const newer = createLocalBuild({
-      title: "Newer",
-      race: "orc",
-      vsRaces: [],
-      difficulty: "beginner",
-      tags: [],
-      summary: "s",
-      author: "a",
-      steps: [{ instruction: "go" }],
-    });
+    // F003-followup-1: explicit `updatedAt` fixtures instead of a real
+    // 2 ms `setTimeout` gap between the two `createLocalBuild` calls — the
+    // ordering assertion below only needs two distinct timestamps, not
+    // wall-clock time actually elapsing between them.
+    const older = {
+      ...createLocalBuild({
+        title: "Older",
+        race: "orc",
+        vsRaces: [],
+        difficulty: "beginner",
+        tags: [],
+        summary: "s",
+        author: "a",
+        steps: [{ instruction: "go" }],
+      }),
+      createdAt: "2026-06-02T00:00:00.000Z",
+      updatedAt: "2026-06-02T00:00:00.000Z",
+    };
+    const newer = {
+      ...createLocalBuild({
+        title: "Newer",
+        race: "orc",
+        vsRaces: [],
+        difficulty: "beginner",
+        tags: [],
+        summary: "s",
+        author: "a",
+        steps: [{ instruction: "go" }],
+      }),
+      createdAt: "2026-06-03T00:00:00.000Z",
+      updatedAt: "2026-06-03T00:00:00.000Z",
+    };
     await writeLocalBuilds([older, newer]);
 
     const { result } = renderHook(() => useAllBuilds());

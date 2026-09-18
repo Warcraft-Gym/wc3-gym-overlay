@@ -82,6 +82,7 @@ export function MetaFields({
             value={form.difficulty}
             onChange={(e) => onChange({ difficulty: e.target.value })}
             aria-invalid={errors.difficulty ? "true" : undefined}
+            aria-describedby={errors.difficulty ? "meta-difficulty-error" : undefined}
             className="h-9 w-full rounded border border-line bg-surface-2/60 px-2.5 text-sm text-fg outline-none focus:border-gold/60"
           >
             <option value="">Pick difficulty</option>
@@ -92,7 +93,7 @@ export function MetaFields({
             ))}
           </select>
           {errors.difficulty ? (
-            <span role="alert" className="mt-1 block text-[0.7rem] text-loss">
+            <span id="meta-difficulty-error" role="alert" className="mt-1 block text-[0.7rem] text-loss">
               {errors.difficulty}
             </span>
           ) : null}
@@ -113,10 +114,11 @@ export function MetaFields({
           value={form.summary}
           onChange={(e) => onChange({ summary: e.target.value })}
           aria-invalid={errors.summary ? "true" : undefined}
+          aria-describedby={errors.summary ? "meta-summary-error" : undefined}
           className="w-full rounded border border-line bg-surface-2/60 p-2.5 text-sm text-fg outline-none focus:border-gold/60"
         />
         {errors.summary ? (
-          <span role="alert" className="mt-1 block text-[0.7rem] text-loss">
+          <span id="meta-summary-error" role="alert" className="mt-1 block text-[0.7rem] text-loss">
             {errors.summary}
           </span>
         ) : null}
