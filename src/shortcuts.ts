@@ -8,17 +8,15 @@
 import { host } from "./host";
 import type { ShortcutAction, ShortcutRegistrationResult } from "./host/bridge";
 import { WINDOW_OVERLAY } from "./config";
+import { resolveSelectedSteps } from "./data/selectedBuildSteps";
 import { reset, stepNext, stepPrev, togglePlayPause } from "./lib/timerActions";
-import { BUILDS_CACHE, SELECTED_BUILD_SLUG, SETTINGS } from "./store/keys";
+import { SELECTED_BUILD_SLUG, SETTINGS } from "./store/keys";
 import { readKey } from "./store/state";
 import type { TimedStep } from "./store/timer";
 
 function currentSteps(): TimedStep[] {
   const slug = readKey(SELECTED_BUILD_SLUG);
-  if (!slug) return [];
-  const cache = readKey(BUILDS_CACHE);
-  const build = cache.builds.find((b) => b.slug === slug);
-  return build?.steps ?? [];
+  return resolveSelectedSteps(slug);
 }
 
 async function dispatch(action: ShortcutAction): Promise<void> {
