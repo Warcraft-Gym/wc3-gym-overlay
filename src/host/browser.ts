@@ -12,6 +12,7 @@ import type {
   ShortcutRegistrationResult,
   WindowBounds,
 } from "./bridge";
+import { tokenFromCode, unshiftKey } from "../lib/combo";
 
 const BROADCAST_CHANNEL = "wc3gym";
 const HIDDEN_ATTR = "data-hidden";
@@ -76,7 +77,26 @@ function comboMatches(combo: string, event: KeyboardEvent): boolean {
   if (event.shiftKey !== wantShift) return false;
   if (event.altKey !== wantAlt) return false;
 
-  return event.key.toLowerCase() === key.toLowerCase() || event.code.toLowerCase() === `key${key.toLowerCase()}`;
+  return matchesKeyToken(key, event);
+}
+
+/**
+ * Matches the combo's non-modifier token against the event, in order:
+ * 1. `event.code` (physical key, Shift-independent — the source of truth
+ *    when available),
+ * 2. `event.key` case-insensitively (handles named keys like "Escape"),
+ * 3. the un-shifted equivalent of `event.key` (a real US keyboard reports
+ *    `key: "}"` for `Ctrl+Shift+]`, not `"]"`).
+ */
+function matchesKeyToken(token: string, event: KeyboardEvent): boolean {
+  const wanted = token.toLowerCase();
+
+  const codeToken = tokenFromCode(event.code);
+  if (codeToken !== null && codeToken.toLowerCase() === wanted) return true;
+
+  if (event.key.toLowerCase() === wanted) return true;
+
+  return unshiftKey(event.key).toLowerCase() === wanted;
 }
 
 async function registerShortcuts(

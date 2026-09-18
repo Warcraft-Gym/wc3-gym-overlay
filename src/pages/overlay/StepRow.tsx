@@ -33,7 +33,9 @@ export function StepRow({
       {hasIcon && (
         <GameIcon iconUrl={step.iconUrl} icon={step.icon} size={compact ? ICON_SIZE_COMPACT : ICON_SIZE_FULL} />
       )}
-      <span className="overlay-step__instruction">{step.instruction}</span>
+      <span className="overlay-step__instruction" title={step.instruction}>
+        {step.instruction}
+      </span>
     </li>
   );
 }

@@ -14,9 +14,12 @@ export function SelectedBuildHeader({ build, apiBase }: { build: ApiBuildListIte
     return (
       <header className="panel flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">Pick a build below, then show the overlay in game.</p>
-        <Button variant="gold" disabled>
-          Show overlay
-        </Button>
+        <div className="flex flex-col items-start gap-1 sm:items-end">
+          <Button variant="gold" disabled title="Pick a build first">
+            Show overlay
+          </Button>
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em] text-faint">Pick a build first</p>
+        </div>
       </header>
     );
   }
