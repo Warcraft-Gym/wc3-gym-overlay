@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterBuilds } from "./filterBuilds";
+import { filterBuilds, sortBuilds } from "./filterBuilds";
 import type { ApiBuildListItem } from "../api/schema";
 
 function build(overrides: Partial<ApiBuildListItem>): ApiBuildListItem {
@@ -59,5 +59,36 @@ describe("filterBuilds", () => {
 
   it("returns an empty array when nothing matches", () => {
     expect(filterBuilds(builds, { q: "nonexistent" })).toEqual([]);
+  });
+
+  it("filters by difficulty", () => {
+    const mixed = [
+      build({ slug: "beg", difficulty: "beginner" }),
+      build({ slug: "int", difficulty: "intermediate" }),
+      build({ slug: "adv", difficulty: "advanced" }),
+    ];
+    expect(filterBuilds(mixed, { difficulty: "intermediate" }).map((b) => b.slug)).toEqual(["int"]);
+  });
+});
+
+describe("sortBuilds", () => {
+  const unsorted: ApiBuildListItem[] = [
+    build({ slug: "b", title: "Banana build", updatedAt: "2026-01-05T00:00:00.000Z" }),
+    build({ slug: "a", title: "Apple build", updatedAt: "2026-01-10T00:00:00.000Z" }),
+    build({ slug: "c", title: "Carrot build", updatedAt: "2026-01-01T00:00:00.000Z" }),
+  ];
+
+  it("sorts by most recently updated first", () => {
+    expect(sortBuilds(unsorted, "updated").map((b) => b.slug)).toEqual(["a", "b", "c"]);
+  });
+
+  it("sorts by title A-Z", () => {
+    expect(sortBuilds(unsorted, "title").map((b) => b.slug)).toEqual(["a", "b", "c"]);
+  });
+
+  it("does not mutate the input array", () => {
+    const copy = [...unsorted];
+    sortBuilds(unsorted, "title");
+    expect(unsorted).toEqual(copy);
   });
 });

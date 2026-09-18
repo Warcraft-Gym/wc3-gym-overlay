@@ -1,21 +1,64 @@
-import type { KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { Button } from "../../components/Button";
-import { DifficultyBadge } from "../../components/DifficultyBadge";
-import { Matchup } from "../../components/Matchup";
-import { raceTextClass } from "../../components/RaceCrest";
+import { DifficultyBadge, TagChip, type Difficulty } from "../../components/BuildBadges";
+import { RaceCrest as SmallRaceCrest, RACE_LABEL, raceTextClass, type Race } from "../../components/RaceCrest";
 import { cn } from "../../lib/cn";
 import type { ApiBuildListItem } from "../../api/schema";
 
-const RACE_RAIL: Record<string, string> = {
-  human: "before:bg-human",
-  orc: "before:bg-orc",
-  nightelf: "before:bg-nightelf",
-  undead: "before:bg-undead",
+const DIFFICULTY_RAIL: Record<Difficulty, string> = {
+  beginner: "before:bg-win",
+  intermediate: "before:bg-arcane",
+  advanced: "before:bg-gold",
 };
 
-/** One dense row in the build list: race rail, matchup, title/summary/meta,
- *  and the "Use in game" selection control. Focusable as a whole — Enter
- *  anywhere on the row selects it, same as clicking the button. */
+const RACE_LETTER: Record<string, string> = {
+  human: "HU",
+  orc: "OR",
+  nightelf: "NE",
+  undead: "UD",
+};
+
+function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(iso));
+}
+
+/** The big race crest on the left of the row, ported from the site's
+ *  `BuildRow` (`src/components/builds/BuildRow.tsx`) — `factions/large/`
+ *  art from `apiBase`, with a lettered fallback since the overlay ships no
+ *  bundled art. */
+function LargeCrest({ race, apiBase }: { race: Race; apiBase: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <span
+        className={cn(
+          "grid size-14 shrink-0 place-items-center rounded-full border border-line-strong bg-surface-2 font-display font-bold",
+          raceTextClass(race),
+        )}
+      >
+        {RACE_LETTER[race] ?? "??"}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`${apiBase}/factions/large/${race}.webp`}
+      alt={RACE_LABEL[race]}
+      width={56}
+      height={56}
+      onError={() => setBroken(true)}
+      className="size-14 shrink-0 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,.8)]"
+    />
+  );
+}
+
+/**
+ * One dense row in the build list, ported from the site's `BuildRow`
+ * (`src/components/builds/BuildRow.tsx`) — same grid/rail/type classes,
+ * with a "Use in game" toggle in place of the site's link-to-detail-page
+ * behaviour. Focusable as a whole — Enter anywhere on the row selects it,
+ * same as clicking the button.
+ */
 export function BuildRow({
   build,
   apiBase,
@@ -34,35 +77,57 @@ export function BuildRow({
     }
   }
 
+  const vsRace: Race = build.vsRace === "any" ? "random" : build.vsRace;
+  const vsLabel = build.vsRace === "any" ? "Any" : RACE_LABEL[vsRace];
+
   return (
     <li
       data-build={build.slug}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className={cn(
-        "panel relative flex items-center gap-3 overflow-hidden py-2.5 pl-4 pr-3 transition-colors duration-[var(--wg-dur-fast)] ease-[var(--ease-out-expo)]",
-        "before:absolute before:inset-y-0 before:left-0 before:w-[3px]",
-        RACE_RAIL[build.race],
-        selected ? "border-gold/60 bg-gold/5" : "hover:border-line-strong",
+        "panel relative grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-x-5 overflow-hidden py-3 pl-5 pr-4",
+        "transition-[border-color,transform] duration-[var(--wg-dur)] ease-[var(--ease-out-expo)] hover:-translate-y-0.5 hover:border-gold/50",
+        "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:opacity-80",
+        DIFFICULTY_RAIL[build.difficulty],
+        selected ? "border-gold/60 bg-gold/5" : undefined,
       )}
     >
-      <Matchup race={build.race} vsRace={build.vsRace} apiBase={apiBase} className="shrink-0" />
+      <LargeCrest race={build.race} apiBase={apiBase} />
 
-      <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-sm font-bold tracking-[0.02em]", raceTextClass(build.race))}>
+      <div className="min-w-0">
+        <p className="truncate font-display text-[0.98rem] font-bold uppercase leading-snug tracking-[0.05em] text-fg transition-colors hover:text-gold">
           {build.title}
         </p>
-        <p className="mt-0.5 line-clamp-2 text-xs text-muted">{build.summary}</p>
-        <p className="tnum mt-1 text-[0.68rem] text-faint">
-          {build.steps.length} steps · by {build.author}
-        </p>
+        <p className="mt-0.5 line-clamp-1 text-sm text-muted">{build.summary}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          <span className="inline-flex items-center gap-1">
+            <span className="text-faint">vs</span>
+            <SmallRaceCrest race={vsRace} apiBase={apiBase} size={14} />
+            <span>{vsLabel}</span>
+          </span>
+          <span className="text-faint">·</span>
+          <span>by {build.author}</span>
+          {build.tags.slice(0, 3).map((tag) => (
+            <TagChip key={tag}>{tag}</TagChip>
+          ))}
+        </div>
       </div>
 
-      <DifficultyBadge level={build.difficulty} className="shrink-0" />
-
-      <Button variant={selected ? "gold" : "ghost"} aria-pressed={selected} onClick={onSelect} className="shrink-0">
-        Use in game
-      </Button>
+      <div className="flex flex-col items-end gap-1.5">
+        <DifficultyBadge level={build.difficulty} />
+        <span className="tnum text-xs text-faint">
+          {build.steps.length} steps{build.patch ? ` · ${build.patch}` : ""} · {formatDate(build.updatedAt)}
+        </span>
+        <Button
+          variant={selected ? "ghost" : "gold"}
+          className={selected ? "border-gold/60 text-gold hover:border-gold" : undefined}
+          aria-pressed={selected}
+          onClick={onSelect}
+        >
+          {selected ? "In game" : "Use in game"}
+        </Button>
+      </div>
     </li>
   );
 }
