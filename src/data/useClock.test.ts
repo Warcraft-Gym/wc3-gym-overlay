@@ -2,7 +2,11 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TIMER } from "../store/keys";
 import { writeKey } from "../store/state";
+import { activeStepIndex } from "../store/timer";
+import { stepNext, reset as resetTimer } from "../lib/timerActions";
 import { useClock } from "./useClock";
+
+const stepsWithFirstAt0 = [{ time: "0:00" }, { time: "0:30" }];
 
 describe("useClock", () => {
   beforeEach(() => {
@@ -47,6 +51,25 @@ describe("useClock", () => {
       await writeKey(TIMER, { startedAtMs: null, baseElapsedMs: 0 });
     });
     const { result } = renderHook(() => useClock());
+    await waitFor(() => expect(result.current.active).toBe(false));
+  });
+
+  it("first stepNext() from a fresh timer with a 0:00 first step activates and highlights index 0, then reset deactivates again", async () => {
+    const { result } = renderHook(() => useClock());
+    await waitFor(() => expect(result.current.active).toBe(false));
+
+    await act(async () => {
+      await stepNext(stepsWithFirstAt0, 0);
+    });
+    await waitFor(() => expect(result.current.active).toBe(true));
+    const activeIndex = result.current.active
+      ? activeStepIndex(stepsWithFirstAt0, result.current.elapsedSec)
+      : -1;
+    expect(activeIndex).toBe(0);
+
+    await act(async () => {
+      await resetTimer();
+    });
     await waitFor(() => expect(result.current.active).toBe(false));
   });
 });

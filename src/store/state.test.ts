@@ -25,8 +25,13 @@ describe("readKey", () => {
   });
 
   it("returns valid stored values unchanged", () => {
-    const value = { startedAtMs: 123, baseElapsedMs: 456 };
+    const value = { startedAtMs: 123, baseElapsedMs: 456, engaged: true };
     localStorage.setItem(TIMER.name, JSON.stringify(value));
     expect(readKey(TIMER)).toEqual(value);
+  });
+
+  it("defaults the `engaged` field to false for values persisted before it existed", () => {
+    localStorage.setItem(TIMER.name, JSON.stringify({ startedAtMs: 123, baseElapsedMs: 456 }));
+    expect(readKey(TIMER)).toEqual({ startedAtMs: 123, baseElapsedMs: 456, engaged: false });
   });
 });
