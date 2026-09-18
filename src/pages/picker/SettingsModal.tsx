@@ -1,11 +1,24 @@
 import { useState } from "react";
+import { Button } from "../../components/Button";
 import { IconButton } from "../../components/IconButton";
 import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
+import { host } from "../../host";
 import type { ShortcutRegistrationResult } from "../../host/bridge";
 import { SETTINGS, type Settings } from "../../store/keys";
 import { updateKey } from "../../store/state";
 import { ShortcutEditor } from "./ShortcutEditor";
+
+/** F002: quits the whole process. Closing the picker window already does
+ *  this (native `CloseRequested` handling in Rust), but a frozen shortcut
+ *  registration or a stray hidden overlay window is otherwise invisible —
+ *  this button gives the user an explicit way out without reaching for
+ *  Task Manager / Activity Monitor. No-op outside Tauri (browser preview
+ *  has no process to quit). */
+async function quitApp(): Promise<void> {
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("quit_app");
+}
 
 export const SETTINGS_DIALOG_ID = "settings-dialog";
 
@@ -122,6 +135,12 @@ export function SettingsModal({
         <p className="text-xs text-faint">
           Warcraft III must run in windowed or borderless mode for the overlay to be visible.
         </p>
+
+        {host.kind === "tauri" && (
+          <Button variant="ghost" aria-label="Quit app" onClick={() => void quitApp()}>
+            Quit app
+          </Button>
+        )}
       </div>
     </Modal>
   );

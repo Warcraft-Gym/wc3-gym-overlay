@@ -15,6 +15,8 @@ const PKG_PATH = join(ROOT, "package.json");
 const CAPS_DIR = join(ROOT, "src-tauri/capabilities");
 const SCHEMA_PATH = join(ROOT, "src-tauri/gen/schemas/desktop-schema.json");
 const DIST_DIR = join(ROOT, "dist");
+const CARGO_TOML_PATH = join(ROOT, "src-tauri/Cargo.toml");
+const LIB_RS_PATH = join(ROOT, "src-tauri/src/lib.rs");
 
 const REQUIRED_CAPABILITY_IDENTIFIERS = [
   "core:window:allow-start-dragging",
@@ -144,6 +146,15 @@ function main() {
   const openerScopes = openerAllowScopes(caps);
   const openerAllowsAll = openerScopes.some((s) => s.url === "*" || s.url === undefined);
   report("opener scope is an explicit allow-list (no wildcard-all)", openerScopes.length > 0 && !openerAllowsAll);
+
+  // F002: a duplicate process (a second launch alongside a still-running
+  // one) is what caused every global shortcut to silently fail to
+  // register — the single-instance guard must actually be wired in, not
+  // just installed.
+  const cargoToml = readFileSync(CARGO_TOML_PATH, "utf8");
+  const libRs = readFileSync(LIB_RS_PATH, "utf8");
+  report("Cargo.toml lists tauri-plugin-single-instance", /tauri-plugin-single-instance/.test(cargoToml));
+  report("lib.rs calls tauri_plugin_single_instance::init", /tauri_plugin_single_instance::init/.test(libRs));
 
   process.exit(failed ? 1 : 0);
 }
