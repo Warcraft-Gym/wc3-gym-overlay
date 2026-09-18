@@ -1,11 +1,13 @@
 import { useState, type KeyboardEvent } from "react";
-import { Copy, Pencil, Trash2 } from "lucide-react";
+import { Copy, Download, Pencil, Send, Trash2 } from "lucide-react";
 import { Button } from "../../components/Button";
 import { IconButton } from "../../components/IconButton";
 import { DifficultyBadge, PrivateBadge, TagChip, vsLabel, type Difficulty } from "../../components/BuildBadges";
 import { RaceCrest as SmallRaceCrest, RACE_LABEL, raceTextClass, type Race } from "../../components/RaceCrest";
 import { cn } from "../../lib/cn";
-import type { AnyBuild } from "../../data/useAllBuilds";
+import { host } from "../../host";
+import { exportBuild, slugifyForFilename } from "../../lib/buildExchange";
+import { isLocalBuild, type AnyBuild } from "../../data/useAllBuilds";
 
 const DIFFICULTY_RAIL: Record<Difficulty, string> = {
   beginner: "before:bg-win",
@@ -91,6 +93,18 @@ export function BuildRow({
     }
   }
 
+  /** F004: a single private build → `<slug-or-title>.wc3gym.json`, ready to
+   *  hand to a friend or back up — see `buildExchange.ts` for the format. */
+  async function handleExport() {
+    if (!isLocalBuild(build)) return;
+    const payload = exportBuild(build);
+    await host.saveTextFile(`${slugifyForFilename(build.title)}.wc3gym.json`, JSON.stringify(payload, null, 2));
+  }
+
+  function handleSubmit() {
+    void host.openExternal(`${apiBase}/learn/builds/submit`);
+  }
+
   return (
     <li
       data-build={build.slug}
@@ -159,6 +173,16 @@ export function BuildRow({
               <IconButton aria-label={`Delete ${build.title}`} onClick={() => setConfirmDelete(true)}>
                 <Trash2 size={13} />
               </IconButton>
+            ) : null}
+            {isLocalBuild(build) ? (
+              <>
+                <IconButton aria-label={`Export ${build.title}`} onClick={() => void handleExport()}>
+                  <Download size={13} />
+                </IconButton>
+                <IconButton aria-label={`Submit ${build.title} to site`} onClick={handleSubmit}>
+                  <Send size={13} />
+                </IconButton>
+              </>
             ) : null}
           </div>
         )}

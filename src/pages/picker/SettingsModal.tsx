@@ -5,9 +5,34 @@ import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import { host } from "../../host";
 import type { ShortcutRegistrationResult } from "../../host/bridge";
-import { SETTINGS, type Settings } from "../../store/keys";
+import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
+import { exportAll, importBuilds, parseImport } from "../../lib/buildExchange";
+import { LOCAL_BUILDS, SETTINGS, type Settings } from "../../store/keys";
 import { updateKey } from "../../store/state";
+import { useStoreValue } from "../../store/useStore";
 import { ShortcutEditor } from "./ShortcutEditor";
+
+/** F004: backs up every private build in one file — `wc3gym-builds.wc3gym.json`. */
+async function exportAllPrivateBuilds(): Promise<void> {
+  const payload = exportAll(readLocalBuilds());
+  await host.saveTextFile("wc3gym-builds.wc3gym.json", JSON.stringify(payload, null, 2));
+}
+
+/** F004: opens a file, parses it (tolerating both export formats and a
+ *  bare build), and merges whatever validated into the local builds store
+ *  — skipping anything whose fingerprint already exists. Returns `null`
+ *  when the user cancelled the dialog (nothing to report). */
+async function importPrivateBuilds(): Promise<string | null> {
+  const text = await host.openTextFile();
+  if (text === null) return null;
+
+  const { builds, errors } = parseImport(text);
+  const { next, added, skipped } = await importBuilds(readLocalBuilds(), builds);
+  await writeLocalBuilds(next);
+
+  const base = `Imported ${added}, skipped ${skipped}`;
+  return errors.length > 0 ? `${base} · ${errors.length} invalid` : base;
+}
 
 /** F002: quits the whole process. Closing the picker window already does
  *  this (native `CloseRequested` handling in Rust), but a frozen shortcut
@@ -77,6 +102,13 @@ export function SettingsModal({
 }) {
   const [apiBaseInput, setApiBaseInput] = useState(settings.apiBase);
   const [apiBaseError, setApiBaseError] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const localBuildCount = useStoreValue(LOCAL_BUILDS).length;
+
+  async function handleImportClick() {
+    const message = await importPrivateBuilds();
+    if (message !== null) setImportStatus(message);
+  }
 
   function handleApiBaseChange(value: string) {
     setApiBaseInput(value);
@@ -130,6 +162,27 @@ export function SettingsModal({
             registrations={registrations}
             onRegistrations={onRegistrations}
           />
+        </div>
+
+        <div>
+          <h3 className="kicker mb-2">Private builds</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="ghost"
+              disabled={localBuildCount === 0}
+              onClick={() => void exportAllPrivateBuilds()}
+            >
+              Export all private builds
+            </Button>
+            <Button variant="ghost" onClick={() => void handleImportClick()}>
+              Import builds…
+            </Button>
+          </div>
+          {importStatus ? (
+            <p role="status" className="mt-2 text-xs text-muted">
+              {importStatus}
+            </p>
+          ) : null}
         </div>
 
         <p className="text-xs text-faint">

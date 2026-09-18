@@ -30,6 +30,26 @@
         { "url": "https://discord.gg/*" },
         { "url": "https://discord.com/*" }
       ]
+    },
+    "dialog:allow-save",
+    "dialog:allow-open",
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$HOME/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$HOME/**" }
+      ]
     }
   ]
 }

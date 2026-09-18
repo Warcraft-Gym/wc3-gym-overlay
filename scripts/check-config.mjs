@@ -28,7 +28,17 @@ const REQUIRED_CAPABILITY_IDENTIFIERS = [
   "global-shortcut:allow-unregister",
   "global-shortcut:allow-is-registered",
   "opener:allow-open-url",
+  // F004: export/import private builds via the native dialog + fs plugins.
+  "dialog:allow-save",
+  "dialog:allow-open",
+  "fs:allow-write-text-file",
+  "fs:allow-read-text-file",
 ];
+
+// F004: identifiers that would grant unscoped filesystem access — a single
+// match anywhere in the capability set fails the "no wildcard-all fs write
+// scope" rule below, regardless of which capability file declares it.
+const FORBIDDEN_FS_IDENTIFIERS = ["fs:default", "fs:allow-write-file", "fs:allow-write", "fs:scope"];
 
 let failed = false;
 
@@ -59,6 +69,16 @@ function openerAllowScopes(caps) {
   return caps.flatMap((cap) =>
     (cap.permissions ?? [])
       .filter((p) => typeof p === "object" && p.identifier === "opener:allow-open-url")
+      .flatMap((p) => p.allow ?? []),
+  );
+}
+
+/** F004: the `allow` path list for a given fs permission identifier (e.g.
+ *  `fs:allow-write-text-file`), across every capability file. */
+function fsAllowScopes(caps, identifier) {
+  return caps.flatMap((cap) =>
+    (cap.permissions ?? [])
+      .filter((p) => typeof p === "object" && p.identifier === identifier)
       .flatMap((p) => p.allow ?? []),
   );
 }
@@ -146,6 +166,23 @@ function main() {
   const openerScopes = openerAllowScopes(caps);
   const openerAllowsAll = openerScopes.some((s) => s.url === "*" || s.url === undefined);
   report("opener scope is an explicit allow-list (no wildcard-all)", openerScopes.length > 0 && !openerAllowsAll);
+
+  // F004: the fs plugin's write/read-text-file grants must be scoped to the
+  // dialog-chosen directories only — never a bare `fs:default` or an
+  // unscoped/wildcard write permission that would let the webview touch
+  // arbitrary paths on disk.
+  const hasForbiddenFsIdentifier = FORBIDDEN_FS_IDENTIFIERS.some((id) => declaredIdentifiers.includes(id));
+  report("no fs:default / unscoped wildcard-all fs write permission", !hasForbiddenFsIdentifier);
+
+  for (const identifier of ["fs:allow-write-text-file", "fs:allow-read-text-file"]) {
+    if (knownIdentifiers && !knownIdentifiers.includes(identifier)) continue;
+    const scopes = fsAllowScopes(caps, identifier);
+    const isWildcard = scopes.some((s) => s.path === "**" || s.path === "*" || s.path === undefined);
+    report(
+      `${identifier} scope is a path allow-list (no wildcard-all)`,
+      scopes.length > 0 && !isWildcard,
+    );
+  }
 
   // F002: a duplicate process (a second launch alongside a still-running
   // one) is what caused every global shortcut to silently fail to

@@ -14,6 +14,8 @@ import {
   type ShortcutHandler,
 } from "@tauri-apps/plugin-global-shortcut";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { save, open } from "@tauri-apps/plugin-dialog";
+import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
 import type {
   Host,
   ShortcutAction,
@@ -22,6 +24,9 @@ import type {
   WindowBounds,
 } from "./bridge";
 import { WINDOW_OVERLAY } from "../config";
+
+/** F004 — the only extension a private build's export/import file uses. */
+const BUILD_FILE_FILTER = [{ name: "wc3gym build", extensions: ["json"] }];
 
 const STATE_CHANGED_EVENT = "wc3gym:state-changed";
 
@@ -170,6 +175,24 @@ function onWindowBoundsChanged(cb: () => void): () => void {
   };
 }
 
+/** Native save dialog + `writeTextFile` on whatever path the user picked.
+ *  Resolves `false` (no write attempted) if the dialog is cancelled. */
+async function saveTextFile(suggestedName: string, contents: string): Promise<boolean> {
+  const path = await save({ defaultPath: suggestedName, filters: BUILD_FILE_FILTER });
+  if (!path) return false;
+  await writeTextFile(path, contents);
+  return true;
+}
+
+/** Native open dialog + `readTextFile` on whatever path the user picked.
+ *  `open()` without `multiple: true` never resolves an array, but the
+ *  return type says it can — narrowed defensively rather than asserted. */
+async function openTextFile(): Promise<string | null> {
+  const path = await open({ multiple: false, filters: BUILD_FILE_FILTER });
+  if (!path || Array.isArray(path)) return null;
+  return readTextFile(path);
+}
+
 export function createTauriHost(): Host {
   return {
     kind: "tauri",
@@ -186,5 +209,7 @@ export function createTauriHost(): Host {
     getWindowBounds,
     setWindowBounds,
     onWindowBoundsChanged,
+    saveTextFile,
+    openTextFile,
   };
 }

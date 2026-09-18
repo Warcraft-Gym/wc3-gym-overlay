@@ -77,6 +77,8 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             selftest_enabled,
             selftest_shortcut_override,

@@ -44,4 +44,14 @@ export interface Host {
   /** Fires whenever the current window moves or is resized. No-op
    *  unsubscribe / never fires in the browser host. */
   onWindowBoundsChanged(cb: () => void): () => void;
+  /** F004: prompts to save `contents` as a text file named `suggestedName`.
+   *  Tauri: the native save dialog + `writeTextFile`. Browser: a Blob
+   *  download. Resolves `true` once written, `false` if the user cancelled
+   *  the dialog (browser mode has no cancel path — it always resolves
+   *  `true`). */
+  saveTextFile(suggestedName: string, contents: string): Promise<boolean>;
+  /** F004: prompts to pick a text file and resolves its contents, or `null`
+   *  if the user cancelled. Tauri: the native open dialog + `readTextFile`.
+   *  Browser: a hidden `<input type="file">`. */
+  openTextFile(): Promise<string | null>;
 }

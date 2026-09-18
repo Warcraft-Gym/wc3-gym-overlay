@@ -180,6 +180,76 @@ function onWindowBoundsChanged(): () => void {
   return () => {};
 }
 
+/**
+ * F004: a single hidden `<input type="file">`, created once and left
+ * attached to `document.body` for the lifetime of the page — not
+ * created-and-removed per call. Two reasons: (1) `openTextFile()` can be
+ * called from a real user click and needs a live element to `.click()`;
+ * (2) a Playwright test drives this exact element directly via
+ * `locator('input[type=file]').setInputFiles(...)`, which requires the
+ * element to already exist in the DOM — `setInputFiles` never opens a
+ * native dialog (unlike `.click()`), so it works headlessly with no
+ * `filechooser` interception needed.
+ */
+let importFileInput: HTMLInputElement | null = null;
+
+function getImportFileInput(): HTMLInputElement {
+  if (importFileInput && document.body.contains(importFileInput)) return importFileInput;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json,.json";
+  input.style.display = "none";
+  document.body.appendChild(input);
+  importFileInput = input;
+  return input;
+}
+
+function readFileAsText(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsText(file);
+  });
+}
+
+/** Browser fallback for `saveTextFile` — a Blob download via a throwaway
+ *  `<a download>` link, the standard no-dependency way to trigger a save
+ *  prompt from script without a native file-system API. */
+async function saveTextFile(suggestedName: string, contents: string): Promise<boolean> {
+  const blob = new Blob([contents], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = suggestedName;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  return true;
+}
+
+/** Browser fallback for `openTextFile` — see `getImportFileInput`'s doc
+ *  comment for why the input is a persistent singleton rather than created
+ *  fresh per call. Resetting `.value` before `.click()` ensures a `change`
+ *  event fires even when the same file is picked twice in a row. */
+async function openTextFile(): Promise<string | null> {
+  const input = getImportFileInput();
+  input.value = "";
+  return new Promise((resolve) => {
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      void readFileAsText(file).then(resolve);
+    };
+    input.click();
+  });
+}
+
 export function createBrowserHost(): Host {
   return {
     kind: "browser",
@@ -196,5 +266,7 @@ export function createBrowserHost(): Host {
     getWindowBounds,
     setWindowBounds,
     onWindowBoundsChanged,
+    saveTextFile,
+    openTextFile,
   };
 }

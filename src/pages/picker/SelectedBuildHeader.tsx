@@ -3,10 +3,19 @@ import { DifficultyBadge, Matchup, PrivateBadge } from "../../components/BuildBa
 import { relativeTime } from "../../lib/relativeTime";
 import { WINDOW_OVERLAY } from "../../config";
 import { host } from "../../host";
+import { exportBuild, slugifyForFilename } from "../../lib/buildExchange";
 import { SETTINGS } from "../../store/keys";
 import { useStoreValue } from "../../store/useStore";
 import { formatCombo } from "../../shortcuts";
-import type { AnyBuild } from "../../data/useAllBuilds";
+import { isLocalBuild, type AnyBuild } from "../../data/useAllBuilds";
+
+/** F004: single-build export, from the selected-build header — see
+ *  `BuildRow.tsx`'s row-level twin. */
+async function exportSelectedBuild(build: AnyBuild): Promise<void> {
+  if (!isLocalBuild(build)) return;
+  const payload = exportBuild(build);
+  await host.saveTextFile(`${slugifyForFilename(build.title)}.wc3gym.json`, JSON.stringify(payload, null, 2));
+}
 
 /**
  * The visually dominant panel at the top of the picker, ported from the
@@ -107,11 +116,22 @@ export function SelectedBuildHeader({
               Show overlay
             </Button>
             {build.source === "local" ? (
-              onEdit ? (
-                <Button variant="ghost" onClick={onEdit}>
-                  Edit
+              <>
+                {onEdit ? (
+                  <Button variant="ghost" onClick={onEdit}>
+                    Edit
+                  </Button>
+                ) : null}
+                <Button variant="ghost" onClick={() => void exportSelectedBuild(build)}>
+                  Export
                 </Button>
-              ) : null
+                <Button
+                  variant="ghost"
+                  onClick={() => void host.openExternal(`${apiBase}/learn/builds/submit`)}
+                >
+                  Submit to site
+                </Button>
+              </>
             ) : (
               <Button
                 variant="ghost"
