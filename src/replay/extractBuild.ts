@@ -1,7 +1,7 @@
 import type { EditorFormInput } from "../lib/buildEditorSchema";
 import { describeId } from "./idMap";
 import { FOOD_COST } from "./foodCost";
-import { TRAIN_TIME_S } from "./gameData";
+import { computeCancelledOrders, filterLikelyRejected, type DroppedInfo } from "./rejectedOrders";
 import type {
   ExtractBuildOptions,
   ImportedBuildStep,
@@ -71,7 +71,9 @@ function instructionFor(kind: ReplayEvent["kind"], title: string, count: number)
     case "cancel":
       // Never reaches a rendered step — `dedupeAndMerge` only ever builds
       // "cancel"-kind groups from already-filtered-out cancel events (see
-      // `applyCancelsOption`'s caller). Exhaustiveness only.
+      // `extractBuild`'s `applyCancels`/`dropLikelyRejected` pipeline,
+      // which strips cancel events and F002-rejected orders out of the
+      // event stream before it ever reaches `dedupeAndMerge`). Exhaustiveness only.
       return "";
   }
 }
@@ -79,7 +81,17 @@ function instructionFor(kind: ReplayEvent["kind"], title: string, count: number)
 type MergedStep = {
   kind: ReplayEvent["kind"];
   id: string;
+  /** F002: the time the step *displays* at — the first **surviving**
+   *  (non-cancelled) order's ms, set lazily the first time a survivor joins
+   *  the group (see the feature spec's scrutiny case 3: a group must never
+   *  be anchored at a fully-cancelled order's timestamp). Until a survivor
+   *  arrives this equals the group's first (possibly-cancelled) order's ms,
+   *  but such a group is always dropped by the `count > 0` filter below. */
   ms: number;
+  /** The *window* anchor — fixed at the group's first order regardless of
+   *  cancellation, so the `MERGE_WINDOW_MS` bound below is unaffected by
+   *  which particular order within the group ends up surviving. */
+  windowAnchorMs: number;
   lastMs: number;
   count: number;
   ordered: number;
@@ -91,86 +103,27 @@ type MergedStep = {
  *  inside `MERGE_WINDOW_MS` of the group's first order. */
 const MAX_MERGE_COUNT = 5;
 
-/**
- * F001: computes, for every cancellable (`"unit"` | `"hero"`) order in
- * `events`, the ms at which it would finish training — a simple per-id FIFO
- * (F002 replaces this with real per-producer queues): an order's finish
- * time is `orderMs + position * TRAIN_TIME_S[id] * 1000`, where `position`
- * is 1 for the first still-pending order of that id ahead of it (inclusive
- * of itself) and increments for every earlier same-id order that hadn't
- * finished yet when this one was placed. Ids with no known train time are
- * always pending (`Infinity`).
- */
-function computeFinishTimes(cancellableEvents: readonly ReplayEvent[]): Map<ReplayEvent, number> {
-  const finishByOrder = new Map<ReplayEvent, number>();
-  const ordersById = new Map<string, ReplayEvent[]>();
-  for (const order of cancellableEvents) {
-    const list = ordersById.get(order.id);
-    if (list) list.push(order);
-    else ordersById.set(order.id, [order]);
-  }
-
-  for (const [id, orders] of ordersById) {
-    const trainS = TRAIN_TIME_S[id];
-    const pendingFinishMs: number[] = [];
-    for (const order of orders) {
-      while (pendingFinishMs.length > 0 && pendingFinishMs[0]! <= order.ms) pendingFinishMs.shift();
-      const position = pendingFinishMs.length + 1;
-      const finishMs = trainS === undefined ? Infinity : order.ms + position * trainS * 1000;
-      pendingFinishMs.push(finishMs);
-      pendingFinishMs.sort((a, b) => a - b);
-      finishByOrder.set(order, finishMs);
-    }
-  }
-  return finishByOrder;
-}
-
-/**
- * F001: for every `"cancel"` event (processed oldest-first), finds the most
- * recent still-pending `"unit"`/`"hero"` order of the same id placed before
- * the cancel and marks it removed. "Still pending" per `computeFinishTimes`
- * — an order that already finished training is never removed, and a cancel
- * with no matching pending order is ignored (never throws). Returns the set
- * of removed order objects (matched by reference).
- */
-function computeCancelledOrders(sortedEvents: readonly ReplayEvent[]): ReadonlySet<ReplayEvent> {
-  const cancellable = sortedEvents.filter((e) => e.kind === "unit" || e.kind === "hero");
-  const cancels = sortedEvents.filter((e) => e.kind === "cancel").slice().sort((a, b) => a.ms - b.ms);
-  if (cancels.length === 0) return new Set();
-
-  const finishByOrder = computeFinishTimes(cancellable);
-  const removed = new Set<ReplayEvent>();
-
-  for (const cancel of cancels) {
-    let candidate: ReplayEvent | undefined;
-    for (const order of cancellable) {
-      if (removed.has(order) || order.id !== cancel.id || order.ms >= cancel.ms) continue;
-      const finishMs = finishByOrder.get(order) ?? Infinity;
-      if (finishMs <= cancel.ms) continue; // already finished — not pending anymore
-      if (!candidate || order.ms > candidate.ms) candidate = order;
-    }
-    if (candidate) removed.add(candidate);
-  }
-  return removed;
-}
-
 /** Drops building re-orders within `DEDUPE_WINDOW_MS` of the previous kept
  *  order for the same id, then merges consecutive same-id unit orders into
  *  one counted step. The merge window is anchored to the *group's first*
- *  order (`event.ms - group.ms <= MERGE_WINDOW_MS`), not the previous order
- *  — a sliding "previous order" comparison lets a steady stream of orders
- *  chain without bound (a 13-order, 96s-long "Train 13× Peasant" step from
- *  one order roughly every 8s, each within 10s of the last). Anchoring to
- *  the first order bounds every group's total span to `MERGE_WINDOW_MS`.
- *  Both passes only ever look at the immediately preceding kept/merged
- *  entry — "consecutive" per the feature spec, not "anywhere within the
- *  window".
+ *  order (`event.ms - group.windowAnchorMs <= MERGE_WINDOW_MS`), not the
+ *  previous order — a sliding "previous order" comparison lets a steady
+ *  stream of orders chain without bound (a 13-order, 96s-long "Train 13×
+ *  Peasant" step from one order roughly every 8s, each within 10s of the
+ *  last). Anchoring to the first order bounds every group's total span to
+ *  `MERGE_WINDOW_MS`. Both passes only ever look at the immediately
+ *  preceding kept/merged entry — "consecutive" per the feature spec, not
+ *  "anywhere within the window".
  *
  *  F001: `cancelled` orders (raw unit/hero orders in `removed`) still take
  *  part in grouping/adjacency and bump the group's `ordered` count, but
  *  never bump `count` (the number that actually renders/costs supply). A
  *  unit/hero group left with `count === 0` (every order in it cancelled)
- *  is dropped entirely — no step at all, matching a fully-cancelled order. */
+ *  is dropped entirely — no step at all, matching a fully-cancelled order.
+ *
+ *  F002: `events` never contains orders `filterLikelyRejected` dropped
+ *  (the caller strips them before calling this) — they play no part in
+ *  grouping/adjacency at all, unlike cancelled orders (see `extractBuild`). */
 function dedupeAndMerge(events: readonly ReplayEvent[], removed: ReadonlySet<ReplayEvent>): MergedStep[] {
   const deduped: ReplayEvent[] = [];
   const lastBuildingMs = new Map<string, number>();
@@ -193,12 +146,13 @@ function dedupeAndMerge(events: readonly ReplayEvent[], removed: ReadonlySet<Rep
       prev?.kind === "unit" &&
       prev.id === event.id &&
       prev.count < MAX_MERGE_COUNT &&
-      event.ms - prev.ms <= MERGE_WINDOW_MS
+      event.ms - prev.windowAnchorMs <= MERGE_WINDOW_MS
     ) {
       prev.ordered += 1;
       if (isCancelled) {
         prev.cancelled += 1;
       } else {
+        if (prev.count === 0) prev.ms = event.ms; // F002: first surviving order anchors the display time
         prev.count += 1;
         prev.lastMs = event.ms;
       }
@@ -208,6 +162,7 @@ function dedupeAndMerge(events: readonly ReplayEvent[], removed: ReadonlySet<Rep
       kind: event.kind,
       id: event.id,
       ms: event.ms,
+      windowAnchorMs: event.ms,
       lastMs: event.ms,
       count: isCancelled ? 0 : 1,
       ordered: 1,
@@ -218,21 +173,54 @@ function dedupeAndMerge(events: readonly ReplayEvent[], removed: ReadonlySet<Rep
   return merged.filter((step) => step.count > 0 || (step.kind !== "unit" && step.kind !== "hero"));
 }
 
+/** F002: for every order `filterLikelyRejected` dropped, attaches it to the
+ *  nearest surviving merged step of the same kind/id within
+ *  `MERGE_WINDOW_MS` (the group it would have joined had the game accepted
+ *  it) — else it's only reflected in the top-level `dropped` summary, not
+ *  on any particular step. Returns a map keyed by the step's index in
+ *  `mergedSteps`, mirroring `cancelledMeta`. */
+function attachDroppedToSteps(mergedSteps: readonly MergedStep[], droppedOrders: readonly ReplayEvent[]): Record<number, number> {
+  const droppedMeta: Record<number, number> = {};
+  for (const order of droppedOrders) {
+    let bestIndex = -1;
+    let bestDistanceMs = Infinity;
+    mergedSteps.forEach((step, index) => {
+      if (step.kind !== order.kind || step.id !== order.id) return;
+      const distanceMs = Math.abs(order.ms - step.ms);
+      if (distanceMs <= MERGE_WINDOW_MS && distanceMs < bestDistanceMs) {
+        bestDistanceMs = distanceMs;
+        bestIndex = index;
+      }
+    });
+    if (bestIndex >= 0) droppedMeta[bestIndex] = (droppedMeta[bestIndex] ?? 0) + 1;
+  }
+  return droppedMeta;
+}
+
 /** F001: `extractBuild`'s return value, extending `EditorFormInput` (what
  *  actually gets saved / drops into the editor) with a side `meta` map of
  *  per-step cancel counts — kept off `steps`/`EditorFormInput` itself so it
  *  never round-trips through the editor form or a saved `LocalBuild` (see
  *  `ImportedStepMeta`'s docblock). Only steps that had at least one order
- *  cancelled get an entry, keyed by that step's index in `steps`. */
+ *  cancelled get an entry, keyed by that step's index in `steps`.
+ *
+ *  F002: `meta.dropped` is the same idea for orders the "likely rejected"
+ *  filter dropped (see `attachDroppedToSteps`), and the top-level `dropped`
+ *  is the raw `filterLikelyRejected` summary for the whole import (empty
+ *  when `dropLikelyRejected` is off). */
 export interface ExtractBuildResult extends EditorFormInput {
-  meta: { cancelled: Record<number, ImportedStepMeta> };
+  meta: { cancelled: Record<number, ImportedStepMeta>; dropped: Record<number, number> };
+  dropped: DroppedInfo;
 }
+
+const EMPTY_DROPPED: DroppedInfo = { count: 0, byId: {}, orderIndices: [] };
 
 export function extractBuild(summary: ReplaySummary, playerId: number, opts: ExtractBuildOptions = {}): ExtractBuildResult {
   const cutoffMs = opts.cutoffMs ?? DEFAULT_CUTOFF_MS;
   const includeUpgrades = opts.includeUpgrades ?? true;
   const includeItems = opts.includeItems ?? false;
   const applyCancels = opts.applyCancels ?? true;
+  const dropLikelyRejected = opts.dropLikelyRejected ?? true;
 
   const player = summary.players.find((p) => p.id === playerId);
   if (!player) throw new Error(`extractBuild: no player with id ${playerId} in this replay.`);
@@ -245,8 +233,17 @@ export function extractBuild(summary: ReplaySummary, playerId: number, opts: Ext
     .slice()
     .sort((a, b) => a.ms - b.ms);
 
-  const removedOrders = applyCancels ? computeCancelledOrders(filtered) : new Set<ReplayEvent>();
-  const mergedSteps = dedupeAndMerge(filtered, removedOrders);
+  const removedOrders = applyCancels ? computeCancelledOrders(filtered, filtered) : new Set<ReplayEvent>();
+  const survivingOrders = filtered.filter((e) => (e.kind === "unit" || e.kind === "hero") && !removedOrders.has(e));
+
+  const { accepted, dropped } = dropLikelyRejected
+    ? filterLikelyRejected(survivingOrders, filtered)
+    : { accepted: survivingOrders, dropped: EMPTY_DROPPED };
+  const rejectedSet = new Set(survivingOrders.filter((order) => !accepted.includes(order)));
+
+  const eventsForMerge = filtered.filter((e) => !rejectedSet.has(e));
+  const mergedSteps = dedupeAndMerge(eventsForMerge, removedOrders);
+  const droppedMeta = attachDroppedToSteps(mergedSteps, [...rejectedSet]);
 
   let supply = START_SUPPLY;
   const cancelledMeta: Record<number, ImportedStepMeta> = {};
@@ -295,6 +292,7 @@ export function extractBuild(summary: ReplaySummary, playerId: number, opts: Ext
       instruction: step.instruction,
       icon: step.icon ?? "",
     })),
-    meta: { cancelled: cancelledMeta },
+    meta: { cancelled: cancelledMeta, dropped: droppedMeta },
+    dropped,
   };
 }

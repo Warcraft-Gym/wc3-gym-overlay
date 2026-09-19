@@ -15,7 +15,7 @@ import type { W3ChampionsErrorCode, W3CMatchSummary } from "../../../replay/w3ch
 // (`await import(...)`) so this modal, and the picker bundle that renders
 // its "Import replay" trigger, never eagerly load any of that (see C-606).
 type ParseReplayFn = (bytes: Uint8Array) => Promise<ReplaySummary>;
-type ExtractBuildFn = (summary: ReplaySummary, playerId: number, opts: ExtractBuildOptions) => EditorFormInput;
+type ExtractBuildFn = (summary: ReplaySummary, playerId: number, opts: ExtractBuildOptions) => EditorFormInput & { dropped: { count: number } };
 type ReplayParseErrorLike = Error & { code: ReplayParseErrorCode };
 type ReplayParseErrorCtor = new (code: ReplayParseErrorCode, message: string) => ReplayParseErrorLike;
 
@@ -104,6 +104,7 @@ export function ReplayImportModal({
   const [cutoffMs, setCutoffMs] = useState(DEFAULT_CUTOFF_SECONDS * 1000);
   const [includeUpgrades, setIncludeUpgrades] = useState(true);
   const [includeItems, setIncludeItems] = useState(false);
+  const [dropLikelyRejected, setDropLikelyRejected] = useState(true);
 
   // Guards every async setState below against firing after the modal has
   // been closed/unmounted (a file parse still in flight, or a W3Champions
@@ -185,9 +186,10 @@ export function ReplayImportModal({
       cutoffMs,
       includeUpgrades,
       includeItems,
+      dropLikelyRejected,
       sourceLabel: matchId ? `w3champions.com/match/${matchId}` : undefined,
     }),
-    [cutoffMs, includeUpgrades, includeItems, matchId],
+    [cutoffMs, includeUpgrades, includeItems, dropLikelyRejected, matchId],
   );
 
   const draft = useMemo(() => {
@@ -201,6 +203,7 @@ export function ReplayImportModal({
   }, [state, playerId, opts]);
 
   const stepCount = draft?.steps.length ?? 0;
+  const droppedCount = draft?.dropped.count ?? 0;
   const busy = state.kind === "loading";
   const title = state.kind === "ready" ? state.summary.map.name : "Import replay";
   const winner = state.kind === "ready" ? state.match?.players.find((p) => p.won) : undefined;
@@ -358,10 +361,18 @@ export function ReplayImportModal({
               />
               Include items
             </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={dropLikelyRejected}
+                onChange={(event) => setDropLikelyRejected(event.target.checked)}
+              />
+              Drop orders the game likely rejected
+            </label>
           </div>
 
-          <p className="tnum" data-preview-count={stepCount}>
-            {stepCount} steps
+          <p className="tnum" data-preview-count={stepCount} data-dropped-count={droppedCount}>
+            {droppedCount > 0 ? `${stepCount} steps · ${droppedCount} dropped` : `${stepCount} steps`}
           </p>
         </div>
       ) : null}

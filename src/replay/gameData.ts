@@ -72,7 +72,7 @@ export const TRAIN_TIME_S: Record<string, number> = {
   ufro: 60, // https://warcraft.wiki.gg/wiki/Frost_Wyrm_(Warcraft_III)
   ushd: 15, // https://warcraft.wiki.gg/wiki/Shade_(Warcraft_III)
 
-  // --- Heroes (every race + neutral tavern heroes) ---
+  // --- Racial heroes (55, every race) ---
   Hamg: 55,
   Hpal: 55,
   Hmkg: 55,
@@ -89,17 +89,178 @@ export const TRAIN_TIME_S: Record<string, number> = {
   Ulic: 55,
   Udre: 55,
   Ucrl: 55,
-  Nngs: 55,
-  Nbrn: 55,
-  Npbm: 55,
-  Nbst: 55,
-  Nplh: 55,
-  Ntin: 55,
-  Nfir: 55,
-  Nalc: 55,
-  Npal: 55,
+
+  // --- Tavern heroes (F002: hired instantly, corrected from F001's 55 —
+  // game knowledge; the wiki pages carry no build time) ---
+  Nngs: 0,
+  Nbrn: 0,
+  Npbm: 0,
+  Nbst: 0,
+  Nplh: 0,
+  Ntin: 0,
+  Nfir: 0,
+  Nalc: 0,
+  Npal: 0,
 
   // --- Neutral hostile / mercenary-camp units ---
   nftb: 0, // mercenary-camp unit
   ngir: 0, // mercenary-camp unit
+};
+
+/**
+ * F002: unit/hero id -> the building id that trains it, for the
+ * per-producer queue simulation in `rejectedOrders.ts`. Values are FourCC
+ * building ids from `w3gjs`'s `mappings.buildings` table, the string
+ * literal `"tavern"` for the nine neutral tavern heroes (always available,
+ * unlimited capacity — any tavern anywhere can train any hero), or
+ * `undefined` for ids that are never subject to the queue/rejection model:
+ * `hmil` (Call to Arms transform), `ospm` (Ethereal Spirit Walker
+ * transform), `ubsp` (Destroyer transform), `ushd` (Shade — a free Acolyte
+ * upgrade, not a queued order), `nftb`/`ngir` (mercenary-camp hires).
+ *
+ * Verified 2026-09-19 by the orchestrator against w3gjs's `mappings.buildings`.
+ */
+export const PRODUCER_OF: Record<string, string | undefined> = {
+  // --- Human ---
+  hpea: "htow",
+  hfoo: "hbar",
+  hrif: "hbar",
+  hkni: "hbar",
+  hmpr: "hars",
+  hsor: "hars",
+  hspt: "hars",
+  hmtm: "harm",
+  hgyr: "harm",
+  hmtt: "harm",
+  hrtt: "harm",
+  hgry: "hgra",
+  hdhw: "hgra",
+  Hamg: "halt",
+  Hpal: "halt",
+  Hmkg: "halt",
+  Hblm: "halt",
+  hmil: undefined,
+
+  // --- Orc ---
+  opeo: "ogre",
+  ogru: "obar",
+  ohun: "obar",
+  otbk: "obar",
+  ocat: "obar",
+  oshm: "osld",
+  odoc: "osld",
+  ospw: "osld",
+  orai: "obea",
+  okod: "obea",
+  owyv: "obea",
+  otbr: "obea",
+  otau: "otto",
+  Obla: "oalt",
+  Ofar: "oalt",
+  Otch: "oalt",
+  Oshd: "oalt",
+  ospm: undefined,
+
+  // --- Night elf ---
+  ewsp: "etol",
+  earc: "eaom",
+  esen: "eaom",
+  ebal: "eaom",
+  edry: "eaoe",
+  edoc: "eaoe",
+  emtg: "eaoe",
+  ehip: "eaow",
+  edot: "eaow",
+  efdr: "eaow",
+  echm: "edos",
+  Edem: "eate",
+  Ekee: "eate",
+  Emoo: "eate",
+  Ewar: "eate",
+
+  // --- Undead ---
+  uaco: "unpl",
+  ugho: "usep",
+  ucry: "usep",
+  ugar: "usep",
+  uabo: "uslh",
+  umtw: "uslh",
+  uobs: "uslh",
+  unec: "utod",
+  uban: "utod",
+  ufro: "ubon",
+  Udea: "uaod",
+  Ulic: "uaod",
+  Udre: "uaod",
+  Ucrl: "uaod",
+  ubsp: undefined,
+  ushd: undefined,
+
+  // --- Tavern heroes (always available, unlimited) ---
+  Nngs: "tavern",
+  Nbrn: "tavern",
+  Npbm: "tavern",
+  Nbst: "tavern",
+  Nplh: "tavern",
+  Ntin: "tavern",
+  Nfir: "tavern",
+  Nalc: "tavern",
+  Npal: "tavern",
+
+  // --- Never queued (transforms/summons/mercenaries) ---
+  nftb: undefined,
+  ngir: undefined,
+};
+
+/**
+ * F002: a tier-up building id -> the producer id it upgrades in place (the
+ * production queue, and the physical building, are the same across a
+ * tier-up — Keep/Castle is still "the town hall"). The game starts with
+ * exactly one hall at t = 0; a tier-up build event never adds a second
+ * producer instance (see `rejectedOrders.ts`).
+ */
+export const HALL_LINE: Record<string, string> = {
+  hkee: "htow",
+  hcas: "htow",
+  ostr: "ogre",
+  ofrt: "ogre",
+  etoa: "etol",
+  etoe: "etol",
+  unp1: "unpl",
+  unp2: "unpl",
+};
+
+/**
+ * F002: producer building id -> seconds to construct (verified 2026-09-19,
+ * warcraft.wiki.gg `|buildtime=`). A producer ordered (a `"building"` event)
+ * at `ms` becomes available at `ms + BUILD_TIME_S × 1000` — construction is
+ * assumed to start on the order and to complete (cancelled/destroyed
+ * buildings are not modelled). The four starting halls are available at
+ * t = 0 without needing a `"building"` event (see `rejectedOrders.ts`).
+ */
+export const BUILD_TIME_S: Record<string, number> = {
+  htow: 180,
+  hbar: 60,
+  hars: 70,
+  harm: 60,
+  hgra: 75,
+  halt: 60,
+  ogre: 135,
+  obar: 60,
+  obea: 60,
+  osld: 70,
+  otto: 70,
+  oalt: 60,
+  etol: 120,
+  eaom: 60,
+  eaoe: 70,
+  eaow: 60,
+  edos: 80,
+  eate: 60,
+  unpl: 90,
+  usep: 60,
+  uslh: 60,
+  utod: 60,
+  ubon: 70,
+  uaod: 60,
 };

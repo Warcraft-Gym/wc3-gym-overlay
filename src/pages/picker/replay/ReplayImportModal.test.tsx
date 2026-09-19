@@ -43,11 +43,12 @@ const SUMMARY: ReplaySummary = {
 
 /** Deterministic step-count formula: scales with cutoff, drops 3 for
  *  "no upgrades", adds 2 for "with items" — enough to exercise every
- *  preview-recompute case below without a real replay. */
+ *  preview-recompute case below without a real replay. F002: 2 orders are
+ *  "dropped" whenever `dropLikelyRejected` is on (the default). */
 function fakeExtractBuild(
   summary: ReplaySummary,
   playerId: number,
-  opts: { cutoffMs?: number; includeUpgrades?: boolean; includeItems?: boolean },
+  opts: { cutoffMs?: number; includeUpgrades?: boolean; includeItems?: boolean; dropLikelyRejected?: boolean },
 ) {
   const player = summary.players.find((p) => p.id === playerId)!;
   const cutoffMs = opts.cutoffMs ?? 480_000;
@@ -55,6 +56,7 @@ function fakeExtractBuild(
   if (opts.includeUpgrades === false) count -= 3;
   if (opts.includeItems) count += 2;
   count = Math.max(count, 0);
+  const droppedCount = opts.dropLikelyRejected === false ? 0 : 2;
   return {
     title: `${player.name} (Orc) vs Human — Northern Isles`,
     race: "orc",
@@ -68,6 +70,7 @@ function fakeExtractBuild(
     sourceUrl: "",
     description: "",
     steps: Array.from({ length: count }, (_, i) => ({ time: "0:00", supply: "5", instruction: `Step ${i}`, icon: "" })),
+    dropped: { count: droppedCount, byId: {}, orderIndices: [] },
   };
 }
 
@@ -145,7 +148,7 @@ describe("ReplayImportModal", () => {
     renderModal();
     await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
 
-    const preview = () => screen.getByText(/steps$/);
+    const preview = () => screen.getByText(/steps( · \d+ dropped)?$/);
     const before = preview().getAttribute("data-preview-count");
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Include upgrades" }));
@@ -154,6 +157,54 @@ describe("ReplayImportModal", () => {
       const after = preview().getAttribute("data-preview-count");
       expect(after).not.toBe(before);
     });
+  });
+
+  it('F002: shows "Drop orders the game likely rejected", checked by default, and the caption reads "N steps · M dropped"', async () => {
+    parseReplayMock.mockResolvedValue(SUMMARY);
+    extractBuildMock.mockImplementation(fakeExtractBuild);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const checkbox = screen.getByRole("checkbox", { name: "Drop orders the game likely rejected" }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+
+    const preview = screen.getByText(/steps/);
+    expect(preview.textContent).toBe("29 steps · 2 dropped");
+    expect(preview.getAttribute("data-dropped-count")).toBe("2");
+  });
+
+  it("F002: unchecking the filter drops the '· M dropped' suffix and recomputes without it; re-checking restores it", async () => {
+    parseReplayMock.mockResolvedValue(SUMMARY);
+    extractBuildMock.mockImplementation(fakeExtractBuild);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const checkbox = screen.getByRole("checkbox", { name: "Drop orders the game likely rejected" });
+    const preview = () => screen.getByText(/steps/);
+
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(preview().textContent).toBe("29 steps");
+      expect(preview().getAttribute("data-dropped-count")).toBe("0");
+    });
+
+    fireEvent.click(checkbox);
+    await waitFor(() => {
+      expect(preview().textContent).toBe("29 steps · 2 dropped");
+    });
+  });
+
+  it("F002: the filter checkbox is keyboard-toggleable (Space)", async () => {
+    parseReplayMock.mockResolvedValue(SUMMARY);
+    extractBuildMock.mockImplementation(fakeExtractBuild);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const checkbox = screen.getByRole("checkbox", { name: "Drop orders the game likely rejected" }) as HTMLInputElement;
+    checkbox.focus();
+    fireEvent.keyDown(checkbox, { key: " " });
+    fireEvent.click(checkbox); // jsdom doesn't auto-toggle checkboxes on keydown — mirrors real browser click-from-space
+    expect(checkbox.checked).toBe(false);
   });
 
   it.each([

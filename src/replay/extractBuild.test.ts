@@ -17,6 +17,12 @@ function clockToMs(clock: string): number {
   return (minutes * 60 + seconds) * 1000;
 }
 
+function trainCountFor(instruction: string, unitTitle: string): number {
+  const multi = instruction.match(new RegExp(`^Train (\\d+)× ${unitTitle}$`));
+  if (multi) return Number(multi[1]);
+  return instruction === `Train ${unitTitle}` ? 1 : 0;
+}
+
 describe("extractBuild", () => {
   let summary: ReplaySummary;
   let focusId: number;
@@ -315,6 +321,98 @@ describe("extractBuild — cancel-aware extraction, real fixtures (F001, C-702)"
     },
     30_000,
   );
+});
+
+/** F002 (C-704): the opt-in "likely rejected" filter — real fixtures. */
+describe("extractBuild — likely-rejected filter (F002, C-704)", () => {
+  let dretwiak: ReturnType<typeof extractBuild>;
+  let dretwiakBlind: ReturnType<typeof extractBuild>;
+
+  beforeAll(async () => {
+    const summary = await parseReplay(loadFixture("w3c_6aae9d48d867fad24f911778_last_refuge.w3g"));
+    const dretwiakId = summary.players.find((p) => p.name === "Dretwiak#2963")!.id;
+    dretwiak = extractBuild(summary, dretwiakId);
+    dretwiakBlind = extractBuild(summary, dretwiakId, { dropLikelyRejected: false });
+  }, 15_000);
+
+  it("Dretwiak (Last Refuge): Peasant orders accepted with ms <= 60_000 number at most 5 + floor(60/15) = 9", () => {
+    const peasantsAcceptedInFirstMinute = dretwiak.steps
+      .filter((s) => clockToMs(s.time) <= 60_000)
+      .reduce((sum, s) => sum + trainCountFor(s.instruction, "Peasant"), 0);
+    expect(peasantsAcceptedInFirstMinute).toBeLessThanOrEqual(9);
+  });
+
+  it("Dretwiak: dropped.count is >= 4 within the first minute", async () => {
+    const summary = await parseReplay(loadFixture("w3c_6aae9d48d867fad24f911778_last_refuge.w3g"));
+    const dretwiakId = summary.players.find((p) => p.name === "Dretwiak#2963")!.id;
+    const oneMinute = extractBuild(summary, dretwiakId, { cutoffMs: 60_000 });
+    expect(oneMinute.dropped.count).toBeGreaterThanOrEqual(4);
+  });
+
+  it("Dretwiak: every filtered step's (time, instruction) appears in the unfiltered list, or is the same group with a smaller count", () => {
+    for (const step of dretwiak.steps) {
+      const exact = dretwiakBlind.steps.some((b) => b.time === step.time && b.instruction === step.instruction);
+      if (exact) continue;
+      const multi = step.instruction.match(/^Train (\d+)× (.+)$/);
+      const single = step.instruction.match(/^Train (.+)$/);
+      const title = multi ? multi[2]! : single ? single[1]! : undefined;
+      expect(title, `unmatched filtered step: ${JSON.stringify(step)}`).toBeDefined();
+      const filteredCount = multi ? Number(multi[1]) : 1;
+      const blindMatch = dretwiakBlind.steps.find(
+        (b) => b.time === step.time && trainCountFor(b.instruction, title!) >= filteredCount && trainCountFor(b.instruction, title!) > 0,
+      );
+      expect(blindMatch, `no matching (same-group, larger count) blind step for ${JSON.stringify(step)}`).toBeTruthy();
+    }
+  });
+
+  it("dropLikelyRejected:false is identical to the F001 (cancel-only) result", async () => {
+    const summary = await parseReplay(loadFixture("w3c_6aae9d48d867fad24f911778_last_refuge.w3g"));
+    const dretwiakId = summary.players.find((p) => p.name === "Dretwiak#2963")!.id;
+    const withCancelsOnly = extractBuild(summary, dretwiakId, { dropLikelyRejected: false });
+    expect(withCancelsOnly.dropped).toEqual({ count: 0, byId: {}, orderIndices: [] });
+    expect(Object.keys(withCancelsOnly.meta.dropped)).toHaveLength(0);
+  });
+
+  it.each([
+    ["fortitude_vs_focus_northern_isles.w3g", "FoCuS#31324"],
+    ["w3c_6aaef330d867fad24f91360c_turtle_rock.w3g", "lolicore#21233"],
+    ["w3c_6aaef31bd867fad24f913602_hammerfall.w3g", "Starglobal#4361"],
+    ["w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g", "Dkblitz#11988"],
+  ] as const)("%s, %s: dropped.count within the first 3:00 is <= 2", async (file, playerName) => {
+    const summary = await parseReplay(loadFixture(file));
+    const playerId = summary.players.find((p) => p.name === playerName)!.id;
+    const draft = extractBuild(summary, playerId, { cutoffMs: 180_000 });
+    expect(draft.dropped.count).toBeLessThanOrEqual(2);
+  });
+});
+
+/** F002 (F001-scrutiny case 3): a merged step must never be anchored at a
+ *  fully cancelled order's timestamp. */
+describe("extractBuild — merged step anchoring after a fully cancelled leading order (F002)", () => {
+  function summaryWithEvents(events: ReplayEvent[]): ReplaySummary {
+    return {
+      map: { file: "synthetic.w3x", name: "Synthetic" },
+      version: "3.00",
+      buildNumber: 1,
+      durationMs: 120_000,
+      players: [{ id: 0, name: "Solo#1", race: "human", raceDetected: "human", teamId: 0, isObserver: false }],
+      events: { 0: events },
+    };
+  }
+
+  it("a group whose first order is fully cancelled is anchored at the next surviving order's time, not the cancelled one's", () => {
+    const draft = extractBuild(
+      summaryWithEvents([
+        { kind: "building", id: "hbar", ms: 0 },
+        { kind: "unit", id: "hfoo", ms: 61_000 },
+        { kind: "cancel", id: "hfoo", ms: 61_500, slot: 0 },
+        { kind: "unit", id: "hfoo", ms: 65_000 },
+      ]),
+      0,
+    );
+    const step = draft.steps.find((s) => s.instruction.includes("Footman"));
+    expect(step?.time).toBe("1:05"); // the surviving 65s order, not the cancelled 61s one
+  });
 });
 
 /** F001 (C-703): synthetic cancel semantics — a single undead player with a

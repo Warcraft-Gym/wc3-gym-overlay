@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ID_MAP } from "./idMap";
 import { FOOD_COST } from "./foodCost";
-import { TRAIN_TIME_S } from "./gameData";
+import { BUILD_TIME_S, HALL_LINE, PRODUCER_OF, TRAIN_TIME_S } from "./gameData";
 
 describe("TRAIN_TIME_S", () => {
   it("has exactly the same key set as FOOD_COST (every unit/hero id in ID_MAP)", () => {
@@ -104,15 +104,17 @@ describe("TRAIN_TIME_S", () => {
       Ulic: 55,
       Udre: 55,
       Ucrl: 55,
-      Nngs: 55,
-      Nbrn: 55,
-      Npbm: 55,
-      Nbst: 55,
-      Nplh: 55,
-      Ntin: 55,
-      Nfir: 55,
-      Nalc: 55,
-      Npal: 55,
+      // --- Tavern heroes (F002: hired instantly, not 55 — game knowledge,
+      // the wiki pages carry no build time) ---
+      Nngs: 0,
+      Nbrn: 0,
+      Npbm: 0,
+      Nbst: 0,
+      Nplh: 0,
+      Ntin: 0,
+      Nfir: 0,
+      Nalc: 0,
+      Npal: 0,
 
       // --- Neutral hostile / mercenary-camp units ---
       nftb: 0,
@@ -120,5 +122,91 @@ describe("TRAIN_TIME_S", () => {
     };
 
     expect(TRAIN_TIME_S).toEqual(REFERENCE);
+  });
+
+  it("hires every tavern hero (N*) instantly", () => {
+    const tavernIds = ["Nngs", "Nbrn", "Npbm", "Nbst", "Nplh", "Ntin", "Nfir", "Nalc", "Npal"];
+    for (const id of tavernIds) expect(TRAIN_TIME_S[id]).toBe(0);
+  });
+});
+
+const BUILDING_IDS = new Set(Object.entries(ID_MAP).filter(([, v]) => v.kind === "building").map(([id]) => id));
+const NEVER_QUEUED_IDS = new Set(["hmil", "ospm", "ubsp", "ushd", "nftb", "ngir"]);
+
+describe("PRODUCER_OF", () => {
+  it("covers every unit/hero id in ID_MAP", () => {
+    const expectedIds = Object.entries(ID_MAP)
+      .filter(([, entry]) => entry.kind === "unit" || entry.kind === "hero")
+      .map(([id]) => id)
+      .sort();
+    expect(Object.keys(PRODUCER_OF).sort()).toEqual(expectedIds);
+  });
+
+  it("maps every id to a real building id (present in ID_MAP as kind: building), \"tavern\", or undefined for the six never-queued ids", () => {
+    for (const [id, producer] of Object.entries(PRODUCER_OF)) {
+      if (NEVER_QUEUED_IDS.has(id)) {
+        expect(producer, `${id} should have no producer`).toBeUndefined();
+        continue;
+      }
+      if (producer === "tavern") continue;
+      expect(producer, `${id}: ${producer} is not undefined/"tavern" and not a known building id`).toBeDefined();
+      expect(BUILDING_IDS.has(producer!), `${id}: ${producer} is not a building id in ID_MAP`).toBe(true);
+    }
+  });
+
+  it("routes every tavern hero (N*) to \"tavern\"", () => {
+    for (const [id, producer] of Object.entries(PRODUCER_OF)) {
+      if (/^N/.test(id)) expect(producer).toBe("tavern");
+    }
+  });
+
+  it("has no producer for the six never-queued ids (transforms/summons/mercenaries)", () => {
+    for (const id of NEVER_QUEUED_IDS) expect(PRODUCER_OF[id]).toBeUndefined();
+  });
+});
+
+describe("HALL_LINE", () => {
+  it("is the literal tier-up table", () => {
+    expect(HALL_LINE).toEqual({
+      hkee: "htow",
+      hcas: "htow",
+      ostr: "ogre",
+      ofrt: "ogre",
+      etoa: "etol",
+      etoe: "etol",
+      unp1: "unpl",
+      unp2: "unpl",
+    });
+  });
+});
+
+describe("BUILD_TIME_S", () => {
+  it("is the literal, warcraft.wiki.gg-verified table", () => {
+    expect(BUILD_TIME_S).toEqual({
+      htow: 180,
+      hbar: 60,
+      hars: 70,
+      harm: 60,
+      hgra: 75,
+      halt: 60,
+      ogre: 135,
+      obar: 60,
+      obea: 60,
+      osld: 70,
+      otto: 70,
+      oalt: 60,
+      etol: 120,
+      eaom: 60,
+      eaoe: 70,
+      eaow: 60,
+      edos: 80,
+      eate: 60,
+      unpl: 90,
+      usep: 60,
+      uslh: 60,
+      utod: 60,
+      ubon: 70,
+      uaod: 60,
+    });
   });
 });

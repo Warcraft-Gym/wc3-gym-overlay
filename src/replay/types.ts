@@ -83,6 +83,10 @@ export interface ExtractBuildOptions {
    *  list (default true). `false` is test-only — it reproduces the
    *  pre-F001 cancel-blind extraction so tests can diff the two. */
   applyCancels?: boolean;
+  /** F002: drop orders the game most likely refused (spam-clicks past a
+   *  full production queue) before building the step list (default true).
+   *  `false` reproduces the pre-F002 extraction (cancels still applied). */
+  dropLikelyRejected?: boolean;
 }
 
 /** F001: how many of a merged step's orders were cancelled before they
