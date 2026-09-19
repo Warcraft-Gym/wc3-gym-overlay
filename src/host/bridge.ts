@@ -54,4 +54,12 @@ export interface Host {
    *  if the user cancelled. Tauri: the native open dialog + `readTextFile`.
    *  Browser: a hidden `<input type="file">`. */
   openTextFile(): Promise<string | null>;
+  /** F002: prompts to pick a binary file matching `filters` and resolves
+   *  its name + raw bytes, or `null` if the user cancelled. Tauri: the
+   *  native open dialog + `readFile` (scoped by `fs:allow-read-file`).
+   *  Browser: a hidden `<input type="file">`. Used for importing a
+   *  Warcraft III `.w3g` replay. */
+  openBinaryFile(
+    filters: { name: string; extensions: string[] }[],
+  ): Promise<{ name: string; bytes: Uint8Array } | null>;
 }

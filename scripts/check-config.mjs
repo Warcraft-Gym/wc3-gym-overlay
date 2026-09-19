@@ -33,12 +33,21 @@ const REQUIRED_CAPABILITY_IDENTIFIERS = [
   "dialog:allow-open",
   "fs:allow-write-text-file",
   "fs:allow-read-text-file",
+  // F002: import a `.w3g` replay via the native dialog + scoped binary read.
+  "fs:allow-read-file",
 ];
 
-// F004: identifiers that would grant unscoped filesystem access — a single
-// match anywhere in the capability set fails the "no wildcard-all fs write
-// scope" rule below, regardless of which capability file declares it.
-const FORBIDDEN_FS_IDENTIFIERS = ["fs:default", "fs:allow-write-file", "fs:allow-write", "fs:scope"];
+// F004/F002: identifiers that would grant unscoped filesystem access — a
+// single match anywhere in the capability set fails the "no wildcard-all fs
+// write/read permission" rule below, regardless of which capability file
+// declares it.
+const FORBIDDEN_FS_IDENTIFIERS = [
+  "fs:default",
+  "fs:allow-write-file",
+  "fs:allow-write",
+  "fs:allow-read",
+  "fs:scope",
+];
 
 let failed = false;
 
@@ -174,7 +183,7 @@ function main() {
   const hasForbiddenFsIdentifier = FORBIDDEN_FS_IDENTIFIERS.some((id) => declaredIdentifiers.includes(id));
   report("no fs:default / unscoped wildcard-all fs write permission", !hasForbiddenFsIdentifier);
 
-  for (const identifier of ["fs:allow-write-text-file", "fs:allow-read-text-file"]) {
+  for (const identifier of ["fs:allow-write-text-file", "fs:allow-read-text-file", "fs:allow-read-file"]) {
     if (knownIdentifiers && !knownIdentifiers.includes(identifier)) continue;
     const scopes = fsAllowScopes(caps, identifier);
     const isWildcard = scopes.some((s) => s.path === "**" || s.path === "*" || s.path === undefined);
@@ -182,6 +191,15 @@ function main() {
       `${identifier} scope is a path allow-list (no wildcard-all)`,
       scopes.length > 0 && !isWildcard,
     );
+  }
+
+  // F002: `fs:allow-read-file` backs the replay-import dialog — scoped even
+  // tighter than the sibling text-file permissions (no `$HOME/**`, which
+  // would let the webview read anything under the user's home directory).
+  if (!knownIdentifiers || knownIdentifiers.includes("fs:allow-read-file")) {
+    const readFileScopes = fsAllowScopes(caps, "fs:allow-read-file");
+    const hasHomeWildcard = readFileScopes.some((s) => s.path === "$HOME/**");
+    report("fs:allow-read-file scope excludes $HOME/**", !hasHomeWildcard);
   }
 
   // F002: a duplicate process (a second launch alongside a still-running

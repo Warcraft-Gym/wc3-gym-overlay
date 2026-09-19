@@ -68,6 +68,7 @@ export function BuildEditorModal({
   apiBase,
   allBuilds,
   onClose,
+  initialValues,
 }: {
   mode: BuildEditorMode;
   /** The build being edited (mode "edit") or copied from (mode
@@ -76,12 +77,17 @@ export function BuildEditorModal({
   apiBase: string;
   allBuilds: AnyBuild[];
   onClose: () => void;
+  /** F002: when provided (mode "new" only — a replay import), seeds the
+   *  form with these values instead of the blank defaults. Nothing else
+   *  about "new" mode changes — the user still has to hit Save. */
+  initialValues?: EditorFormInput;
 }) {
   const { icons } = useIcons(apiBase, allBuilds);
 
   const [form, setForm] = useState<EditorFormInput>(() => {
     if (mode === "edit" && sourceBuild) return fromBuild(sourceBuild);
     if (mode === "duplicate" && sourceBuild) return fromBuild(duplicateAsLocal(sourceBuild));
+    if (initialValues) return initialValues;
     return blankEditorForm();
   });
   const [dirty, setDirty] = useState(false);

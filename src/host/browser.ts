@@ -213,6 +213,37 @@ function readFileAsText(file: File): Promise<string | null> {
   });
 }
 
+/** F002: a second persistent hidden `<input type="file">`, matching the
+ *  pattern above for `openTextFile` but for binary replay imports — kept
+ *  separate (rather than reusing `importFileInput`) so its `accept` filter
+ *  stays specific to whatever extensions the caller passes, and so a
+ *  Playwright test can target it independently of the JSON-import input
+ *  via `page.waitForEvent("filechooser")` on the "Import replay" button's
+ *  click. */
+let importBinaryFileInput: HTMLInputElement | null = null;
+
+function getImportBinaryFileInput(extensions: string[]): HTMLInputElement {
+  if (importBinaryFileInput && document.body.contains(importBinaryFileInput)) return importBinaryFileInput;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = extensions.map((ext) => `.${ext}`).join(",");
+  input.style.display = "none";
+  document.body.appendChild(input);
+  importBinaryFileInput = input;
+  return input;
+}
+
+function readFileAsBytes(file: File): Promise<Uint8Array | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(reader.result instanceof ArrayBuffer ? new Uint8Array(reader.result) : null);
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 /** Browser fallback for `saveTextFile` — a Blob download via a throwaway
  *  `<a download>` link, the standard no-dependency way to trigger a save
  *  prompt from script without a native file-system API. */
@@ -250,6 +281,31 @@ async function openTextFile(): Promise<string | null> {
   });
 }
 
+/** F002: browser fallback for `openBinaryFile` — same pattern as
+ *  `openTextFile` above but resolves raw bytes (`Uint8Array`) instead of
+ *  text, for importing a `.w3g` replay. `page.waitForEvent("filechooser")`
+ *  intercepts the native chooser that `.click()` opens; Playwright's
+ *  `setInputFiles` on the input element itself also works headlessly,
+ *  matching the existing `openTextFile` test pattern. */
+async function openBinaryFile(
+  filters: { name: string; extensions: string[] }[],
+): Promise<{ name: string; bytes: Uint8Array } | null> {
+  const extensions = filters.flatMap((filter) => filter.extensions);
+  const input = getImportBinaryFileInput(extensions);
+  input.value = "";
+  return new Promise((resolve) => {
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      void readFileAsBytes(file).then((bytes) => resolve(bytes ? { name: file.name, bytes } : null));
+    };
+    input.click();
+  });
+}
+
 export function createBrowserHost(): Host {
   return {
     kind: "browser",
@@ -266,6 +322,7 @@ export function createBrowserHost(): Host {
     getWindowBounds,
     setWindowBounds,
     onWindowBoundsChanged,
+    openBinaryFile,
     saveTextFile,
     openTextFile,
   };

@@ -15,7 +15,8 @@ import {
 } from "@tauri-apps/plugin-global-shortcut";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
+import { writeTextFile, readTextFile, readFile } from "@tauri-apps/plugin-fs";
+import { documentDir } from "@tauri-apps/api/path";
 import type {
   Host,
   ShortcutAction,
@@ -27,6 +28,14 @@ import { WINDOW_OVERLAY } from "../config";
 
 /** F004 — the only extension a private build's export/import file uses. */
 const BUILD_FILE_FILTER = [{ name: "wc3gym build", extensions: ["json"] }];
+
+/** Extracts the file name from a native path — replays typically live in
+ *  the user's `Documents\Warcraft III\BattleNet\Replays` folder, so paths
+ *  may use either `/` or `\` separators. */
+function basename(path: string): string {
+  const parts = path.split(/[/\\]/);
+  return parts[parts.length - 1] ?? path;
+}
 
 const STATE_CHANGED_EVENT = "wc3gym:state-changed";
 
@@ -193,6 +202,22 @@ async function openTextFile(): Promise<string | null> {
   return readTextFile(path);
 }
 
+/** F002: native open dialog scoped to a replay-file filter + `readFile`
+ *  (binary) on whatever path the user picked — used to import a `.w3g`
+ *  Warcraft III replay. Defaults the dialog to the user's Documents folder,
+ *  where BattleNet stores replays (`Documents/Warcraft III/BattleNet/
+ *  Replays`). Requires the `fs:allow-read-file` capability, scoped
+ *  identically to `fs:allow-read-text-file`. */
+async function openBinaryFile(
+  filters: { name: string; extensions: string[] }[],
+): Promise<{ name: string; bytes: Uint8Array } | null> {
+  const defaultPath = await documentDir().catch(() => undefined);
+  const path = await open({ multiple: false, filters, defaultPath });
+  if (!path || Array.isArray(path)) return null;
+  const bytes = await readFile(path);
+  return { name: basename(path), bytes };
+}
+
 export function createTauriHost(): Host {
   return {
     kind: "tauri",
@@ -211,5 +236,6 @@ export function createTauriHost(): Host {
     onWindowBoundsChanged,
     saveTextFile,
     openTextFile,
+    openBinaryFile,
   };
 }

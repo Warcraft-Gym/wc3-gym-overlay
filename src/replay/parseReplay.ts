@@ -1,3 +1,7 @@
+// F002: must run before `w3gjs` does — see the shim's docblock for why
+// (it's a global-scope Node builtin, not a module `vite-plugin-node-
+// polyfills`'s aliases can cover). No-op under Node/vitest.
+import "./shims/globals";
 import W3GReplay from "w3gjs";
 import type { GameDataBlock, TimeslotBlock } from "w3gjs";
 import { HERO_IDS, decodeOrderId } from "./w3gjsData";
