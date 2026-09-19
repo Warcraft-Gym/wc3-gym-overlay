@@ -210,3 +210,186 @@ describe("extractBuild — merge window (F001 follow-up-2)", () => {
     });
   });
 });
+
+/** F001 (C-702): cancels change exactly the cancelled order — real fixtures,
+ *  compared against the cancel-blind extraction (`applyCancels: false`). */
+describe("extractBuild — cancel-aware extraction, real fixtures (F001, C-702)", () => {
+  function trainCount(instruction: string, unitTitle: string): number {
+    const multi = instruction.match(new RegExp(`^Train (\\d+)× ${unitTitle}$`));
+    if (multi) return Number(multi[1]);
+    return instruction === `Train ${unitTitle}` ? 1 : 0;
+  }
+
+  it(
+    "Turtle Rock, lolicore: 0:09 becomes 'Train 4× Peasant' and 0:32 'Build Farm' supply drops to 9; nothing else differs but the downstream -1 supply",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6aaef330d867fad24f91360c_turtle_rock.w3g"));
+      const lolicoreId = summary.players.find((p) => p.name === "lolicore#21233")!.id;
+      const withCancels = extractBuild(summary, lolicoreId);
+      const blind = extractBuild(summary, lolicoreId, { applyCancels: false });
+
+      expect(withCancels.steps.length).toBe(blind.steps.length);
+
+      const trainIdx = withCancels.steps.findIndex((s) => s.time === "0:09");
+      expect(withCancels.steps[trainIdx]?.instruction).toBe("Train 4× Peasant");
+      expect(blind.steps[trainIdx]?.instruction).toBe("Train 5× Peasant");
+
+      const farmIdx = withCancels.steps.findIndex((s) => s.time === "0:32");
+      expect(withCancels.steps[farmIdx]?.instruction).toBe("Build Farm");
+      expect(withCancels.steps[farmIdx]?.supply).toBe("9");
+      expect(blind.steps[farmIdx]?.supply).toBe("10");
+
+      for (let i = 0; i < withCancels.steps.length; i++) {
+        if (i === trainIdx) continue; // count differs by design (4× vs 5×)
+        expect(withCancels.steps[i]!.instruction).toBe(blind.steps[i]!.instruction);
+        if (i < farmIdx) {
+          expect(withCancels.steps[i]!.supply).toBe(blind.steps[i]!.supply);
+        } else {
+          expect(Number(blind.steps[i]!.supply) - Number(withCancels.steps[i]!.supply)).toBe(1);
+        }
+      }
+    },
+    15_000,
+  );
+
+  it(
+    "Hammerfall, Starglobal: exactly one Peon order removed before 8:00; every other instruction identical",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6aaef31bd867fad24f913602_hammerfall.w3g"));
+      const starglobalId = summary.players.find((p) => p.name === "Starglobal#4361")!.id;
+      const withCancels = extractBuild(summary, starglobalId);
+      const blind = extractBuild(summary, starglobalId, { applyCancels: false });
+
+      const before8 = (s: { time: string }) => clockToMs(s.time) < 480_000;
+      const withPeons = withCancels.steps.filter(before8).reduce((sum, s) => sum + trainCount(s.instruction, "Peon"), 0);
+      const blindPeons = blind.steps.filter(before8).reduce((sum, s) => sum + trainCount(s.instruction, "Peon"), 0);
+      expect(blindPeons - withPeons).toBe(1);
+
+      const nonPeon = (steps: { instruction: string }[]) => steps.filter((s) => !s.instruction.includes("Peon")).map((s) => s.instruction);
+      expect(nonPeon(withCancels.steps)).toEqual(nonPeon(blind.steps));
+    },
+    15_000,
+  );
+
+  it(
+    "Autumn Leaves, Dkblitz: exactly one ghoul order removed after 4:00; earlier steps identical",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g"));
+      const dkblitzId = summary.players.find((p) => p.name === "Dkblitz#11988")!.id;
+      const withCancels = extractBuild(summary, dkblitzId);
+      const blind = extractBuild(summary, dkblitzId, { applyCancels: false });
+
+      const cutoffMs = 240_000; // 4:00
+      const earlyWith = withCancels.steps.filter((s) => clockToMs(s.time) < cutoffMs);
+      const earlyBlind = blind.steps.filter((s) => clockToMs(s.time) < cutoffMs);
+      expect(earlyWith).toEqual(earlyBlind);
+
+      const lateWith = withCancels.steps.filter((s) => clockToMs(s.time) >= cutoffMs);
+      const lateBlind = blind.steps.filter((s) => clockToMs(s.time) >= cutoffMs);
+      const withGhouls = lateWith.reduce((sum, s) => sum + trainCount(s.instruction, "Ghoul"), 0);
+      const blindGhouls = lateBlind.reduce((sum, s) => sum + trainCount(s.instruction, "Ghoul"), 0);
+      expect(blindGhouls - withGhouls).toBe(1);
+    },
+    15_000,
+  );
+
+  it(
+    "every fixture: supply still starts at 5 and is non-decreasing with cancels applied",
+    async () => {
+      for (const [file, playerName] of [
+        ["w3c_6aaef330d867fad24f91360c_turtle_rock.w3g", "lolicore#21233"],
+        ["w3c_6aaef31bd867fad24f913602_hammerfall.w3g", "Starglobal#4361"],
+        ["w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g", "Dkblitz#11988"],
+      ] as const) {
+        const summary = await parseReplay(loadFixture(file));
+        const playerId = summary.players.find((p) => p.name === playerName)!.id;
+        const draft = extractBuild(summary, playerId);
+        expect(Number(draft.steps[0]!.supply)).toBe(5);
+        let lastSupply = -1;
+        for (const step of draft.steps) {
+          const supply = Number(step.supply);
+          expect(supply).toBeGreaterThanOrEqual(lastSupply === -1 ? 5 : lastSupply);
+          lastSupply = supply;
+        }
+      }
+    },
+    30_000,
+  );
+});
+
+/** F001 (C-703): synthetic cancel semantics — a single undead player with a
+ *  handcrafted event stream, so every branch of `computeCancelledOrders`
+ *  gets a direct, deterministic test. */
+describe("extractBuild — cancel-aware extraction, synthetic semantics (F001, C-703)", () => {
+  function summaryWithEvents(events: ReplayEvent[]): ReplaySummary {
+    return {
+      map: { file: "synthetic.w3x", name: "Synthetic" },
+      version: "3.00",
+      buildNumber: 1,
+      durationMs: 120_000,
+      players: [{ id: 0, name: "Solo#1", race: "undead", raceDetected: "undead", teamId: 0, isObserver: false }],
+      events: { 0: events },
+    };
+  }
+
+  it("(a) two Acolyte orders, one cancelled: single 'Train Acolyte' step, next step's supply reflects only the survivor", () => {
+    const draft = extractBuild(
+      summaryWithEvents([
+        { kind: "unit", id: "uaco", ms: 1_000 },
+        { kind: "unit", id: "uaco", ms: 2_000 },
+        { kind: "cancel", id: "uaco", ms: 5_000, slot: 1 },
+        { kind: "building", id: "htow", ms: 20_000 },
+      ]),
+      0,
+    );
+    expect(draft.steps[0]).toMatchObject({ time: "0:01", supply: "5", instruction: "Train Acolyte" });
+    expect(draft.steps[1]?.supply).toBe("6");
+  });
+
+  it("(b) two Acolyte orders, both cancelled: no acolyte step at all; following step supply unchanged at 5", () => {
+    const draft = extractBuild(
+      summaryWithEvents([
+        { kind: "unit", id: "uaco", ms: 1_000 },
+        { kind: "unit", id: "uaco", ms: 2_000 },
+        { kind: "cancel", id: "uaco", ms: 5_000 },
+        { kind: "cancel", id: "uaco", ms: 6_000 },
+        { kind: "building", id: "htow", ms: 20_000 },
+      ]),
+      0,
+    );
+    expect(draft.steps.some((s) => s.instruction.includes("Acolyte"))).toBe(false);
+    expect(draft.steps).toHaveLength(1);
+    expect(draft.steps[0]?.supply).toBe("5");
+  });
+
+  it("(c) a cancel with no matching order before it is ignored, not thrown", () => {
+    expect(() => extractBuild(summaryWithEvents([{ kind: "cancel", id: "uaco", ms: 5_000 }]), 0)).not.toThrow();
+    const draft = extractBuild(summaryWithEvents([{ kind: "cancel", id: "uaco", ms: 5_000 }]), 0);
+    expect(draft.steps).toHaveLength(0);
+  });
+
+  it("(d) a cancel arriving after the order already finished training does not remove it", () => {
+    // uaco's train time is 15s, so an order at 1s finishes at 16s — a cancel at 40s is too late.
+    const draft = extractBuild(
+      summaryWithEvents([
+        { kind: "unit", id: "uaco", ms: 1_000 },
+        { kind: "cancel", id: "uaco", ms: 40_000 },
+      ]),
+      0,
+    );
+    expect(draft.steps.some((s) => s.instruction === "Train Acolyte")).toBe(true);
+  });
+
+  it("(e) a cancelled hero order never produces a hero step, and supply is unaffected", () => {
+    const draft = extractBuild(
+      summaryWithEvents([
+        { kind: "hero", id: "Udea", ms: 60_000 },
+        { kind: "cancel", id: "Udea", ms: 70_000 },
+        { kind: "building", id: "htow", ms: 90_000 },
+      ]),
+      0,
+    );
+    expect(draft.steps.some((s) => s.instruction === "Hero: Death Knight")).toBe(false);
+    expect(draft.steps[0]?.supply).toBe("5");
+  });
+});

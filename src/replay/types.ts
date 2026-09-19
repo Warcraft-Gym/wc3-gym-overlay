@@ -6,12 +6,18 @@
 
 export type ReplayRace = "human" | "orc" | "nightelf" | "undead" | "random";
 
-export type ReplayEventKind = "unit" | "building" | "upgrade" | "hero" | "item";
+export type ReplayEventKind = "unit" | "building" | "upgrade" | "hero" | "item" | "cancel";
 
 export interface ReplayEvent {
   kind: ReplayEventKind;
   id: string;
   ms: number;
+  /** Only set for `kind: "cancel"`: the `slotNumber` w3gjs's
+   *  `RemoveUnitFromBuildingQueue` action carried (0 = the unit currently
+   *  training, 1-4 = queue positions). A cancel event's `id` is the
+   *  unit/hero FourCC being *removed* from a production queue, not a
+   *  finished order — see `extractBuild.ts`'s `computeCancelledOrders`. */
+  slot?: number;
 }
 
 export interface ReplayPlayer {
@@ -73,4 +79,21 @@ export interface ExtractBuildOptions {
    *  "w3champions.com/match/<id>") — appended as a "Source: …" sentence to
    *  the generated draft's `summary`, clamped together with the rest of it. */
   sourceLabel?: string;
+  /** F001: honour the replay's own cancel commands when building the step
+   *  list (default true). `false` is test-only — it reproduces the
+   *  pre-F001 cancel-blind extraction so tests can diff the two. */
+  applyCancels?: boolean;
+}
+
+/** F001: how many of a merged step's orders were cancelled before they
+ *  finished training. `ordered` is the raw count issued for that step
+ *  (before merge-collapsing removed/duplicate orders out of the count);
+ *  `cancelled` is how many of those were removed. Kept out of the
+ *  persisted/editor-facing `EditorFormInput` shape — F003 renders these as
+ *  an `importNote` instead — so `extractBuild` returns them on a side
+ *  `meta.cancelled` map keyed by the step's index in `steps`, and only for
+ *  steps that actually had a cancel applied. */
+export interface ImportedStepMeta {
+  ordered: number;
+  cancelled: number;
 }

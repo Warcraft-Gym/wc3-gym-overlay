@@ -101,4 +101,78 @@ describe("parseReplay", () => {
     const truncated = full.slice(0, 4096);
     await expect(parseReplay(truncated)).rejects.toMatchObject({ code: "corrupt" });
   });
+
+  describe("F001 — cancel events (C-701)", () => {
+    function cancelsFor(summary: Awaited<ReturnType<typeof parseReplay>>, playerName: string) {
+      const player = summary.players.find((p) => p.name === playerName);
+      expect(player, `expected a player named ${playerName}`).toBeDefined();
+      return (summary.events[player!.id] ?? []).filter((e) => e.kind === "cancel");
+    }
+
+    it(
+      "Turtle Rock: lolicore#21233 cancelled hpea (slot 4) around 10.9s; Promario#11149 has none",
+      async () => {
+        const summary = await parseReplay(loadFixture("w3c_6aaef330d867fad24f91360c_turtle_rock.w3g"));
+        const lolicoreCancels = cancelsFor(summary, "lolicore#21233");
+        expect(lolicoreCancels).toHaveLength(1);
+        expect(lolicoreCancels[0]).toMatchObject({ kind: "cancel", id: "hpea", slot: 4 });
+        expect(lolicoreCancels[0]!.ms).toBeGreaterThanOrEqual(10_500);
+        expect(lolicoreCancels[0]!.ms).toBeLessThanOrEqual(11_500);
+
+        expect(cancelsFor(summary, "Promario#11149")).toHaveLength(0);
+      },
+      FIXTURE_TIMEOUT_MS,
+    );
+
+    it(
+      "Hammerfall: Starglobal#4361 cancelled opeo around 92s; shiNe#1396 has none",
+      async () => {
+        const summary = await parseReplay(loadFixture("w3c_6aaef31bd867fad24f913602_hammerfall.w3g"));
+        const starglobalCancels = cancelsFor(summary, "Starglobal#4361");
+        expect(starglobalCancels).toHaveLength(1);
+        expect(starglobalCancels[0]).toMatchObject({ kind: "cancel", id: "opeo" });
+        expect(starglobalCancels[0]!.ms).toBeGreaterThanOrEqual(91_000);
+        expect(starglobalCancels[0]!.ms).toBeLessThanOrEqual(93_000);
+
+        expect(cancelsFor(summary, "shiNe#1396")).toHaveLength(0);
+      },
+      FIXTURE_TIMEOUT_MS,
+    );
+
+    it(
+      // The feature spec's "verified facts" undercount this fixture's real
+      // cancels (see the F001 handoff's "Train-time verification" /
+      // "Issues discovered" — ground truth has a 2nd Dkblitz cancel (uobs
+      // @ ~8:05) and one Sonik cancel (esen @ ~8:34) neither the spec nor
+      // C-701's literal wording mention). C-701 only asserts *this*
+      // cancel exists in this window, not that it's the player's only one,
+      // so this test sticks to that literal assertion.
+      "Autumn Leaves: Dkblitz#11988 cancelled ugho around 258s",
+      async () => {
+        const summary = await parseReplay(loadFixture("w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g"));
+        const dkblitzCancels = cancelsFor(summary, "Dkblitz#11988");
+        const ughoCancel = dkblitzCancels.find((e) => e.id === "ugho");
+        expect(ughoCancel).toMatchObject({ kind: "cancel", id: "ugho" });
+        expect(ughoCancel!.ms).toBeGreaterThanOrEqual(257_000);
+        expect(ughoCancel!.ms).toBeLessThanOrEqual(259_000);
+      },
+      FIXTURE_TIMEOUT_MS,
+    );
+
+    it(
+      "the four pre-F001 fixtures still parse with no cancel expectations",
+      async () => {
+        for (const name of [
+          "ced_vs_lyn.w3g",
+          "phoenix_vs_changer_concealed_hill.w3g",
+          "fortitude_vs_focus_northern_isles.w3g",
+          "w3c_6aae9d48d867fad24f911778_last_refuge.w3g",
+        ]) {
+          const summary = await parseReplay(loadFixture(name));
+          expect(summary.players.length).toBeGreaterThan(0);
+        }
+      },
+      FIXTURE_TIMEOUT_MS * 4,
+    );
+  });
 });

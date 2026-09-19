@@ -6,9 +6,12 @@ used here solely as parser test inputs:
 - phoenix_vs_changer_concealed_hill.w3g   <- test/replays/200/2661392198_PhoeNix_Changer_Concealed Hill.w3g
 - fortitude_vs_focus_northern_isles.w3g   <- test/replays/300/2969930621_Fortitude_FoCuS_Northern Isles 13.w3g
 
-The following fixture is not from w3gjs:
+The following fixtures are not from w3gjs:
 
 - w3c_6aae9d48d867fad24f911778_last_refuge.w3g   <- W3Champions public match replay, https://w3champions.com/match/6aae9d48d867fad24f911778
+- w3c_6aaef330d867fad24f91360c_turtle_rock.w3g   <- W3Champions public match replay, https://w3champions.com/match/6aaef330d867fad24f91360c
+- w3c_6aaef31bd867fad24f913602_hammerfall.w3g    <- W3Champions public match replay, https://w3champions.com/match/6aaef31bd867fad24f913602
+- w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g <- W3Champions public match replay, https://w3champions.com/match/6aaef285d867fad24f9135d5
 
 w3gjs license (MIT):
 

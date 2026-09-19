@@ -24,6 +24,15 @@ const MIN_SUPPORTED_VERSION = 1.32;
  *  train orders, hero training, research, item use). */
 const ORDER_ACTION_IDS = new Set([0x10, 0x11, 0x12]);
 
+/** F001: `RemoveUnitFromBuildingQueue` — a player cancelling a queued unit
+ *  or hero order (w3gjs `ActionParser.js` action ids 0x1e/0x1f; note these
+ *  are the same numeric values as the *outer* `gamedatablock`'s own
+ *  0x1e/0x1f timeslot markers checked below — two unrelated fields that
+ *  happen to share a byte range). Carries `slotNumber` (0 = the unit
+ *  currently training, 1-4 = queue positions) and `itemId`, the FourCC of
+ *  the order being removed, decoded the same way as hero training below. */
+const CANCEL_ACTION_IDS = new Set([0x1e, 0x1f]);
+
 function hasReplayMagic(bytes: Uint8Array): boolean {
   if (bytes.length < REPLAY_MAGIC.length) return false;
   for (let i = 0; i < REPLAY_MAGIC.length; i++) {
@@ -64,8 +73,14 @@ function collectOrderEvents(
  *  silently drops it. We replay the same `"gamedatablock"` stream `w3gjs`
  *  itself listens to and pick out those orders directly. See
  *  `w3gjsData.ts`'s `decodeOrderId` docblock for the byte-decoding this
- *  mirrors, and the feature spec's "Research already done" section. */
-function collectHeroTrainingEvents(replay: W3GReplay): Map<number, ReplayEvent[]> {
+ *  mirrors, and the feature spec's "Research already done" section.
+ *
+ *  F001: the same low-level stream also carries queue-cancel actions
+ *  (`CANCEL_ACTION_IDS`), so this collector (renamed from
+ *  `collectHeroTrainingEvents`) now also emits `kind: "cancel"` events —
+ *  same cumulative `elapsedMs`, same per-player routing. An undecodable
+ *  cancel `itemId` is skipped, never thrown. */
+function collectLowLevelEvents(replay: W3GReplay): Map<number, ReplayEvent[]> {
   const events = new Map<number, ReplayEvent[]>();
   let elapsedMs = 0;
 
@@ -76,15 +91,25 @@ function collectHeroTrainingEvents(replay: W3GReplay): Map<number, ReplayEvent[]
 
     for (const commandBlock of timeslot.commandBlocks) {
       for (const action of commandBlock.actions) {
-        if (!ORDER_ACTION_IDS.has(action.id)) continue;
-        const orderId = (action as { orderId: number[] }).orderId;
-        const decoded = decodeOrderId(orderId);
-        if (!decoded.isFourCC || !HERO_IDS.has(decoded.value)) continue;
-
         const playerEvents = events.get(commandBlock.playerId) ?? [];
-        if (playerEvents.some((e) => e.id === decoded.value)) continue; // first order only
-        playerEvents.push({ kind: "hero", id: decoded.value, ms: elapsedMs });
-        events.set(commandBlock.playerId, playerEvents);
+
+        if (ORDER_ACTION_IDS.has(action.id)) {
+          const orderId = (action as { orderId: number[] }).orderId;
+          const decoded = decodeOrderId(orderId);
+          if (!decoded.isFourCC || !HERO_IDS.has(decoded.value)) continue;
+          if (playerEvents.some((e) => e.kind === "hero" && e.id === decoded.value)) continue; // first order only
+          playerEvents.push({ kind: "hero", id: decoded.value, ms: elapsedMs });
+          events.set(commandBlock.playerId, playerEvents);
+          continue;
+        }
+
+        if (CANCEL_ACTION_IDS.has(action.id)) {
+          const cancelAction = action as { slotNumber: number; itemId: number[] };
+          const decoded = decodeOrderId(cancelAction.itemId);
+          if (!decoded.isFourCC) continue; // never throw on an undecodable itemId
+          playerEvents.push({ kind: "cancel", id: decoded.value, ms: elapsedMs, slot: cancelAction.slotNumber });
+          events.set(commandBlock.playerId, playerEvents);
+        }
       }
     }
   });
@@ -95,7 +120,8 @@ function collectHeroTrainingEvents(replay: W3GReplay): Map<number, ReplayEvent[]
 /**
  * Parses a `.w3g` replay buffer into a `ReplaySummary`: map/version/duration
  * metadata, non-observer players, and every unit/building/upgrade/item/hero
- * event each player issued, in ms. Never throws anything but
+ * event each player issued, in ms, plus (F001) any `"cancel"` events for
+ * queued unit/hero orders the player removed. Never throws anything but
  * `ReplayParseError`.
  */
 export async function parseReplay(bytes: Uint8Array): Promise<ReplaySummary> {
@@ -104,7 +130,7 @@ export async function parseReplay(bytes: Uint8Array): Promise<ReplaySummary> {
   }
 
   const replay = new W3GReplay();
-  const heroEvents = collectHeroTrainingEvents(replay);
+  const lowLevelEvents = collectLowLevelEvents(replay);
 
   let output;
   try {
@@ -136,7 +162,7 @@ export async function parseReplay(bytes: Uint8Array): Promise<ReplaySummary> {
       ...collectOrderEvents(p.buildings?.order, "building"),
       ...collectOrderEvents(p.upgrades?.order, "upgrade"),
       ...collectOrderEvents(p.items?.order, "item"),
-      ...(heroEvents.get(p.id) ?? []),
+      ...(lowLevelEvents.get(p.id) ?? []),
     ].sort((a, b) => a.ms - b.ms);
     events[p.id] = combined;
   }
