@@ -6,6 +6,7 @@ import W3GReplay from "w3gjs";
 import type { GameDataBlock, TimeslotBlock } from "w3gjs";
 import { HERO_IDS, decodeOrderId } from "./w3gjsData";
 import { ReplayParseError, type ReplayEvent, type ReplayPlayer, type ReplayRace, type ReplaySummary } from "./types";
+import { humanizeMapName } from "./mapName";
 
 /** The 28-byte magic every `.w3g` file starts with — checked before handing
  *  the buffer to `w3gjs` so a non-replay file gets a clean, typed error
@@ -44,20 +45,6 @@ function mapRaceCode(code: string): ReplayRace {
     default:
       return "random";
   }
-}
-
-/** Turns a raw map path/filename into a readable name: strips the
- *  `N_w3c_..._` bookkeeping prefix and the `_vX.Y.w3x` suffix, then splits
- *  the remaining CamelCase segment into words (`NorthernIsles` -> "Northern
- *  Isles"). Falls back to the bare filename when the convention doesn't
- *  match (fixtures without the w3c naming scheme). */
-function humanizeMapName(file: string): string {
-  const withoutExt = file.replace(/\.(w3x|w3m)$/i, "");
-  const withoutVersion = withoutExt.replace(/_v[\d.]+$/i, "");
-  const segments = withoutVersion.split("_").filter(Boolean);
-  const last = segments[segments.length - 1] ?? withoutVersion;
-  const spaced = last.replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim();
-  return spaced.length > 0 ? spaced : file;
 }
 
 /** Walks a player's four `.order` arrays (already split into these

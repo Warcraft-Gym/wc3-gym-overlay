@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { parseReplay } from "./parseReplay";
 import { extractBuild } from "./extractBuild";
 import { editorFormSchema } from "../lib/buildEditorSchema";
-import type { ReplaySummary } from "./types";
+import type { ReplayEvent, ReplaySummary } from "./types";
 
 const FIXTURES_DIR = join(__dirname, "__fixtures__");
 
@@ -129,5 +129,84 @@ describe("extractBuild", () => {
     expect(draft.title.length).toBeLessThanOrEqual(90);
     expect(draft.summary.length).toBeLessThanOrEqual(200);
     for (const step of draft.steps) expect(step.instruction.length).toBeLessThanOrEqual(160);
+  });
+});
+
+/** F001 follow-up-2: a steady stream of same-id unit orders must not merge
+ *  without bound (see the feature spec's failure spec — 13 Peasant orders
+ *  spread over 96s were merged into a single "Train 13× Peasant" step). */
+describe("extractBuild — merge window (F001 follow-up-2)", () => {
+  function summaryWithEvents(events: ReplayEvent[]): ReplaySummary {
+    return {
+      map: { file: "synthetic.w3x", name: "Synthetic" },
+      version: "3.00",
+      buildNumber: 1,
+      durationMs: 120_000,
+      players: [{ id: 0, name: "Solo#1", race: "human", raceDetected: "human", teamId: 0, isObserver: false }],
+      events: { 0: events },
+    };
+  }
+
+  it("bounds a steady stream of same-id unit orders to groups of at most 2 within a 10s window", () => {
+    // 13 "hpea" (Peasant) orders, 8s apart, starting at 1s: 1, 9, 17, ..., 97.
+    const events: ReplayEvent[] = Array.from({ length: 13 }, (_, i) => ({
+      kind: "unit" as const,
+      id: "hpea",
+      ms: 1_000 + i * 8_000,
+    }));
+    const draft = extractBuild(summaryWithEvents(events), 0);
+
+    let lastSupply = -1;
+    for (const step of draft.steps) {
+      const match = step.instruction.match(/^Train (\d+)× Peasant$/);
+      if (match) {
+        const count = Number(match[1]);
+        expect(count).toBeLessThan(3); // never N >= 3 — each group spans at most 10s, so at most 2 orders 8s apart
+        expect(step.instruction).toBe("Train 2× Peasant");
+      }
+      const supply = Number(step.supply);
+      if (lastSupply >= 0) {
+        // Peasant costs 1 food; supply rises by exactly the group's count.
+        const impliedCount = supply - lastSupply;
+        expect(impliedCount).toBeGreaterThanOrEqual(1);
+        expect(impliedCount).toBeLessThanOrEqual(2);
+      }
+      lastSupply = supply;
+    }
+    expect(draft.steps.some((s) => /Train \d+× Peasant/.test(s.instruction))).toBe(true);
+  });
+
+  describe("Last Refuge fixture (Dretwiak, human)", () => {
+    let dretwiakDraft: ReturnType<typeof extractBuild>;
+
+    beforeAll(async () => {
+      const lastRefuge = await parseReplay(loadFixture("w3c_6aae9d48d867fad24f911778_last_refuge.w3g"));
+      const dretwiakId = lastRefuge.players.find((p) => p.name === "Dretwiak#2963")!.id;
+      dretwiakDraft = extractBuild(lastRefuge, dretwiakId);
+    }, 15_000);
+
+    it("never merges more than 5 consecutive train orders into one step", () => {
+      for (const step of dretwiakDraft.steps) {
+        const match = step.instruction.match(/^Train (\d+)× /);
+        if (match) expect(Number(match[1])).toBeLessThanOrEqual(5);
+      }
+    });
+
+    it("never lets supply jump by more than 5 between consecutive steps within the first 3:00", () => {
+      let lastMs = -1;
+      let lastSupply = -1;
+      for (const step of dretwiakDraft.steps) {
+        const ms = clockToMs(step.time);
+        if (ms > 180_000) break;
+        if (lastSupply >= 0) expect(Number(step.supply) - lastSupply).toBeLessThanOrEqual(5);
+        lastMs = ms;
+        lastSupply = Number(step.supply);
+      }
+      expect(lastMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it("does not merge the first step into 'Train 13× Peasant'", () => {
+      expect(dretwiakDraft.steps[0]?.instruction).not.toBe("Train 13× Peasant");
+    });
   });
 });

@@ -5,6 +5,7 @@ import { Modal } from "../../../components/Modal";
 import { RaceCrest, RACE_LABEL } from "../../../components/RaceCrest";
 import { cn } from "../../../lib/cn";
 import { parseClock } from "../../../store/timer";
+import { humanizeMapName } from "../../../replay/mapName";
 import type { EditorFormInput } from "../../../lib/buildEditorSchema";
 import type { ExtractBuildOptions, ReplayParseErrorCode, ReplaySummary } from "../../../replay/types";
 import type { W3ChampionsErrorCode, W3CMatchSummary } from "../../../replay/w3champions";
@@ -290,7 +291,7 @@ export function ReplayImportModal({
 
           {state.match ? (
             <p className="text-xs text-muted">
-              W3Champions · {state.match.map} · winner: {winner?.battleTag ?? "unknown"}
+              W3Champions · {humanizeMapName(state.match.map)} · winner: {winner?.battleTag ?? "unknown"}
             </p>
           ) : null}
 

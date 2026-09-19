@@ -251,13 +251,15 @@ describe("ReplayImportModal — W3Champions link (F004)", () => {
     expect(parseMatchRefMock).toHaveBeenCalledWith("hello");
   });
 
-  it("fetch success parses the replay and renders players, with the W3Champions caption and Source line", async () => {
+  it("fetch success parses the replay and renders players, with the humanised W3Champions caption and Source line", async () => {
     parseMatchRefMock.mockReturnValue("6aae9d48d867fad24f911778");
     fetchW3ChampionsReplayMock.mockResolvedValue({
       bytes: new Uint8Array([1, 2, 3]),
       fileName: "6aae9d48d867fad24f911778.w3g",
       match: {
-        map: "Last Refuge",
+        // The raw map key the W3Champions API actually returns (F004
+        // user-test note) — no separators, version glued onto the name.
+        map: "3c2609191153LastRefugev1_5",
         durationSeconds: 782,
         players: [
           { battleTag: "Dretwiak#2963", race: "human", won: true },

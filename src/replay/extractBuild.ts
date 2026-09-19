@@ -64,11 +64,22 @@ function instructionFor(kind: ReplayEvent["kind"], title: string, count: number)
 
 type MergedStep = { kind: ReplayEvent["kind"]; id: string; ms: number; lastMs: number; count: number };
 
+/** Belt-and-braces cap on top of the merge window itself: a 6th consecutive
+ *  same-id unit order always starts a new group, even if it still lands
+ *  inside `MERGE_WINDOW_MS` of the group's first order. */
+const MAX_MERGE_COUNT = 5;
+
 /** Drops building re-orders within `DEDUPE_WINDOW_MS` of the previous kept
- *  order for the same id, then merges consecutive same-id unit orders
- *  within `MERGE_WINDOW_MS` into one counted step. Both passes only ever
- *  look at the immediately preceding kept/merged entry — "consecutive" per
- *  the feature spec, not "anywhere within the window". */
+ *  order for the same id, then merges consecutive same-id unit orders into
+ *  one counted step. The merge window is anchored to the *group's first*
+ *  order (`event.ms - group.ms <= MERGE_WINDOW_MS`), not the previous order
+ *  — a sliding "previous order" comparison lets a steady stream of orders
+ *  chain without bound (a 13-order, 96s-long "Train 13× Peasant" step from
+ *  one order roughly every 8s, each within 10s of the last). Anchoring to
+ *  the first order bounds every group's total span to `MERGE_WINDOW_MS`.
+ *  Both passes only ever look at the immediately preceding kept/merged
+ *  entry — "consecutive" per the feature spec, not "anywhere within the
+ *  window". */
 function dedupeAndMerge(events: readonly ReplayEvent[]): MergedStep[] {
   const deduped: ReplayEvent[] = [];
   const lastBuildingMs = new Map<string, number>();
@@ -84,7 +95,13 @@ function dedupeAndMerge(events: readonly ReplayEvent[]): MergedStep[] {
   const merged: MergedStep[] = [];
   for (const event of deduped) {
     const prev = merged[merged.length - 1];
-    if (event.kind === "unit" && prev?.kind === "unit" && prev.id === event.id && event.ms - prev.lastMs <= MERGE_WINDOW_MS) {
+    if (
+      event.kind === "unit" &&
+      prev?.kind === "unit" &&
+      prev.id === event.id &&
+      prev.count < MAX_MERGE_COUNT &&
+      event.ms - prev.ms <= MERGE_WINDOW_MS
+    ) {
       prev.count += 1;
       prev.lastMs = event.ms;
       continue;
