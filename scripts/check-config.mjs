@@ -198,8 +198,17 @@ function main() {
   // would let the webview read anything under the user's home directory).
   if (!knownIdentifiers || knownIdentifiers.includes("fs:allow-read-file")) {
     const readFileScopes = fsAllowScopes(caps, "fs:allow-read-file");
-    const hasHomeWildcard = readFileScopes.some((s) => s.path === "$HOME/**");
-    report("fs:allow-read-file scope excludes $HOME/**", !hasHomeWildcard);
+    const hasHomeWildcard = readFileScopes.some((s) => s.path === "$HOME/**" || s.path === "**");
+    report("fs:allow-read-file scope excludes $HOME/** and **", !hasHomeWildcard);
+    // F003: macOS stores replays under ~/Library/Application Support/Blizzard,
+    // which is Tauri's $DATA — required alongside $DOCUMENT/** (Windows) so the
+    // native dialog can actually read a picked replay on both platforms.
+    const readFilePaths = readFileScopes.map((s) => s.path);
+    report(
+      "fs:allow-read-file scope includes $DOCUMENT/** and $DATA/Blizzard/**",
+      readFilePaths.includes("$DOCUMENT/**") && readFilePaths.includes("$DATA/Blizzard/**"),
+      `found: ${JSON.stringify(readFilePaths)}`,
+    );
   }
 
   // F002: a duplicate process (a second launch alongside a still-running

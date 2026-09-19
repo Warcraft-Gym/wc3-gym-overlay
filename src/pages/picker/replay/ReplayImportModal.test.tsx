@@ -159,6 +159,19 @@ describe("ReplayImportModal", () => {
     consoleError.mockRestore();
   });
 
+  it("disables 'Open in editor' in every error state, leaving only Cancel/close actionable", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    parseReplayMock.mockRejectedValue(new ReplayParseError("not_a_replay", "not a replay"));
+    renderModal();
+
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("radiogroup", { name: "Player" })).toBeNull();
+    expect((screen.getByRole("button", { name: "Open in editor" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByLabelText("Close import") as HTMLButtonElement).disabled).toBe(false);
+    consoleError.mockRestore();
+  });
+
   it("'Open in editor' calls onOpenInEditor with a draft titled after the selected player", async () => {
     parseReplayMock.mockResolvedValue(SUMMARY);
     extractBuildMock.mockImplementation(fakeExtractBuild);
