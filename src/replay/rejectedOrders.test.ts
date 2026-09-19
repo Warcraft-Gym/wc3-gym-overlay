@@ -113,3 +113,37 @@ describe("filterLikelyRejected", () => {
     expect(dropped.count).toBe(0);
   });
 });
+
+/** F003 (F002-scrutiny coverage gaps): the behaviour these cover already
+ *  existed in F002's `simulate`/`filterLikelyRejected`/`computeCancelledOrders`
+ *  — this only adds the missing tests. */
+describe("F002-scrutiny coverage gaps (F003)", () => {
+  it("(a) an hfoo ordered before its only Barracks (ordered at 30s, available at 90s) finishes is dropped; one ordered at 90_001ms is accepted", () => {
+    const buildings = [building("hbar", 30_000)]; // available at 30_000 + 60_000 (BUILD_TIME_S.hbar) = 90_000
+    const early = unit("hfoo", 60_000);
+    const late = unit("hfoo", 90_001);
+    const { accepted, dropped } = filterLikelyRejected([early, late], buildings);
+    expect(accepted).toEqual([late]);
+    expect(dropped.count).toBe(1);
+    expect(dropped.byId.hfoo).toBe(1);
+  });
+
+  it("(b) a full 5-slot queue, cancel of slot 4, then a later same-id order is accepted into the freed slot", () => {
+    // 5 hfoo orders fill one Barracks' queue to capacity; cancelling the
+    // 5th (slot 4) — mirrors extractBuild's own pipeline: computeCancelledOrders
+    // first, then filterLikelyRejected only ever sees the surviving orders.
+    const buildings = [building("hbar", 0)]; // available at 60_000
+    const fill = Array.from({ length: 5 }, (_, i) => unit("hfoo", 61_000 + i * 100));
+    const cancelSlot4 = cancel("hfoo", 65_000, 4);
+    const later = unit("hfoo", 66_000);
+    const events = [...fill, cancelSlot4, later];
+
+    const removed = computeCancelledOrders(events, buildings);
+    expect(removed.has(fill[4]!)).toBe(true);
+
+    const surviving = events.filter((e) => (e.kind === "unit" || e.kind === "hero") && !removed.has(e));
+    const { accepted, dropped } = filterLikelyRejected(surviving, buildings);
+    expect(accepted).toContain(later);
+    expect(dropped.count).toBe(0);
+  });
+});

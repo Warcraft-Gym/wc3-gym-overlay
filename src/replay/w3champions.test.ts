@@ -150,21 +150,29 @@ describe("fetchW3ChampionsReplay", () => {
     }
   });
 
-  it("fetches the real fixture replay and it parses (race enum matches the parsed replay)", async () => {
-    const fetchImpl = vi.fn((url: string) => {
-      if (url === `${W3C_API}/api/replays/${MATCH_ID}`) return Promise.resolve(replayResponse(FIXTURE_BYTES));
-      return Promise.resolve(jsonResponse(MATCH_JSON));
-    });
-    const { bytes } = await fetchW3ChampionsReplay(MATCH_ID, { fetchImpl: fetchImpl as unknown as typeof fetch });
-    const { parseReplay } = await import("./parseReplay");
-    const summary = await parseReplay(bytes);
-    expect(summary.version).toBe("3.00");
-    expect(summary.map.file).toContain("LastRefuge");
-    expect(summary.durationMs).toBeGreaterThan(780_000);
-    expect(summary.durationMs).toBeLessThan(784_000);
-    const dretwiak = summary.players.find((p) => p.name === "Dretwiak#2963");
-    const soulkeeper = summary.players.find((p) => p.name === "SoulKeeper#1844");
-    expect(dretwiak?.raceDetected).toBe("human");
-    expect(soulkeeper?.raceDetected).toBe("undead");
-  });
+  it(
+    "fetches the real fixture replay and it parses (race enum matches the parsed replay)",
+    async () => {
+      const fetchImpl = vi.fn((url: string) => {
+        if (url === `${W3C_API}/api/replays/${MATCH_ID}`) return Promise.resolve(replayResponse(FIXTURE_BYTES));
+        return Promise.resolve(jsonResponse(MATCH_JSON));
+      });
+      const { bytes } = await fetchW3ChampionsReplay(MATCH_ID, { fetchImpl: fetchImpl as unknown as typeof fetch });
+      const { parseReplay } = await import("./parseReplay");
+      const summary = await parseReplay(bytes);
+      expect(summary.version).toBe("3.00");
+      expect(summary.map.file).toContain("LastRefuge");
+      expect(summary.durationMs).toBeGreaterThan(780_000);
+      expect(summary.durationMs).toBeLessThan(784_000);
+      const dretwiak = summary.players.find((p) => p.name === "Dretwiak#2963");
+      const soulkeeper = summary.players.find((p) => p.name === "SoulKeeper#1844");
+      expect(dretwiak?.raceDetected).toBe("human");
+      expect(soulkeeper?.raceDetected).toBe("undead");
+    },
+    // F003: parsing a real ~190 KB replay under full-suite load (idMap's own
+    // fixture-derived test above already takes 5s+) occasionally exceeds
+    // vitest's default 5s test timeout — bump this one test rather than the
+    // suite-wide default.
+    20_000,
+  );
 });

@@ -105,6 +105,11 @@ export function StepRowEditor({
             {errors.instruction}
           </span>
         ) : null}
+        {step.importNote ? (
+          <span data-import-note className="tnum mt-0.5 block font-mono text-[0.65rem] text-faint">
+            {step.importNote}
+          </span>
+        ) : null}
       </label>
 
       <div className="flex items-start gap-1">

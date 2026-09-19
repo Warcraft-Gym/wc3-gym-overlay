@@ -30,6 +30,12 @@ export type EditorStepInput = {
   supply: string;
   instruction: string;
   icon: string;
+  /** F003: a replay-import-only provenance caption ("5 ordered · 1
+   *  cancelled" / "2 dropped (likely rejected)") — set by `extractBuild`,
+   *  rendered by `StepRowEditor`, never persisted. Optional so the schema
+   *  still accepts hand-authored steps without it, and `toLocalBuildInput`
+   *  deliberately never copies it onto the saved `ApiBuildStep`. */
+  importNote?: string;
 };
 
 export type EditorFormInput = {
@@ -74,6 +80,7 @@ function createStepSchema(isKnownIcon: IconKeyChecker) {
       .string()
       .trim()
       .refine((v) => v === "" || isKnownIcon(v), "Unknown icon"),
+    importNote: z.string().trim().optional(),
   });
 }
 

@@ -491,3 +491,99 @@ describe("extractBuild — cancel-aware extraction, synthetic semantics (F001, C
     expect(draft.steps[0]?.supply).toBe("5");
   });
 });
+
+/** F003 (C-706): provenance captions — shown on the extracted step, not
+ *  persisted (see `buildEditorSchema.ts` and `StepRowEditor.tsx`). */
+describe("extractBuild — import provenance captions (F003, C-706)", () => {
+  function summaryWithEvents(events: ReplayEvent[]): ReplaySummary {
+    return {
+      map: { file: "synthetic.w3x", name: "Synthetic" },
+      version: "3.00",
+      buildNumber: 1,
+      durationMs: 120_000,
+      players: [{ id: 0, name: "Solo#1", race: "human", raceDetected: "human", teamId: 0, isObserver: false }],
+      events: { 0: events },
+    };
+  }
+
+  it(
+    "Turtle Rock, lolicore: the 0:09 step ('Train 4× Peasant') carries importNote '5 ordered · 1 cancelled'; unaffected steps have no importNote",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6aaef330d867fad24f91360c_turtle_rock.w3g"));
+      const lolicoreId = summary.players.find((p) => p.name === "lolicore#21233")!.id;
+      const draft = extractBuild(summary, lolicoreId);
+
+      const trainIdx = draft.steps.findIndex((s) => s.time === "0:09");
+      expect(draft.steps[trainIdx]?.instruction).toBe("Train 4× Peasant");
+      expect(draft.steps[trainIdx]?.importNote).toBe("5 ordered · 1 cancelled");
+
+      const untouchedIdx = draft.steps.findIndex((s) => s.time === "0:00");
+      expect(draft.steps[untouchedIdx]?.importNote).toBeUndefined();
+    },
+    15_000,
+  );
+
+  it(
+    "Last Refuge, Dretwiak: at least one step carries an importNote ending in 'dropped (likely rejected)'",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6aae9d48d867fad24f911778_last_refuge.w3g"));
+      const dretwiakId = summary.players.find((p) => p.name === "Dretwiak#2963")!.id;
+      const draft = extractBuild(summary, dretwiakId);
+
+      expect(draft.steps.some((s) => s.importNote?.endsWith("dropped (likely rejected)"))).toBe(true);
+    },
+    15_000,
+  );
+
+  it("synthetic: a step with both a cancel and a dropped order joins both notes with ' · '", () => {
+    // hbar available at 60_000; 8 hfoo orders 100ms apart from 61_000 fill
+    // the 5-slot queue (o1,o3,o4,o5,o6 survive+accepted, o2 cancelled at
+    // slot 1, o7/o8 dropped as capacity-exceeding) — one merged step ends
+    // up with both a cancel and two dropped orders attached.
+    const draft = extractBuild(
+      summaryWithEvents([
+        { kind: "building", id: "hbar", ms: 0 },
+        { kind: "unit", id: "hfoo", ms: 61_000 }, // o1
+        { kind: "unit", id: "hfoo", ms: 61_100 }, // o2 — cancelled below
+        { kind: "unit", id: "hfoo", ms: 61_200 }, // o3
+        { kind: "unit", id: "hfoo", ms: 61_300 }, // o4
+        { kind: "unit", id: "hfoo", ms: 61_400 }, // o5
+        { kind: "unit", id: "hfoo", ms: 61_500 }, // o6
+        { kind: "unit", id: "hfoo", ms: 61_600 }, // o7 — dropped (queue full)
+        { kind: "unit", id: "hfoo", ms: 61_700 }, // o8 — dropped (queue full)
+        { kind: "cancel", id: "hfoo", ms: 61_800, slot: 1 }, // cancels o2
+      ]),
+      0,
+    );
+    const step = draft.steps.find((s) => s.instruction.startsWith("Train"));
+    expect(step?.importNote).toBe("6 ordered · 1 cancelled · 2 dropped (likely rejected)");
+  });
+
+  it("no importNote when neither a cancel nor a drop applies to a step", () => {
+    const draft = extractBuild(summaryWithEvents([{ kind: "building", id: "htow", ms: 0 }]), 0);
+    expect(draft.steps[0]?.importNote).toBeUndefined();
+  });
+
+  it("editorFormSchema accepts steps without importNote and steps with it", () => {
+    const withNote = { ...draftBase(), steps: [{ time: "0:00", supply: "5", instruction: "Build Farm", icon: "", importNote: "5 ordered · 1 cancelled" }] };
+    const withoutNote = { ...draftBase(), steps: [{ time: "0:00", supply: "5", instruction: "Build Farm", icon: "" }] };
+    expect(editorFormSchema.safeParse(withNote).success).toBe(true);
+    expect(editorFormSchema.safeParse(withoutNote).success).toBe(true);
+  });
+});
+
+function draftBase() {
+  return {
+    title: "Test build title",
+    race: "human",
+    vsRaces: ["orc"],
+    difficulty: "intermediate",
+    patch: "",
+    tags: "",
+    summary: "A test build with at least twenty characters.",
+    author: "Tester",
+    authorDiscord: "",
+    sourceUrl: "",
+    description: "",
+  };
+}

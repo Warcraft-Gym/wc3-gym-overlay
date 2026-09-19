@@ -197,6 +197,17 @@ function attachDroppedToSteps(mergedSteps: readonly MergedStep[], droppedOrders:
   return droppedMeta;
 }
 
+/** F003: the caption shown under a step's instruction in the editor
+ *  (`data-import-note`) — never persisted (see `EditorStepInput.importNote`'s
+ *  docblock). `undefined` when the step had neither a cancel nor a dropped
+ *  order attached to it. */
+function importNoteFor(cancelled: ImportedStepMeta | undefined, dropped: number | undefined): string | undefined {
+  const parts: string[] = [];
+  if (cancelled && cancelled.cancelled > 0) parts.push(`${cancelled.ordered} ordered · ${cancelled.cancelled} cancelled`);
+  if (dropped && dropped > 0) parts.push(`${dropped} dropped (likely rejected)`);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
 /** F001: `extractBuild`'s return value, extending `EditorFormInput` (what
  *  actually gets saved / drops into the editor) with a side `meta` map of
  *  per-step cancel counts — kept off `steps`/`EditorFormInput` itself so it
@@ -286,11 +297,12 @@ export function extractBuild(summary: ReplaySummary, playerId: number, opts: Ext
     authorDiscord: "",
     sourceUrl: "",
     description: "",
-    steps: steps.map((step) => ({
+    steps: steps.map((step, index) => ({
       time: step.time,
       supply: String(step.supply),
       instruction: step.instruction,
       icon: step.icon ?? "",
+      importNote: importNoteFor(cancelledMeta[index], droppedMeta[index]),
     })),
     meta: { cancelled: cancelledMeta, dropped: droppedMeta },
     dropped,
