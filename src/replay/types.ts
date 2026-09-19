@@ -69,4 +69,8 @@ export interface ExtractBuildOptions {
   cutoffMs?: number;
   includeUpgrades?: boolean;
   includeItems?: boolean;
+  /** F004: set when the replay came from a W3Champions match link (e.g.
+   *  "w3champions.com/match/<id>") — appended as a "Source: …" sentence to
+   *  the generated draft's `summary`, clamped together with the rest of it. */
+  sourceLabel?: string;
 }

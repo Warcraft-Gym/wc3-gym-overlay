@@ -67,6 +67,26 @@ describe("parseReplay", () => {
     FIXTURE_TIMEOUT_MS,
   );
 
+  it(
+    "parses w3c_6aae9d48d867fad24f911778_last_refuge.w3g (3.0, W3Champions match import fixture, F004)",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6aae9d48d867fad24f911778_last_refuge.w3g"));
+      expect(summary.version).toBe("3.00");
+      expect(summary.map.file).toContain("LastRefuge");
+      expect(summary.durationMs).toBeGreaterThanOrEqual(782_000 - 2_000);
+      expect(summary.durationMs).toBeLessThanOrEqual(782_000 + 2_000);
+      expect(summary.players).toHaveLength(2);
+
+      const dretwiak = summary.players.find((p) => p.name === "Dretwiak#2963");
+      const soulkeeper = summary.players.find((p) => p.name === "SoulKeeper#1844");
+      expect(dretwiak).toBeDefined();
+      expect(soulkeeper).toBeDefined();
+      expect(dretwiak?.raceDetected).toBe("human");
+      expect(soulkeeper?.raceDetected).toBe("undead");
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
   it("rejects random bytes as not_a_replay", async () => {
     const bytes = new Uint8Array(1024);
     for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 37 + 11) % 256;

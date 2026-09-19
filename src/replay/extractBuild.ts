@@ -141,7 +141,8 @@ export function extractBuild(summary: ReplaySummary, playerId: number, opts: Ext
     patch: "",
     tags: "replay",
     summary: clamp(
-      `Imported from replay ${summary.map.file} (v${summary.version}, ${durationLabel}). Trim and annotate before sharing.`,
+      `Imported from replay ${summary.map.file} (v${summary.version}, ${durationLabel}). Trim and annotate before sharing.` +
+        (opts.sourceLabel ? ` Source: ${opts.sourceLabel}` : ""),
       200,
     ),
     author: "Replay Import",

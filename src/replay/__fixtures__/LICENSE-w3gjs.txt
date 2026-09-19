@@ -6,6 +6,10 @@ used here solely as parser test inputs:
 - phoenix_vs_changer_concealed_hill.w3g   <- test/replays/200/2661392198_PhoeNix_Changer_Concealed Hill.w3g
 - fortitude_vs_focus_northern_isles.w3g   <- test/replays/300/2969930621_Fortitude_FoCuS_Northern Isles 13.w3g
 
+The following fixture is not from w3gjs:
+
+- w3c_6aae9d48d867fad24f911778_last_refuge.w3g   <- W3Champions public match replay, https://w3champions.com/match/6aae9d48d867fad24f911778
+
 w3gjs license (MIT):
 
 MIT License

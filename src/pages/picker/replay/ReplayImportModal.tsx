@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/Button";
 import { IconButton } from "../../../components/IconButton";
 import { Modal } from "../../../components/Modal";
@@ -7,6 +7,7 @@ import { cn } from "../../../lib/cn";
 import { parseClock } from "../../../store/timer";
 import type { EditorFormInput } from "../../../lib/buildEditorSchema";
 import type { ExtractBuildOptions, ReplayParseErrorCode, ReplaySummary } from "../../../replay/types";
+import type { W3ChampionsErrorCode, W3CMatchSummary } from "../../../replay/w3champions";
 
 // F002: replay parsing/extraction pulls in `w3gjs` (+ protobufjs + the
 // Node-built-in polyfills) — every reference to it here is dynamic
@@ -17,14 +18,34 @@ type ExtractBuildFn = (summary: ReplaySummary, playerId: number, opts: ExtractBu
 type ReplayParseErrorLike = Error & { code: ReplayParseErrorCode };
 type ReplayParseErrorCtor = new (code: ReplayParseErrorCode, message: string) => ReplayParseErrorLike;
 
+/** F004: what the modal is showing before a replay has been read — either a
+ *  file already picked by the caller, or a W3Champions link/id the user
+ *  still needs to type and fetch. */
+export type ReplayImportSource = { kind: "file"; bytes: Uint8Array } | { kind: "link" };
+
 type LoadState =
+  | { kind: "link"; error?: string; fetching?: boolean }
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; summary: ReplaySummary; extractBuild: ExtractBuildFn };
+  | {
+      kind: "ready";
+      summary: ReplaySummary;
+      extractBuild: ExtractBuildFn;
+      /** F004: set only for a W3Champions-sourced replay. */
+      matchId?: string;
+      match?: W3CMatchSummary;
+    };
 
 const MIN_CUTOFF_SECONDS = 60;
 const MAX_CUTOFF_SECONDS = 20 * 60;
 const DEFAULT_CUTOFF_SECONDS = 8 * 60;
+
+const W3C_ERROR_MESSAGE: Record<W3ChampionsErrorCode, string> = {
+  invalid_ref: "Paste a W3Champions match link (w3champions.com/match/…)",
+  not_found: "Match not found on W3Champions",
+  unreachable: "Couldn't reach W3Champions",
+  bad_response: "W3Champions returned something that isn't a replay",
+};
 
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
@@ -56,61 +77,116 @@ function messageForError(err: unknown, ctor: ReplayParseErrorCtor): string {
 }
 
 /**
- * F002 — shown after the user picks a `.w3g` file via the picker's "Import
- * replay" button. Parses the replay (busy state), then lets the user choose
- * a player / cutoff / toggles with a live "N steps" preview before handing
- * a prefilled `EditorFormInput` draft to `onOpenInEditor` — nothing is
- * persisted here; saving happens in `BuildEditorModal`.
+ * F002 (file) / F004 (W3Champions link) — shown after the user picks a
+ * `.w3g` file via the picker's "Import replay" button, or after they open
+ * the "From W3Champions" flow and paste a match link. Either way it ends up
+ * parsing a replay (busy state) and lets the user choose a player / cutoff /
+ * toggles with a live "N steps" preview before handing a prefilled
+ * `EditorFormInput` draft to `onOpenInEditor` — nothing is persisted here;
+ * saving happens in `BuildEditorModal`.
  */
 export function ReplayImportModal({
-  fileBytes,
+  source,
   apiBase,
   onClose,
   onOpenInEditor,
 }: {
-  fileBytes: Uint8Array;
+  source: ReplayImportSource;
   apiBase: string;
   onClose: () => void;
   onOpenInEditor: (draft: EditorFormInput) => void;
 }) {
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [state, setState] = useState<LoadState>(() => (source.kind === "link" ? { kind: "link" } : { kind: "loading" }));
+  const [linkText, setLinkText] = useState("");
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [cutoffText, setCutoffText] = useState(formatMmSs(DEFAULT_CUTOFF_SECONDS));
   const [cutoffMs, setCutoffMs] = useState(DEFAULT_CUTOFF_SECONDS * 1000);
   const [includeUpgrades, setIncludeUpgrades] = useState(true);
   const [includeItems, setIncludeItems] = useState(false);
 
+  // Guards every async setState below against firing after the modal has
+  // been closed/unmounted (a file parse still in flight, or a W3Champions
+  // fetch the user abandoned by hitting Escape).
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    [],
+  );
+
+  // F004: deliberately *not* the `autoFocus` prop on the `<input>` below —
+  // `Modal`'s own mount effect (a `useEffect`, so a *passive* effect) reads
+  // `document.activeElement` to remember what to restore focus to on close,
+  // but React applies `autoFocus` during the commit itself (a synchronous,
+  // pre-passive-effect step), so the input would already be focused by the
+  // time `Modal` looks — capturing the input, not the button that opened
+  // this dialog, as "previously focused". `ReplayImportModal` is `Modal`'s
+  // *parent*, so its own effects always run after `Modal`'s (child effects
+  // fire first) — focusing the input here happens strictly after `Modal`
+  // has already captured (and focused) whatever it's going to.
+  const linkInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    let cancelled = false;
+    if (state.kind === "link") linkInputRef.current?.focus();
+  }, [state]);
 
-    async function run() {
-      const { ReplayParseError } = await import("../../../replay/types");
-      try {
-        const [{ parseReplay }, { extractBuild }] = await Promise.all([
-          import("../../../replay/parseReplay") as Promise<{ parseReplay: ParseReplayFn }>,
-          import("../../../replay/extractBuild") as Promise<{ extractBuild: ExtractBuildFn }>,
-        ]);
-        const summary = await parseReplay(fileBytes);
-        if (cancelled) return;
-        const firstPlayer = summary.players.find((p) => !p.isObserver) ?? null;
-        setPlayerId(firstPlayer ? firstPlayer.id : null);
-        setState({ kind: "ready", summary, extractBuild });
-      } catch (err) {
-        if (cancelled) return;
-        console.error("Failed to import replay:", err);
-        setState({ kind: "error", message: messageForError(err, ReplayParseError) });
-      }
+  async function loadParsedReplay(bytes: Uint8Array, extra: { matchId?: string; match?: W3CMatchSummary } = {}) {
+    const { ReplayParseError } = await import("../../../replay/types");
+    try {
+      const [{ parseReplay }, { extractBuild }] = await Promise.all([
+        import("../../../replay/parseReplay") as Promise<{ parseReplay: ParseReplayFn }>,
+        import("../../../replay/extractBuild") as Promise<{ extractBuild: ExtractBuildFn }>,
+      ]);
+      const summary = await parseReplay(bytes);
+      if (!mountedRef.current) return;
+      const firstPlayer = summary.players.find((p) => !p.isObserver) ?? null;
+      setPlayerId(firstPlayer ? firstPlayer.id : null);
+      setState({ kind: "ready", summary, extractBuild, ...extra });
+    } catch (err) {
+      if (!mountedRef.current) return;
+      console.error("Failed to import replay:", err);
+      const message = messageForError(err, ReplayParseError);
+      // A file import has no retry affordance beyond re-picking a file, so
+      // it gets the terminal full-dialog error. A link import keeps its
+      // input/Fetch button so the user can paste a different link.
+      setState(extra.matchId ? { kind: "link", error: message } : { kind: "error", message });
     }
+  }
 
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [fileBytes]);
+  useEffect(() => {
+    if (source.kind !== "file") return;
+    void loadParsedReplay(source.bytes);
+  }, [source]);
 
+  async function handleFetch(): Promise<void> {
+    const { parseMatchRef } = await import("../../../replay/w3champions");
+    const matchId = parseMatchRef(linkText);
+    if (!matchId) {
+      setState({ kind: "link", error: W3C_ERROR_MESSAGE.invalid_ref });
+      return;
+    }
+    setState({ kind: "link", fetching: true });
+    const { fetchW3ChampionsReplay, W3ChampionsError } = await import("../../../replay/w3champions");
+    try {
+      const result = await fetchW3ChampionsReplay(matchId);
+      if (!mountedRef.current) return;
+      await loadParsedReplay(result.bytes, { matchId, match: result.match });
+    } catch (err) {
+      if (!mountedRef.current) return;
+      const code = err instanceof W3ChampionsError ? err.code : "unreachable";
+      setState({ kind: "link", error: W3C_ERROR_MESSAGE[code] });
+    }
+  }
+
+  const matchId = state.kind === "ready" ? state.matchId : undefined;
   const opts = useMemo<ExtractBuildOptions>(
-    () => ({ cutoffMs, includeUpgrades, includeItems }),
-    [cutoffMs, includeUpgrades, includeItems],
+    () => ({
+      cutoffMs,
+      includeUpgrades,
+      includeItems,
+      sourceLabel: matchId ? `w3champions.com/match/${matchId}` : undefined,
+    }),
+    [cutoffMs, includeUpgrades, includeItems, matchId],
   );
 
   const draft = useMemo(() => {
@@ -126,6 +202,7 @@ export function ReplayImportModal({
   const stepCount = draft?.steps.length ?? 0;
   const busy = state.kind === "loading";
   const title = state.kind === "ready" ? state.summary.map.name : "Import replay";
+  const winner = state.kind === "ready" ? state.match?.players.find((p) => p.won) : undefined;
 
   function handleCutoffBlur() {
     const parsedSeconds = parseClock(cutoffText.trim());
@@ -150,6 +227,48 @@ export function ReplayImportModal({
         </IconButton>
       </div>
 
+      {state.kind === "link" ? (
+        <div className="mt-4 flex flex-col gap-3">
+          <label className="block text-xs">
+            <span className="mb-1 block font-mono uppercase tracking-[0.14em] text-faint">W3Champions match</span>
+            <input
+              ref={linkInputRef}
+              type="text"
+              inputMode="url"
+              aria-label="W3Champions match link or id"
+              value={linkText}
+              onChange={(event) => setLinkText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleFetch();
+                }
+              }}
+              placeholder="https://w3champions.com/match/…"
+              className="h-9 w-full rounded border border-line bg-surface-2/60 px-2.5 text-sm text-fg outline-none focus:border-gold/60"
+            />
+          </label>
+
+          {state.fetching ? (
+            <p role="status" className="text-sm text-muted">
+              Fetching replay from W3Champions…
+            </p>
+          ) : null}
+
+          {state.error ? (
+            <p role="alert" className="rounded border border-loss/50 bg-loss/10 p-3 text-sm text-loss">
+              {state.error}
+            </p>
+          ) : null}
+
+          <div>
+            <Button variant="gold" disabled={!!state.fetching} onClick={() => void handleFetch()}>
+              Fetch
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {state.kind === "loading" ? (
         <p role="status" className="mt-4 text-sm text-muted">
           Reading replay…
@@ -168,6 +287,12 @@ export function ReplayImportModal({
             {state.summary.map.name} · v{state.summary.version} ·{" "}
             {formatMmSs(Math.round(state.summary.durationMs / 1000))}
           </p>
+
+          {state.match ? (
+            <p className="text-xs text-muted">
+              W3Champions · {state.match.map} · winner: {winner?.battleTag ?? "unknown"}
+            </p>
+          ) : null}
 
           <div>
             <span className="kicker mb-2 block">Player</span>

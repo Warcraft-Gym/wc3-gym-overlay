@@ -1,20 +1,31 @@
 /**
- * F002 — `ReplayImportModal`. Uses a hand-built `ReplaySummary` fixture
+ * F002/F004 — `ReplayImportModal`. Uses a hand-built `ReplaySummary` fixture
  * object (not a real `.w3g`) and mocks the lazily-imported `parseReplay`/
- * `extractBuild` modules so these jsdom tests stay fast (< 2s) — the real
- * fixture is only exercised once, through `App.importReplay.test.tsx`'s
- * sibling in `extractBuild.test.ts` / `parseReplay.test.ts`, to catch API
- * drift.
+ * `extractBuild`/`w3champions` modules so these jsdom tests stay fast
+ * (< 2s) — the real fixture is only exercised once, through
+ * `App.importReplay.test.tsx`'s sibling in `extractBuild.test.ts` /
+ * `parseReplay.test.ts` / `w3champions.test.ts`, to catch API drift.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReplayParseError, type ReplaySummary } from "../../../replay/types";
+import { W3ChampionsError } from "../../../replay/w3champions";
 
 const parseReplayMock = vi.hoisted(() => vi.fn());
 const extractBuildMock = vi.hoisted(() => vi.fn());
+const parseMatchRefMock = vi.hoisted(() => vi.fn());
+const fetchW3ChampionsReplayMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../replay/parseReplay", () => ({ parseReplay: parseReplayMock }));
 vi.mock("../../../replay/extractBuild", () => ({ extractBuild: extractBuildMock }));
+vi.mock("../../../replay/w3champions", async () => {
+  const actual = await vi.importActual<typeof import("../../../replay/w3champions")>("../../../replay/w3champions");
+  return {
+    ...actual,
+    parseMatchRef: parseMatchRefMock,
+    fetchW3ChampionsReplay: fetchW3ChampionsReplayMock,
+  };
+});
 
 const { ReplayImportModal } = await import("./ReplayImportModal");
 
@@ -63,7 +74,18 @@ function fakeExtractBuild(
 function renderModal(overrides: { onOpenInEditor?: (draft: unknown) => void; onClose?: () => void } = {}) {
   return render(
     <ReplayImportModal
-      fileBytes={new Uint8Array([1, 2, 3])}
+      source={{ kind: "file", bytes: new Uint8Array([1, 2, 3]) }}
+      apiBase="https://site.test"
+      onClose={overrides.onClose ?? vi.fn()}
+      onOpenInEditor={overrides.onOpenInEditor ?? vi.fn()}
+    />,
+  );
+}
+
+function renderLinkModal(overrides: { onOpenInEditor?: (draft: unknown) => void; onClose?: () => void } = {}) {
+  return render(
+    <ReplayImportModal
+      source={{ kind: "link" }}
       apiBase="https://site.test"
       onClose={overrides.onClose ?? vi.fn()}
       onOpenInEditor={overrides.onOpenInEditor ?? vi.fn()}
@@ -185,5 +207,121 @@ describe("ReplayImportModal", () => {
     expect(onOpenInEditor).toHaveBeenCalledTimes(1);
     const draft = onOpenInEditor.mock.calls[0][0];
     expect(draft.title).toContain("FoCuS#31324");
+  });
+});
+
+describe("ReplayImportModal — W3Champions link (F004)", () => {
+  afterEach(() => {
+    cleanup();
+    document.body.style.overflow = "";
+    vi.clearAllMocks();
+  });
+
+  it("shows a labelled link input and a Fetch button, with no player content yet", () => {
+    renderLinkModal();
+
+    expect(screen.getByRole("textbox", { name: "W3Champions match link or id" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Fetch" })).toBeTruthy();
+    expect(screen.queryByRole("radiogroup", { name: "Player" })).toBeNull();
+  });
+
+  it("shows the invalid-ref error inline without calling fetchW3ChampionsReplay", async () => {
+    parseMatchRefMock.mockReturnValue(null);
+    renderLinkModal();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
+      target: { value: "hello" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Paste a W3Champions match link (w3champions.com/match/…)");
+    expect(fetchW3ChampionsReplayMock).not.toHaveBeenCalled();
+  });
+
+  it("Enter in the input triggers Fetch", async () => {
+    parseMatchRefMock.mockReturnValue(null);
+    renderLinkModal();
+
+    const input = screen.getByRole("textbox", { name: "W3Champions match link or id" });
+    fireEvent.change(input, { target: { value: "hello" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await screen.findByRole("alert");
+    expect(parseMatchRefMock).toHaveBeenCalledWith("hello");
+  });
+
+  it("fetch success parses the replay and renders players, with the W3Champions caption and Source line", async () => {
+    parseMatchRefMock.mockReturnValue("6aae9d48d867fad24f911778");
+    fetchW3ChampionsReplayMock.mockResolvedValue({
+      bytes: new Uint8Array([1, 2, 3]),
+      fileName: "6aae9d48d867fad24f911778.w3g",
+      match: {
+        map: "Last Refuge",
+        durationSeconds: 782,
+        players: [
+          { battleTag: "Dretwiak#2963", race: "human", won: true },
+          { battleTag: "SoulKeeper#1844", race: "random", won: false },
+        ],
+      },
+    });
+    parseReplayMock.mockResolvedValue(SUMMARY);
+    extractBuildMock.mockImplementation(fakeExtractBuild);
+
+    renderLinkModal();
+    fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
+      target: { value: "https://w3champions.com/match/6aae9d48d867fad24f911778" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
+
+    await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
+    expect(screen.getByText(/W3Champions · Last Refuge · winner: Dretwiak#2963/)).toBeTruthy();
+    expect(extractBuildMock).toHaveBeenCalledWith(
+      SUMMARY,
+      expect.anything(),
+      expect.objectContaining({ sourceLabel: "w3champions.com/match/6aae9d48d867fad24f911778" }),
+    );
+  });
+
+  it.each([
+    ["not_found", "Match not found on W3Champions"],
+    ["unreachable", "Couldn't reach W3Champions"],
+    ["bad_response", "W3Champions returned something that isn't a replay"],
+  ] as const)("shows the typed error message for code %s and keeps the input editable", async (code, expected) => {
+    parseMatchRefMock.mockReturnValue("6aae9d48d867fad24f911778");
+    fetchW3ChampionsReplayMock.mockRejectedValue(new W3ChampionsError(code, "boom"));
+
+    renderLinkModal();
+    fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
+      target: { value: "6aae9d48d867fad24f911778" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(expected);
+    // the input is still there — the user can fix the link and retry.
+    expect(screen.getByRole("textbox", { name: "W3Champions match link or id" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Fetch" })).toBeTruthy();
+  });
+
+  it("disables Fetch and shows a status message while fetching", async () => {
+    parseMatchRefMock.mockReturnValue("6aae9d48d867fad24f911778");
+    let resolveFetch: (value: unknown) => void = () => {};
+    fetchW3ChampionsReplayMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    renderLinkModal();
+    fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
+      target: { value: "6aae9d48d867fad24f911778" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
+
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Fetching replay from W3Champions…"));
+    expect((screen.getByRole("button", { name: "Fetch" }) as HTMLButtonElement).disabled).toBe(true);
+
+    resolveFetch({ bytes: new Uint8Array([1]), fileName: "x.w3g", match: undefined });
   });
 });

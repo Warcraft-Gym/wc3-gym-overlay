@@ -6,6 +6,7 @@ import { isLocalBuild, useAllBuilds, type AnyBuild } from "../../data/useAllBuil
 import { host } from "../../host";
 import type { ShortcutRegistrationResult } from "../../host/bridge";
 import type { EditorFormInput } from "../../lib/buildEditorSchema";
+import type { ReplayImportSource } from "./replay/ReplayImportModal";
 import { deleteLocalBuild } from "../../lib/localBuilds";
 import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
@@ -25,8 +26,8 @@ import { SETTINGS_DIALOG_ID, SettingsModal } from "./SettingsModal";
 // once the user actually opens it — code-split so "New private build" /
 // "Duplicate" / "Edit" don't add to the picker's initial bundle.
 const BuildEditorModal = lazy(() => import("./editor/BuildEditorModal").then((m) => ({ default: m.BuildEditorModal })));
-// F002: the replay-import dialog (and, transitively, `w3gjs`) is only ever
-// needed once "Import replay" is clicked and a file is chosen.
+// F002/F004: the replay-import dialog (and, transitively, `w3gjs`) is only
+// ever needed once "Import replay"/"From W3Champions" is clicked.
 const ReplayImportModal = lazy(() =>
   import("./replay/ReplayImportModal").then((m) => ({ default: m.ReplayImportModal })),
 );
@@ -107,15 +108,19 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(() => parseHashFilters(location.hash));
   const [editor, setEditor] = useState<EditorState | null>(null);
-  const [replayImportBytes, setReplayImportBytes] = useState<Uint8Array | null>(null);
+  const [replayImport, setReplayImport] = useState<ReplayImportSource | null>(null);
 
   async function handleImportReplay(): Promise<void> {
     const picked = await host.openBinaryFile(REPLAY_FILE_FILTERS);
-    if (picked) setReplayImportBytes(picked.bytes);
+    if (picked) setReplayImport({ kind: "file", bytes: picked.bytes });
+  }
+
+  function handleImportFromW3Champions(): void {
+    setReplayImport({ kind: "link" });
   }
 
   function handleOpenReplayInEditor(initialValues: EditorFormInput): void {
-    setReplayImportBytes(null);
+    setReplayImport(null);
     setEditor({ mode: "new", sourceBuild: null, initialValues });
   }
 
@@ -180,6 +185,9 @@ export function App() {
           </Button>
           <Button variant="ghost" onClick={() => void handleImportReplay()}>
             Import replay
+          </Button>
+          <Button variant="ghost" onClick={handleImportFromW3Champions}>
+            From W3Champions
           </Button>
           <Button
             variant="ghost"
@@ -246,12 +254,12 @@ export function App() {
           </Suspense>
         ) : null}
 
-        {replayImportBytes ? (
+        {replayImport ? (
           <Suspense fallback={null}>
             <ReplayImportModal
-              fileBytes={replayImportBytes}
+              source={replayImport}
               apiBase={settings.apiBase}
-              onClose={() => setReplayImportBytes(null)}
+              onClose={() => setReplayImport(null)}
               onOpenInEditor={handleOpenReplayInEditor}
             />
           </Suspense>
