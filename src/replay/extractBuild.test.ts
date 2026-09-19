@@ -110,12 +110,12 @@ describe("extractBuild", () => {
       expect(step.instruction.startsWith("Research")).toBe(false);
     }
 
-    const withItems = extractBuild(summary, focusId, { includeItems: true, cutoffMs: summary.durationMs });
-    const withoutItems = extractBuild(summary, focusId, { includeItems: false, cutoffMs: summary.durationMs });
-    const buyCountWith = withItems.steps.filter((s) => s.instruction.startsWith("Buy")).length;
-    const buyCountWithout = withoutItems.steps.filter((s) => s.instruction.startsWith("Buy")).length;
-    expect(buyCountWithout).toBe(0);
-    expect(buyCountWith).toBeGreaterThanOrEqual(buyCountWithout);
+    const defaultResult = extractBuild(summary, focusId);
+    const withItems = extractBuild(summary, focusId, { includeItems: true });
+    const nonBuySteps = withItems.steps.filter((s) => !s.instruction.startsWith("Buy "));
+    expect(nonBuySteps).toEqual(defaultResult.steps);
+    const buySteps = withItems.steps.filter((s) => s.instruction.startsWith("Buy "));
+    expect(buySteps.length).toBeGreaterThanOrEqual(1);
   });
 
   it("validates against the private-build editor schema", () => {
