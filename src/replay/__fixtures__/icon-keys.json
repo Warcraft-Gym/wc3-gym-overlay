@@ -1,0 +1,848 @@
+[
+  {
+    "key": "hu-peasant",
+    "title": "Peasant",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-footman",
+    "title": "Footman",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-rifleman",
+    "title": "Rifleman",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-knight",
+    "title": "Knight",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-priest",
+    "title": "Priest",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-sorceress",
+    "title": "Sorceress",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-spellbreaker",
+    "title": "Spell Breaker",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-mortar",
+    "title": "Mortar Team",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-flying-machine",
+    "title": "Flying Machine",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-gryphon",
+    "title": "Gryphon Rider",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-siege-engine",
+    "title": "Siege Engine",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-dragonhawk",
+    "title": "Dragonhawk Rider",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-militia",
+    "title": "Militia",
+    "race": "human",
+    "kind": "unit"
+  },
+  {
+    "key": "hu-archmage",
+    "title": "Archmage",
+    "race": "human",
+    "kind": "hero"
+  },
+  {
+    "key": "hu-paladin",
+    "title": "Paladin",
+    "race": "human",
+    "kind": "hero"
+  },
+  {
+    "key": "hu-mountain-king",
+    "title": "Mountain King",
+    "race": "human",
+    "kind": "hero"
+  },
+  {
+    "key": "hu-blood-mage",
+    "title": "Blood Mage",
+    "race": "human",
+    "kind": "hero"
+  },
+  {
+    "key": "hu-town-hall",
+    "title": "Town Hall",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-keep",
+    "title": "Keep",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-castle",
+    "title": "Castle",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-farm",
+    "title": "Farm",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-altar",
+    "title": "Altar of Kings",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-barracks",
+    "title": "Barracks",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-lumber-mill",
+    "title": "Lumber Mill",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-blacksmith",
+    "title": "Blacksmith",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-arcane-sanctum",
+    "title": "Arcane Sanctum",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-workshop",
+    "title": "Workshop",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-aviary",
+    "title": "Gryphon Aviary",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-arcane-vault",
+    "title": "Arcane Vault",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-scout-tower",
+    "title": "Scout Tower",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-guard-tower",
+    "title": "Guard Tower",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "hu-arcane-tower",
+    "title": "Arcane Tower",
+    "race": "human",
+    "kind": "building"
+  },
+  {
+    "key": "or-peon",
+    "title": "Peon",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-grunt",
+    "title": "Grunt",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-headhunter",
+    "title": "Troll Headhunter",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-berserker",
+    "title": "Troll Berserker",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-demolisher",
+    "title": "Demolisher",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-shaman",
+    "title": "Shaman",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-witch-doctor",
+    "title": "Witch Doctor",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-spirit-walker",
+    "title": "Spirit Walker",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-raider",
+    "title": "Raider",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-kodo",
+    "title": "Kodo Beast",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-wind-rider",
+    "title": "Wind Rider",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-tauren",
+    "title": "Tauren",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-batrider",
+    "title": "Troll Batrider",
+    "race": "orc",
+    "kind": "unit"
+  },
+  {
+    "key": "or-blademaster",
+    "title": "Blademaster",
+    "race": "orc",
+    "kind": "hero"
+  },
+  {
+    "key": "or-far-seer",
+    "title": "Far Seer",
+    "race": "orc",
+    "kind": "hero"
+  },
+  {
+    "key": "or-tauren-chieftain",
+    "title": "Tauren Chieftain",
+    "race": "orc",
+    "kind": "hero"
+  },
+  {
+    "key": "or-shadow-hunter",
+    "title": "Shadow Hunter",
+    "race": "orc",
+    "kind": "hero"
+  },
+  {
+    "key": "or-great-hall",
+    "title": "Great Hall",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-stronghold",
+    "title": "Stronghold",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-fortress",
+    "title": "Fortress",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-burrow",
+    "title": "Orc Burrow",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-altar",
+    "title": "Altar of Storms",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-barracks",
+    "title": "Barracks",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-war-mill",
+    "title": "War Mill",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-spirit-lodge",
+    "title": "Spirit Lodge",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-beastiary",
+    "title": "Beastiary",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-tauren-totem",
+    "title": "Tauren Totem",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-voodoo-lounge",
+    "title": "Voodoo Lounge",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "or-watch-tower",
+    "title": "Watch Tower",
+    "race": "orc",
+    "kind": "building"
+  },
+  {
+    "key": "ne-wisp",
+    "title": "Wisp",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-archer",
+    "title": "Archer",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-huntress",
+    "title": "Huntress",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-glaive-thrower",
+    "title": "Glaive Thrower",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-dryad",
+    "title": "Dryad",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-druid-of-the-claw",
+    "title": "Druid of the Claw",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-mountain-giant",
+    "title": "Mountain Giant",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-hippogryph",
+    "title": "Hippogryph",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-druid-of-the-talon",
+    "title": "Druid of the Talon",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-faerie-dragon",
+    "title": "Faerie Dragon",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-chimaera",
+    "title": "Chimaera",
+    "race": "nightelf",
+    "kind": "unit"
+  },
+  {
+    "key": "ne-demon-hunter",
+    "title": "Demon Hunter",
+    "race": "nightelf",
+    "kind": "hero"
+  },
+  {
+    "key": "ne-keeper-of-the-grove",
+    "title": "Keeper of the Grove",
+    "race": "nightelf",
+    "kind": "hero"
+  },
+  {
+    "key": "ne-priestess-of-the-moon",
+    "title": "Priestess of the Moon",
+    "race": "nightelf",
+    "kind": "hero"
+  },
+  {
+    "key": "ne-warden",
+    "title": "Warden",
+    "race": "nightelf",
+    "kind": "hero"
+  },
+  {
+    "key": "ne-tree-of-life",
+    "title": "Tree of Life",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-tree-of-ages",
+    "title": "Tree of Ages",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-tree-of-eternity",
+    "title": "Tree of Eternity",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-moon-well",
+    "title": "Moon Well",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-altar",
+    "title": "Altar of Elders",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-ancient-of-war",
+    "title": "Ancient of War",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-hunters-hall",
+    "title": "Hunter's Hall",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-ancient-of-lore",
+    "title": "Ancient of Lore",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-ancient-of-wind",
+    "title": "Ancient of Wind",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-chimaera-roost",
+    "title": "Chimaera Roost",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-ancient-of-wonders",
+    "title": "Ancient of Wonders",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-ancient-protector",
+    "title": "Ancient Protector",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ne-entangled-mine",
+    "title": "Entangled Gold Mine",
+    "race": "nightelf",
+    "kind": "building"
+  },
+  {
+    "key": "ud-acolyte",
+    "title": "Acolyte",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-ghoul",
+    "title": "Ghoul",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-crypt-fiend",
+    "title": "Crypt Fiend",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-gargoyle",
+    "title": "Gargoyle",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-abomination",
+    "title": "Abomination",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-meat-wagon",
+    "title": "Meat Wagon",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-obsidian-statue",
+    "title": "Obsidian Statue",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-destroyer",
+    "title": "Destroyer",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-necromancer",
+    "title": "Necromancer",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-banshee",
+    "title": "Banshee",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-frost-wyrm",
+    "title": "Frost Wyrm",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-shade",
+    "title": "Shade",
+    "race": "undead",
+    "kind": "unit"
+  },
+  {
+    "key": "ud-death-knight",
+    "title": "Death Knight",
+    "race": "undead",
+    "kind": "hero"
+  },
+  {
+    "key": "ud-lich",
+    "title": "Lich",
+    "race": "undead",
+    "kind": "hero"
+  },
+  {
+    "key": "ud-dreadlord",
+    "title": "Dreadlord",
+    "race": "undead",
+    "kind": "hero"
+  },
+  {
+    "key": "ud-crypt-lord",
+    "title": "Crypt Lord",
+    "race": "undead",
+    "kind": "hero"
+  },
+  {
+    "key": "ud-necropolis",
+    "title": "Necropolis",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-halls-of-the-dead",
+    "title": "Halls of the Dead",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-black-citadel",
+    "title": "Black Citadel",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-ziggurat",
+    "title": "Ziggurat",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-altar",
+    "title": "Altar of Darkness",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-crypt",
+    "title": "Crypt",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-graveyard",
+    "title": "Graveyard",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-slaughterhouse",
+    "title": "Slaughterhouse",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-temple-of-the-damned",
+    "title": "Temple of the Damned",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-boneyard",
+    "title": "Boneyard",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-sacrificial-pit",
+    "title": "Sacrificial Pit",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-tomb-of-relics",
+    "title": "Tomb of Relics",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-nerubian-tower",
+    "title": "Nerubian Tower",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-spirit-tower",
+    "title": "Spirit Tower",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "ud-haunted-mine",
+    "title": "Haunted Gold Mine",
+    "race": "undead",
+    "kind": "building"
+  },
+  {
+    "key": "nt-naga-sea-witch",
+    "title": "Naga Sea Witch",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-dark-ranger",
+    "title": "Dark Ranger",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-pandaren-brewmaster",
+    "title": "Pandaren Brewmaster",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-beastmaster",
+    "title": "Beastmaster",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-pit-lord",
+    "title": "Pit Lord",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-goblin-tinker",
+    "title": "Goblin Tinker",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-firelord",
+    "title": "Firelord",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-goblin-alchemist",
+    "title": "Goblin Alchemist",
+    "race": "neutral",
+    "kind": "hero"
+  },
+  {
+    "key": "nt-tavern",
+    "title": "Tavern",
+    "race": "neutral",
+    "kind": "building"
+  },
+  {
+    "key": "nt-goblin-merchant",
+    "title": "Goblin Merchant",
+    "race": "neutral",
+    "kind": "building"
+  },
+  {
+    "key": "nt-mercenary-camp",
+    "title": "Mercenary Camp",
+    "race": "neutral",
+    "kind": "building"
+  },
+  {
+    "key": "nt-goblin-lab",
+    "title": "Goblin Laboratory",
+    "race": "neutral",
+    "kind": "building"
+  },
+  {
+    "key": "nt-gold-mine",
+    "title": "Gold Mine",
+    "race": "neutral",
+    "kind": "building"
+  },
+  {
+    "key": "nt-creep",
+    "title": "Creep camp",
+    "race": "neutral",
+    "kind": "misc"
+  },
+  {
+    "key": "nt-expansion",
+    "title": "Expansion",
+    "race": "neutral",
+    "kind": "misc"
+  },
+  {
+    "key": "nt-gold",
+    "title": "Gold",
+    "race": "neutral",
+    "kind": "misc"
+  },
+  {
+    "key": "nt-lumber",
+    "title": "Lumber",
+    "race": "neutral",
+    "kind": "misc"
+  },
+  {
+    "key": "nt-scroll-of-town-portal",
+    "title": "Scroll of Town Portal",
+    "race": "neutral",
+    "kind": "misc"
+  },
+  {
+    "key": "nt-upgrade",
+    "title": "Upgrade",
+    "race": "neutral",
+    "kind": "upgrade"
+  },
+  {
+    "key": "nt-attack",
+    "title": "Attack / push",
+    "race": "neutral",
+    "kind": "misc"
+  },
+  {
+    "key": "nt-scout",
+    "title": "Scout",
+    "race": "neutral",
+    "kind": "misc"
+  }
+]
