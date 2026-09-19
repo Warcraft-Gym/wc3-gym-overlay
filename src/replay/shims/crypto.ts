@@ -1,8 +1,8 @@
 /**
  * Browser shim for Node's `crypto`/`node:crypto`, aliased in
  * `vite.config.ts` for the `build`/`serve` commands only. w3gjs uses
- * `createHash(...).update(...).digest("hex")` only to compute the map's
- * checksum — informational metadata, never persisted or compared
+ * `createHash(...).update(...).digest("hex")` only to compute the
+ * replay's id hash — informational metadata, never persisted or compared
  * cross-session — so a deterministic non-cryptographic stub is sufficient;
  * it is never used for anything security-sensitive.
  */

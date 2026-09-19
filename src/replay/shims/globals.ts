@@ -1,3 +1,20 @@
+import { Buffer } from "buffer";
+
+/**
+ * F002-followup-1 (C-606): sets `globalThis.Buffer` explicitly instead of
+ * relying on `vite-plugin-node-polyfills`'s `globals: { Buffer: true }`
+ * option — that option injects its shim as a virtual module imported by
+ * *every* entry, so `buffer` (and everything manualChunks buckets with it)
+ * loads eagerly on both windows even when nothing but the replay parser
+ * needs it. Importing `buffer` here instead means it's only pulled in by
+ * this file, which only `parseReplay.ts` imports (for its side effect,
+ * before `w3gjs` loads). Guarded like `setImmediate` below: a no-op under
+ * Node (vitest), where `globalThis.Buffer` already exists.
+ */
+if (typeof globalThis.Buffer === "undefined") {
+  (globalThis as unknown as { Buffer: typeof Buffer }).Buffer = Buffer;
+}
+
 /**
  * Ensures the Node global `setImmediate` exists before any replay-parsing
  * code runs. w3gjs's `GameDataParser` calls the bare global `setImmediate`

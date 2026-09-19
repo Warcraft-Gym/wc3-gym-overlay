@@ -25,7 +25,26 @@ export default defineConfig(({ command, mode }) => {
       react(),
       tailwindcss(),
       ...(isBrowserTarget
-        ? [nodePolyfills({ include: ["buffer", "events", "util", "stream"], globals: { Buffer: true } })]
+        ? // F002-followup-1 (C-606): all three `globals` flags explicitly
+          // false — vite-plugin-node-polyfills defaults every one of
+          // `Buffer`/`global`/`process` to `true` when the option is
+          // *omitted* (merging over its own `{ Buffer: true, global:
+          // true, process: true }` default), not just when set `true`
+          // explicitly. Any of them being on injects that shim as a
+          // virtual module imported by every entry, dragging the whole
+          // `buffer` package (and, via manualChunks below, the entire
+          // replay bucket) into the eager graph even though the
+          // picker/overlay chrome never touches Buffer/global/process —
+          // only `src/replay/parseReplay.ts` does. `globalThis.Buffer` is
+          // set explicitly there instead (next to the `setImmediate`
+          // shim in `shims/globals.ts`), so `buffer` is only pulled in
+          // by replay code.
+          [
+            nodePolyfills({
+              include: ["buffer", "events", "util", "stream"],
+              globals: { Buffer: false, global: false, process: false },
+            }),
+          ]
         : []),
     ],
     base: "./",
