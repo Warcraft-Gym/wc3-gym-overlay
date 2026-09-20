@@ -8,18 +8,26 @@ import { oracleBuildItems, oracleCancelItems, type OracleFixture, type OracleIte
 import type { ReplayEvent } from "./types";
 
 /**
- * F002: proves we never miss a cancel the wc3.no / w3tools ground truth
- * (`LICENSE-w3gjs.txt`) reports — and, as a parity check that goes beyond
- * cancels, that every build/train/hero event matches it exactly — for the
+ * F002: proves we never miss a cancel, or a build/train/hero event, that
+ * the wc3.no / w3tools ground truth (`LICENSE-w3gjs.txt`) reports, for the
  * first 8:00 of three real ladder replays. Contract C-802.
  *
- * We do emit a small, known set of cancels the oracle doesn't: an Esc
- * press on a producer whose queued unit the game had already silently
- * refused for lack of gold (we do not model gold — see docs/overlay.md's
- * "What an import can and cannot know" section). Those extras are bounded
- * and enumerated literally below (`KNOWN_EXTRA_CANCELS`) so a regression
- * that introduces a *new* kind of extra, or removes one of these, fails
- * loudly instead of silently widening the tolerance.
+ * Both comparisons share one shape: every oracle item must be matched
+ * (kind, id, ms within tolerance, order-preserving) in our output — a miss
+ * fails loudly, naming the missing item. Anything we emit beyond that is an
+ * "extra"; extras are bounded per player and must literally equal a
+ * hand-verified entry in `KNOWN_EXTRA_CANCELS` / `KNOWN_EXTRA_BUILDS,` so a
+ * regression that introduces a *new* kind of extra, or removes one of
+ * these, fails loudly instead of silently widening the tolerance.
+ *
+ * Known cancel extras: an Esc press on a producer whose queued unit the
+ * game had already silently refused for lack of gold (we do not model
+ * gold — see docs/overlay.md's "What an import can and cannot know"
+ * section).
+ *
+ * Known build extra: a Tavern hire click for a hero the oracle does not
+ * list (order flags `0x44`) — the game likely refused the hire, or the
+ * oracle's parser skips Tavern hires entirely; see `KNOWN_EXTRA_BUILDS`.
  */
 
 const FIXTURES_DIR = join(__dirname, "__fixtures__");
@@ -32,23 +40,6 @@ function loadReplay(name: string): Uint8Array {
 
 function loadOracle(name: string): OracleFixture {
   return JSON.parse(readFileSync(join(FIXTURES_DIR, name), "utf-8")) as OracleFixture;
-}
-
-/** Both sides are already chronologically ordered (the oracle's own
- *  `buildOrderItems`, and `parseReplay`'s per-player `events`) — a
- *  positional diff is the "order-preserving" comparison the contract asks
- *  for. Reported as one aggregate failure so a mismatch is easy to read. */
-function expectItemsMatch(ours: OracleItem[], oracle: OracleItem[], label: string): void {
-  const render = (items: OracleItem[]) => items.map((i) => `${i.kind}:${i.id}@${i.ms}`).join("\n");
-  expect(ours.length, `${label}: length mismatch\nours:\n${render(ours)}\noracle:\n${render(oracle)}`).toBe(
-    oracle.length,
-  );
-  oracle.forEach((expected, index) => {
-    const actual = ours[index]!;
-    expect(actual.kind, `${label}[${index}]`).toBe(expected.kind);
-    expect(actual.id, `${label}[${index}]`).toBe(expected.id);
-    expect(Math.abs(actual.ms - expected.ms), `${label}[${index}] ms delta`).toBeLessThanOrEqual(TOLERANCE_MS);
-  });
 }
 
 /** wc3.no/w3tools classifies two of our `"unit"`/`"building"` categories
@@ -81,13 +72,14 @@ function ourCancelItems(events: readonly ReplayEvent[]): OracleItem[] {
     .filter((e) => e.kind === "unit" || e.kind === "hero" || e.kind === "building");
 }
 
-interface KnownExtraCancel {
+interface KnownExtraItem {
   kind: OracleItem["kind"];
   id: string;
   msApprox: number;
 }
 
 const MAX_EXTRA_CANCELS = 2;
+const MAX_EXTRA_BUILDS = 1;
 
 /** Cancels we emit that the oracle doesn't report, verified by hand
  *  against each fixture's oracle JSON: an Esc press on a producer whose
@@ -99,7 +91,7 @@ const MAX_EXTRA_CANCELS = 2;
  *  disappearing (the fixture or the parser changed) fails loudly instead
  *  of passing by coincidence. Keyed by replay file name, then by the
  *  oracle's player name. */
-const KNOWN_EXTRA_CANCELS: Record<string, Record<string, KnownExtraCancel[]>> = {
+const KNOWN_EXTRA_CANCELS: Record<string, Record<string, KnownExtraItem[]>> = {
   "w3c_6a87c0c1f214d632276e68be_shallow_grave.w3g": {
     "React#21633": [
       { kind: "unit", id: "uaco", msApprox: 21751 },
@@ -120,14 +112,27 @@ const KNOWN_EXTRA_CANCELS: Record<string, Record<string, KnownExtraCancel[]>> = 
   },
 };
 
-/** Consumes every oracle cancel against an advancing cursor into `ours`
+/** Build/train/hero extras we emit that the oracle doesn't report, verified
+ *  by hand against each fixture's oracle JSON: a Tavern hire click (order
+ *  flags `0x44`) for a hero the oracle never lists — either the game
+ *  silently refused the hire (we don't model gold — see
+ *  KNOWN_EXTRA_CANCELS's docblock) or the oracle's parser skips Tavern
+ *  hires outright. Keyed the same way as `KNOWN_EXTRA_CANCELS`. */
+const KNOWN_EXTRA_BUILDS: Record<string, Record<string, KnownExtraItem[]>> = {
+  "w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g": {
+    "Sonik#21222": [{ kind: "hero", id: "Npal", msApprox: 330661 }],
+  },
+};
+
+/** Consumes every oracle item against an advancing cursor into `ours`
  *  (both are already chronological): each oracle item must find a
  *  same-kind/id, ms-within-tolerance match in `ours` at or after the
- *  cursor, or the assertion fails with exactly which oracle cancel went
- *  missing — this is the "no missed cancels, order-preserving" guarantee.
- *  Whatever in `ours` is never claimed as a match is returned as the
- *  "extras" for the caller to bound and enumerate. */
-function matchCancelsReturningExtras(ours: OracleItem[], oracle: OracleItem[], label: string): OracleItem[] {
+ *  cursor, or the assertion fails with exactly which oracle item went
+ *  missing — this is the "no misses, order-preserving" guarantee shared by
+ *  the cancel and build/train/hero comparisons. Whatever in `ours` is never
+ *  claimed as a match is returned as the "extras" for the caller to bound
+ *  and enumerate. */
+function matchItemsReturningExtras(ours: OracleItem[], oracle: OracleItem[], label: string): OracleItem[] {
   const matchedOursIndices = new Set<number>();
   let cursor = 0;
   for (const expected of oracle) {
@@ -140,7 +145,7 @@ function matchCancelsReturningExtras(ours: OracleItem[], oracle: OracleItem[], l
     );
     expect(
       foundIndex,
-      `${label}: missed oracle cancel ${expected.kind}:${expected.id}@${expected.ms} — no matching event in ours ` +
+      `${label}: missed oracle item ${expected.kind}:${expected.id}@${expected.ms} — no matching event in ours ` +
         `at or after position ${cursor}`,
     ).toBeGreaterThanOrEqual(0);
     matchedOursIndices.add(foundIndex);
@@ -150,20 +155,20 @@ function matchCancelsReturningExtras(ours: OracleItem[], oracle: OracleItem[], l
 }
 
 /** Extras must be both bounded (a regression that starts emitting many
- *  spurious cancels fails even if none happen to collide with a known
- *  entry) and literally enumerated against `KNOWN_EXTRA_CANCELS` (a
- *  *different* extra, in kind/id or count, fails even though it's within
- *  the bound). */
-function expectExtrasAreKnown(extras: OracleItem[], known: KnownExtraCancel[], label: string): void {
+ *  spurious events fails even if none happen to collide with a known
+ *  entry) and literally enumerated against the caller's known-extras table
+ *  (a *different* extra, in kind/id or count, fails even though it's
+ *  within the bound). */
+function expectExtrasAreKnown(extras: OracleItem[], known: KnownExtraItem[], label: string, maxExtras: number): void {
   const render = (items: { kind: string; id: string; ms: number }[]) =>
     items.map((i) => `${i.kind}:${i.id}@${i.ms}`).join("\n") || "(none)";
   expect(
     extras.length,
-    `${label}: too many extra cancels (max ${MAX_EXTRA_CANCELS})\nextras:\n${render(extras)}`,
-  ).toBeLessThanOrEqual(MAX_EXTRA_CANCELS);
+    `${label}: too many extras (max ${maxExtras})\nextras:\n${render(extras)}`,
+  ).toBeLessThanOrEqual(maxExtras);
   expect(
     extras.length,
-    `${label}: extra cancels don't match KNOWN_EXTRA_CANCELS\nextras:\n${render(extras)}\nknown:\n${render(
+    `${label}: extras don't match the known-extras table\nextras:\n${render(extras)}\nknown:\n${render(
       known.map((k) => ({ kind: k.kind, id: k.id, ms: k.msApprox })),
     )}`,
   ).toBe(known.length);
@@ -203,17 +208,29 @@ describe("oracle parity (C-802)", () => {
           const race = player!.raceDetected !== "random" ? player!.raceDetected : player!.race;
 
           const cancelLabel = `${replay}/${oraclePlayer.playerName} cancels`;
-          const extras = matchCancelsReturningExtras(
+          const cancelExtras = matchItemsReturningExtras(
             ourCancelItems(events),
             oracleCancelItems(oraclePlayer, race),
             cancelLabel,
           );
-          expectExtrasAreKnown(extras, KNOWN_EXTRA_CANCELS[replay]?.[oraclePlayer.playerName] ?? [], cancelLabel);
+          expectExtrasAreKnown(
+            cancelExtras,
+            KNOWN_EXTRA_CANCELS[replay]?.[oraclePlayer.playerName] ?? [],
+            cancelLabel,
+            MAX_EXTRA_CANCELS,
+          );
 
-          expectItemsMatch(
+          const buildLabel = `${replay}/${oraclePlayer.playerName} builds`;
+          const buildExtras = matchItemsReturningExtras(
             ourBuildItems(events),
             oracleBuildItems(oraclePlayer, race),
-            `${replay}/${oraclePlayer.playerName} builds`,
+            buildLabel,
+          );
+          expectExtrasAreKnown(
+            buildExtras,
+            KNOWN_EXTRA_BUILDS[replay]?.[oraclePlayer.playerName] ?? [],
+            buildLabel,
+            MAX_EXTRA_BUILDS,
           );
         }
       },
