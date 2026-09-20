@@ -48,16 +48,84 @@ function ghApi(path) {
   return JSON.parse(out);
 }
 
-/** True when `url` responds 200 (direct) or 302 (redirect, e.g. to S3) to
- *  a HEAD request — the shape a GitHub release asset download URL takes.
- *  Never throws: a network failure just reports as "not ok". */
-async function headOk(url) {
+// The updater plugin resolves each platform's `url` itself (fetching it with
+// `Accept: application/octet-stream`), so a manifest can legitimately point
+// at a GitHub API asset URL (`.../releases/assets/<id>`) instead of a
+// browser `browser_download_url` — the id, not the filename, is in the URL.
+// Match that shape so we can resolve the real asset name for suffix checks.
+const API_ASSET_URL_RE =
+  /^https:\/\/api\.github\.com\/repos\/([^/]+)\/([^/]+)\/releases\/assets\/(\d+)$/;
+
+const assetNameCache = new Map();
+
+/** Returns the filename a platform `url` ultimately serves: for a GitHub API
+ *  asset URL (`.../releases/assets/<id>`) this resolves the id via `gh api`
+ *  to get the real `name`; for any other URL it's just the last path
+ *  segment. Also reports whether resolution itself succeeded. */
+function resolveAssetName(url) {
+  if (typeof url !== "string") return { name: null, isApiUrl: false, resolved: false };
+
+  const match = url.match(API_ASSET_URL_RE);
+  if (!match) {
+    const name = url.split("/").pop() ?? "";
+    return { name, isApiUrl: false, resolved: true };
+  }
+
+  if (assetNameCache.has(url)) {
+    return { name: assetNameCache.get(url), isApiUrl: true, resolved: true };
+  }
+
+  const [, owner, repo, id] = match;
   try {
+    const asset = ghApi(`repos/${owner}/${repo}/releases/assets/${id}`);
+    assetNameCache.set(url, asset.name);
+    return { name: asset.name, isApiUrl: true, resolved: true };
+  } catch (err) {
+    console.log(
+      `note: failed to resolve asset name for ${url}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return { name: null, isApiUrl: true, resolved: false };
+  }
+}
+
+/** True when `url` responds with a downloadable-looking status. GitHub API
+ *  asset URLs (`.../releases/assets/<id>`) require `Accept:
+ *  application/octet-stream` to serve the binary (per the updater plugin's
+ *  own request shape) and redirect to the actual storage backend, so those
+ *  are checked with a ranged GET, following redirects, expecting 200/206.
+ *  Plain browser download URLs keep the cheaper HEAD check (200/302,
+ *  redirect left unfollowed). Never throws: a network failure just reports
+ *  as "not ok". */
+async function headOk(url, isApiUrl) {
+  try {
+    if (isApiUrl) {
+      const res = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+        headers: { Accept: "application/octet-stream", Range: "bytes=0-0" },
+      });
+      return res.status === 200 || res.status === 206 || res.status === 302;
+    }
     const res = await fetch(url, { method: "HEAD", redirect: "manual" });
     return res.status === 200 || res.status === 302;
   } catch {
     return false;
   }
+}
+
+function checkAssetSuffix(key, url, expectedSuffixes, urlsToCheck) {
+  const { name, isApiUrl, resolved } = resolveAssetName(url);
+  if (!resolved) {
+    report(`platforms["${key}"] asset name resolves`, false, `url: ${url}`);
+    return;
+  }
+  console.log(`note: platforms["${key}"] resolves to asset "${name}"`);
+  report(
+    `platforms["${key}"] asset name ends with ${expectedSuffixes.join(" or ")}`,
+    typeof name === "string" && expectedSuffixes.some((suffix) => name.endsWith(suffix)),
+    `found: ${name}`,
+  );
+  urlsToCheck.push({ url, isApiUrl });
 }
 
 function checkMacPlatform(platforms, key, urlsToCheck) {
@@ -66,16 +134,15 @@ function checkMacPlatform(platforms, key, urlsToCheck) {
     report(`platforms["${key}"] present`, false);
     return;
   }
-  report(
-    `platforms["${key}"] url ends with .app.tar.gz`,
-    typeof mac.url === "string" && mac.url.endsWith(".app.tar.gz"),
-    `found: ${mac.url}`,
-  );
+  if (typeof mac.url === "string") {
+    checkAssetSuffix(key, mac.url, [".app.tar.gz"], urlsToCheck);
+  } else {
+    report(`platforms["${key}"] url ends with .app.tar.gz`, false, `found: ${mac.url}`);
+  }
   report(
     `platforms["${key}"] signature is non-empty`,
     typeof mac.signature === "string" && mac.signature.length > 0,
   );
-  if (typeof mac.url === "string") urlsToCheck.push(mac.url);
 }
 
 function checkManifest(manifest, tag, urlsToCheck) {
@@ -90,19 +157,46 @@ function checkManifest(manifest, tag, urlsToCheck) {
 
   const windows = platforms["windows-x86_64"];
   if (windows) {
-    report(
-      'platforms["windows-x86_64"] url ends with -setup.exe or .nsis.zip',
-      typeof windows.url === "string" &&
-        (windows.url.endsWith("-setup.exe") || windows.url.endsWith(".nsis.zip")),
-      `found: ${windows.url}`,
-    );
+    if (typeof windows.url === "string") {
+      checkAssetSuffix(
+        "windows-x86_64",
+        windows.url,
+        ["-setup.exe", ".nsis.zip"],
+        urlsToCheck,
+      );
+    } else {
+      report(
+        'platforms["windows-x86_64"] url ends with -setup.exe or .nsis.zip',
+        false,
+        `found: ${windows.url}`,
+      );
+    }
     report(
       'platforms["windows-x86_64"] signature is non-empty',
       typeof windows.signature === "string" && windows.signature.length > 0,
     );
-    if (typeof windows.url === "string") urlsToCheck.push(windows.url);
   } else {
     report('platforms["windows-x86_64"] present', false);
+  }
+
+  // Some workflow runs also publish an MSI alongside the NSIS installer
+  // under its own platform key — check it if the manifest has it, but it's
+  // not required, so absence isn't a failure.
+  const windowsMsi = platforms["windows-x86_64-msi"];
+  if (windowsMsi) {
+    if (typeof windowsMsi.url === "string") {
+      checkAssetSuffix("windows-x86_64-msi", windowsMsi.url, [".msi"], urlsToCheck);
+    } else {
+      report(
+        'platforms["windows-x86_64-msi"] url ends with .msi',
+        false,
+        `found: ${windowsMsi.url}`,
+      );
+    }
+    report(
+      'platforms["windows-x86_64-msi"] signature is non-empty',
+      typeof windowsMsi.signature === "string" && windowsMsi.signature.length > 0,
+    );
   }
 
   // tauri-action can emit either two per-arch macOS keys or a single
@@ -147,7 +241,7 @@ async function main() {
   for (const name of REQUIRED_STABLE_ASSETS) {
     const asset = assetByName.get(name);
     report(`release asset "${name}" exists`, Boolean(asset));
-    if (asset) urlsToCheck.push(asset.browser_download_url);
+    if (asset) urlsToCheck.push({ url: asset.browser_download_url, isApiUrl: false });
   }
 
   const latestJsonAsset = assetByName.get("latest.json");
@@ -171,9 +265,9 @@ async function main() {
     checkManifest(manifest, tag, urlsToCheck);
   }
 
-  for (const url of urlsToCheck) {
-    const ok = await headOk(url);
-    report(`HEAD ${url}`, ok);
+  for (const { url, isApiUrl } of urlsToCheck) {
+    const ok = await headOk(url, isApiUrl);
+    report(`${isApiUrl ? "GET" : "HEAD"} ${url}`, ok);
   }
 
   process.exit(failed ? 1 : 0);
