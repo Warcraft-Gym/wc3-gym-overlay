@@ -4,13 +4,39 @@ import { IconButton } from "../../components/IconButton";
 import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import { host } from "../../host";
-import type { ShortcutRegistrationResult } from "../../host/bridge";
+import type { ShortcutRegistrationResult, UpdateInfo } from "../../host/bridge";
 import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
 import { exportAll, importBuilds, parseImport } from "../../lib/buildExchange";
 import { LOCAL_BUILDS, SETTINGS, type Settings } from "../../store/keys";
 import { updateKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
+import { APP_VERSION } from "../../version";
 import { ShortcutEditor } from "./ShortcutEditor";
+
+/** F002: Settings' own "Check for updates" state — independent of the
+ *  banner's `useUpdateFlow` (see that module's doc comment): this always
+ *  surfaces the result, including a version the user already skipped, so
+ *  a manual check is never silent the way the launch check is. */
+type UpdateCheckState =
+  | { kind: "idle" }
+  | { kind: "checking" }
+  | { kind: "up-to-date" }
+  | { kind: "available"; info: UpdateInfo; skipped: boolean }
+  | { kind: "failed" };
+
+/** F002: runs `host.checkForUpdate()` and classifies the result against
+ *  `skippedVersion` — pulled out of the component so the click handler
+ *  below stays a one-liner. */
+async function runUpdateCheck(skippedVersion: string | null): Promise<UpdateCheckState> {
+  try {
+    const info = await host.checkForUpdate();
+    if (!info) return { kind: "up-to-date" };
+    return { kind: "available", info, skipped: info.version === skippedVersion };
+  } catch (err) {
+    console.warn("[wc3gym] update check failed", err);
+    return { kind: "failed" };
+  }
+}
 
 /** F004: backs up every private build in one file — `wc3gym-builds.wc3gym.json`. */
 async function exportAllPrivateBuilds(): Promise<void> {
@@ -94,20 +120,32 @@ export function SettingsModal({
   registrations,
   onRegistrations,
   onClose,
+  onOpenUpdate,
 }: {
   settings: Settings;
   registrations: ShortcutRegistrationResult[];
   onRegistrations: (results: ShortcutRegistrationResult[]) => void;
   onClose: () => void;
+  /** F002: "Update" / "Update anyway" below — (re)opens the shared update
+   *  banner for whatever this modal's own check found. Optional so call
+   *  sites with no banner to open (none in this app, but keeps the prop
+   *  from being a hard requirement for every test render) can omit it. */
+  onOpenUpdate?: (info: UpdateInfo) => void;
 }) {
   const [apiBaseInput, setApiBaseInput] = useState(settings.apiBase);
   const [apiBaseError, setApiBaseError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [updateCheck, setUpdateCheck] = useState<UpdateCheckState>({ kind: "idle" });
   const localBuildCount = useStoreValue(LOCAL_BUILDS).length;
 
   async function handleImportClick() {
     const message = await importPrivateBuilds();
     if (message !== null) setImportStatus(message);
+  }
+
+  async function handleCheckForUpdates() {
+    setUpdateCheck({ kind: "checking" });
+    setUpdateCheck(await runUpdateCheck(settings.skippedVersion));
   }
 
   function handleApiBaseChange(value: string) {
@@ -162,6 +200,37 @@ export function SettingsModal({
             registrations={registrations}
             onRegistrations={onRegistrations}
           />
+        </div>
+
+        <div>
+          <h3 className="kicker mb-2">Updates</h3>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.autoUpdate}
+              onChange={(e) => void updateKey(SETTINGS, (s) => ({ ...s, autoUpdate: e.target.checked }))}
+            />
+            Auto-update on launch
+          </label>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button variant="ghost" onClick={() => void handleCheckForUpdates()}>
+              Check for updates
+            </Button>
+            {updateCheck.kind === "available" ? (
+              <Button variant="ghost" onClick={() => onOpenUpdate?.(updateCheck.info)}>
+                {updateCheck.skipped ? "Update anyway" : "Update"}
+              </Button>
+            ) : null}
+          </div>
+          {updateCheck.kind !== "idle" ? (
+            <p role="status" className="mt-2 text-xs text-muted">
+              {updateCheck.kind === "checking" && "Checking…"}
+              {updateCheck.kind === "up-to-date" && `You're on the latest version (${APP_VERSION})`}
+              {updateCheck.kind === "available" &&
+                `Version ${updateCheck.info.version} available${updateCheck.skipped ? " (skipped)" : ""}`}
+              {updateCheck.kind === "failed" && "Couldn't check for updates"}
+            </p>
+          ) : null}
         </div>
 
         <div>

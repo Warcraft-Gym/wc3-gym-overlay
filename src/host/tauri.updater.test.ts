@@ -57,11 +57,20 @@ vi.mock("@tauri-apps/plugin-process", () => ({
   relaunch: (...args: unknown[]) => relaunchMock(...args),
 }));
 
+// F002: backs `isPortableBuild()` — defaults to "installed" (`true`) so the
+// pre-existing tests below (written before portable detection landed) see
+// the same `portable: false` behavior they always did.
+const invokeMock = vi.fn().mockResolvedValue(true);
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...args: unknown[]) => invokeMock(...args),
+}));
+
 import { createTauriHost } from "./tauri";
 
 describe("tauri host — updater", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    invokeMock.mockResolvedValue(true);
   });
 
   it("checkForUpdate() resolves null when the plugin has no update", async () => {
@@ -92,6 +101,23 @@ describe("tauri host — updater", () => {
       date: "2026-09-20",
       portable: false,
     });
+  });
+
+  it("checkForUpdate() reports portable + downloadUrl when is_installed_bundle resolves false", async () => {
+    invokeMock.mockResolvedValue(false);
+    checkMock.mockResolvedValue({
+      version: "0.4.1",
+      currentVersion: "0.4.0",
+      date: "2026-09-20",
+      body: "Fixes the thing.",
+      downloadAndInstall: vi.fn(),
+    });
+
+    const host = createTauriHost();
+    const result = await host.checkForUpdate();
+
+    expect(result).toMatchObject({ portable: true });
+    expect(result?.downloadUrl).toMatch(/^https:\/\/github\.com\/.*Portable\.exe$/);
   });
 
   it("installUpdate() calls downloadAndInstall on the last checked update and reports progress", async () => {
@@ -138,9 +164,18 @@ describe("tauri host — updater", () => {
     expect(relaunchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("isPortableBuild() resolves false", async () => {
+  it("isPortableBuild() resolves false when is_installed_bundle resolves true", async () => {
+    invokeMock.mockResolvedValue(true);
     const host = createTauriHost();
 
     await expect(host.isPortableBuild()).resolves.toBe(false);
+    expect(invokeMock).toHaveBeenCalledWith("is_installed_bundle");
+  });
+
+  it("isPortableBuild() resolves true when is_installed_bundle resolves false", async () => {
+    invokeMock.mockResolvedValue(false);
+    const host = createTauriHost();
+
+    await expect(host.isPortableBuild()).resolves.toBe(true);
   });
 });

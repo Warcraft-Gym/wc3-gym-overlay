@@ -35,6 +35,8 @@ async function setToggleCombo(combo: string): Promise<void> {
     opacity: 1,
     scale: 1,
     shortcuts: { ...DEFAULT_SHORTCUTS, toggle_overlay: combo },
+    autoUpdate: false,
+    skippedVersion: null,
   });
 }
 

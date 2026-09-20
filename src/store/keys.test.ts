@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { localBuildSchema } from "./keys";
+import { DEFAULT_SHORTCUTS } from "../config";
+import { localBuildSchema, settingsSchema } from "./keys";
+
+/** F002: shape written by every 0.3.x settings save — no `autoUpdate` or
+ *  `skippedVersion` key at all, since neither existed yet. */
+const RAW_0_3_X_SETTINGS = {
+  apiBase: "https://wc3-gnl-website.vercel.app",
+  opacity: 1,
+  scale: 1,
+  shortcuts: { ...DEFAULT_SHORTCUTS },
+};
 
 function fullLocalBuild(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -50,5 +60,25 @@ describe("localBuildSchema", () => {
     const result = localBuildSchema.safeParse(raw);
     expect(result.success).toBe(true);
     expect(result.success && result.data.vsRaces).toEqual([]);
+  });
+});
+
+describe("settingsSchema — F002 autoUpdate/skippedVersion migration", () => {
+  it("defaults autoUpdate to true and skippedVersion to null for 0.3.x settings missing both keys", () => {
+    const result = settingsSchema.safeParse(RAW_0_3_X_SETTINGS);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.autoUpdate).toBe(true);
+    expect(result.success && result.data.skippedVersion).toBeNull();
+  });
+
+  it("keeps an explicit autoUpdate/skippedVersion the user already set", () => {
+    const result = settingsSchema.safeParse({
+      ...RAW_0_3_X_SETTINGS,
+      autoUpdate: false,
+      skippedVersion: "0.4.1",
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.autoUpdate).toBe(false);
+    expect(result.success && result.data.skippedVersion).toBe("0.4.1");
   });
 });

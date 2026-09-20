@@ -1,6 +1,9 @@
 use std::io::Write;
 use tauri::Manager;
 
+mod portable;
+use portable::is_installed_bundle;
+
 /// Whether the QA selftest flow is enabled for this process, via
 /// `WC3GYM_SELFTEST=1`. The frontend has no other way to see an env var, so
 /// it asks Rust instead of trying to parse `process.env` in the webview.
@@ -90,7 +93,8 @@ pub fn run() {
             selftest_shortcut_override,
             selftest_log,
             selftest_done,
-            quit_app
+            quit_app,
+            is_installed_bundle
         ])
         .setup(|app| {
             // QA-only: print the updater config the app actually resolved at

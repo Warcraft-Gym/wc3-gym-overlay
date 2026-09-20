@@ -19,6 +19,7 @@ import { writeTextFile, readTextFile, readFile } from "@tauri-apps/plugin-fs";
 import { documentDir } from "@tauri-apps/api/path";
 import { check as checkUpdate, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch as relaunchApp } from "@tauri-apps/plugin-process";
+import { invoke } from "@tauri-apps/api/core";
 import type {
   Host,
   ShortcutAction,
@@ -28,7 +29,7 @@ import type {
   UpdateProgress,
   WindowBounds,
 } from "./bridge";
-import { WINDOW_OVERLAY } from "../config";
+import { WINDOW_OVERLAY, PORTABLE_DOWNLOAD_URL } from "../config";
 
 /** F004 — the only extension a private build's export/import file uses. */
 const BUILD_FILE_FILTER = [{ name: "wc3gym build", extensions: ["json"] }];
@@ -228,10 +229,12 @@ async function openBinaryFile(
 let pendingUpdate: Update | null = null;
 
 /** F002: real `check()` from the updater plugin, mapped onto `UpdateInfo`.
- *  `portable` is always `false` here — the updater endpoint only exists in
- *  installed builds; portable detection lands in F002. */
+ *  The updater endpoint answers the same "is there a newer version" query
+ *  regardless of which exe asked, so a portable build still learns about
+ *  an update here — `portable` (from `isPortableBuild()`) is what tells the
+ *  UI to offer `PORTABLE_DOWNLOAD_URL` instead of an in-place install. */
 async function checkForUpdate(): Promise<UpdateInfo | null> {
-  const update = await checkUpdate();
+  const [update, portable] = await Promise.all([checkUpdate(), isPortableBuild()]);
   pendingUpdate = update;
   if (!update) return null;
   return {
@@ -239,7 +242,8 @@ async function checkForUpdate(): Promise<UpdateInfo | null> {
     currentVersion: update.currentVersion,
     notes: update.body,
     date: update.date,
-    portable: false,
+    portable,
+    downloadUrl: portable ? PORTABLE_DOWNLOAD_URL : undefined,
   };
 }
 
@@ -271,12 +275,13 @@ async function relaunch(): Promise<void> {
   await relaunchApp();
 }
 
-// F002: portable-build detection isn't wired up yet — always report
-// "installed build" so the updater path is what gets exercised until F002
-// lands the real check (a marker file the portable launcher writes, or
-// similar).
+/** F002: delegates to the Rust `is_installed_bundle` command (see
+ *  `src-tauri/src/lib.rs`), which inspects the running exe's own path — a
+ *  sibling uninstaller (Windows/NSIS) or a `.app/Contents/MacOS/` path
+ *  (macOS) means "installed", anything else (a bare exe the user downloaded
+ *  and ran directly) means "portable". */
 async function isPortableBuild(): Promise<boolean> {
-  return false;
+  return !(await invoke<boolean>("is_installed_bundle"));
 }
 
 export function createTauriHost(): Host {

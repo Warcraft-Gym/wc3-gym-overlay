@@ -28,6 +28,8 @@ const SETTINGS_VALUE: Settings = {
     step_next: "CommandOrControl+Shift+]",
     step_prev: "CommandOrControl+Shift+[",
   },
+  autoUpdate: false,
+  skippedVersion: null,
 };
 
 describe("App — Import replay", () => {

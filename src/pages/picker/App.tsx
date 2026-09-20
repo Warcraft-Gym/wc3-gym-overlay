@@ -11,6 +11,7 @@ import { deleteLocalBuild } from "../../lib/localBuilds";
 import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
+import { UPDATE_CHECK_DELAY_MS } from "../../config";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
@@ -21,6 +22,8 @@ import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
 import { SETTINGS_DIALOG_ID, SettingsModal } from "./SettingsModal";
+import { UpdateBanner } from "./UpdateBanner";
+import { useUpdateFlow } from "./useUpdateFlow";
 
 // F003: the editor (schema, icon picker, steps editor) is only ever needed
 // once the user actually opens it — code-split so "New private build" /
@@ -109,6 +112,21 @@ export function App() {
   const [filters, setFilters] = useState<Filters>(() => parseHashFilters(location.hash));
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [replayImport, setReplayImport] = useState<ReplayImportSource | null>(null);
+  const updateFlow = useUpdateFlow(settings.skippedVersion);
+
+  // F002: once per mount, wait a few seconds (so the check never delays the
+  // picker's own first paint) then check for an update — only when
+  // "Auto-update on launch" was on at the moment this component mounted.
+  // Deliberately reads `settings.autoUpdate`/`updateFlow.checkAuto` once via
+  // closure rather than reacting to later changes: "once after mount" per
+  // spec, not "whenever the setting flips". Never runs in the overlay
+  // window; this component only ever mounts as the picker.
+  useEffect(() => {
+    if (!settings.autoUpdate) return;
+    const timer = setTimeout(() => void updateFlow.checkAuto(), UPDATE_CHECK_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleImportReplay(): Promise<void> {
     const picked = await host.openBinaryFile(REPLAY_FILE_FILTERS);
@@ -172,6 +190,8 @@ export function App() {
 
   return (
     <>
+      <UpdateBanner flow={updateFlow} />
+
       <header className="flex items-center justify-between gap-3 border-b border-line/60 px-6 py-4">
         <div>
           <h1 className="font-display text-sm font-extrabold uppercase tracking-[0.12em] text-gold">
@@ -238,6 +258,7 @@ export function App() {
             registrations={registrations}
             onRegistrations={setRegistrations}
             onClose={() => setSettingsOpen(false)}
+            onOpenUpdate={updateFlow.open}
           />
         ) : null}
 

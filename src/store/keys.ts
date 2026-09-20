@@ -121,6 +121,14 @@ export type Settings = {
   scale: number;
   shortcuts: ShortcutMap;
   overlayBounds?: OverlayBounds;
+  /** F002: whether the picker checks for an update a few seconds after
+   *  launch. Defaults to `true` so the schema default (below) opts
+   *  existing (pre-F002) installs in automatically. */
+  autoUpdate: boolean;
+  /** F002: the version the user chose "Skip this version" for, or `null`.
+   *  A launch check that finds this exact version stays silent; the
+   *  Settings manual check still surfaces it as "(skipped)". */
+  skippedVersion: string | null;
 };
 
 const shortcutMapSchema: z.ZodType<ShortcutMap> = z.object({
@@ -162,6 +170,10 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     scale: z.number(),
     shortcuts: shortcutMapSchema,
     overlayBounds: overlayBoundsSchema.optional(),
+    // F002: absent in settings written by 0.3.x — zod fills in the default
+    // below when the key is missing, which is the whole migration.
+    autoUpdate: z.boolean().default(true),
+    skippedVersion: z.string().nullable().default(null),
   }),
 );
 
@@ -173,6 +185,8 @@ export const SETTINGS: StoreKey<Settings> = {
     opacity: 1,
     scale: 1,
     shortcuts: { ...DEFAULT_SHORTCUTS },
+    autoUpdate: true,
+    skippedVersion: null,
   }),
 };
 
