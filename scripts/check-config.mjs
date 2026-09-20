@@ -220,6 +220,34 @@ function main() {
   report("Cargo.toml lists tauri-plugin-single-instance", /tauri-plugin-single-instance/.test(cargoToml));
   report("lib.rs calls tauri_plugin_single_instance::init", /tauri_plugin_single_instance::init/.test(libRs));
 
+  // F001: releases must ship a signed updater manifest — the updater plugin
+  // only produces `latest.json` + signatures when this bundle flag is on.
+  report("bundle.createUpdaterArtifacts === true", conf.bundle?.createUpdaterArtifacts === true);
+
+  const updaterEndpoints = conf.plugins?.updater?.endpoints;
+  report(
+    "exactly one updater endpoint, pointing at the stable /releases/latest/download/latest.json URL",
+    Array.isArray(updaterEndpoints) &&
+      updaterEndpoints.length === 1 &&
+      updaterEndpoints[0] ===
+        "https://github.com/Warcraft-Gym/wc3-gnl-website/releases/latest/download/latest.json",
+    `found: ${JSON.stringify(updaterEndpoints)}`,
+  );
+
+  const updaterPubkey = conf.plugins?.updater?.pubkey;
+  report(
+    "updater pubkey is a non-empty base64 string",
+    typeof updaterPubkey === "string" && /^[A-Za-z0-9+/=\s]{40,}$/.test(updaterPubkey),
+  );
+
+  report(
+    "capabilities include updater:default + process:allow-restart, and not process:default",
+    declaredIdentifiers.includes("updater:default") &&
+      declaredIdentifiers.includes("process:allow-restart") &&
+      !declaredIdentifiers.includes("process:default"),
+    `found: ${JSON.stringify(declaredIdentifiers.filter((id) => id.startsWith("updater:") || id.startsWith("process:")))}`,
+  );
+
   process.exit(failed ? 1 : 0);
 }
 

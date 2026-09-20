@@ -74,11 +74,17 @@ pub fn run() {
         }
     }));
 
+    // The updater plugin has no mobile implementation — gate it like the
+    // plugin's own docs do, since this app never ships to mobile anyway.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
     builder
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             selftest_enabled,
             selftest_shortcut_override,
@@ -87,6 +93,34 @@ pub fn run() {
             quit_app
         ])
         .setup(|app| {
+            // QA-only: print the updater config the app actually resolved at
+            // runtime, so a native selftest run can assert the endpoint and
+            // pubkey landed correctly without parsing tauri.conf.json itself.
+            if selftest_enabled() {
+                let updater_config = app.config().plugins.0.get("updater");
+                let endpoint = updater_config
+                    .and_then(|u| u.get("endpoints"))
+                    .and_then(|e| e.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let pubkey_present = updater_config
+                    .and_then(|u| u.get("pubkey"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| !s.is_empty())
+                    .unwrap_or(false);
+                // Built by hand (not `serde_json::json!`) so the key order
+                // — "selftest" before "pubkey" — is guaranteed rather than
+                // left to the JSON map's (alphabetical, here) iteration
+                // order; the QA harness greps for that exact substring
+                // ordering.
+                println!(
+                    "{{\"selftest\":\"updater\",\"endpoint\":{},\"pubkey\":{}}}",
+                    serde_json::to_string(endpoint).expect("endpoint string always serializes"),
+                    pubkey_present
+                );
+            }
+
             // QA-only: simulate a user clicking "Quit app" one second after
             // launch, so the quit-on-close contract can be verified without
             // driving real OS window-close UI (AppleScript, etc.) in CI.

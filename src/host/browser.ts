@@ -10,6 +10,7 @@ import type {
   ShortcutAction,
   ShortcutMap,
   ShortcutRegistrationResult,
+  UpdateInfo,
   WindowBounds,
 } from "./bridge";
 import { tokenFromCode, unshiftKey } from "../lib/combo";
@@ -306,6 +307,30 @@ async function openBinaryFile(
   });
 }
 
+/** F002: the browser host has no updater — always report "no update". */
+async function checkForUpdate(): Promise<UpdateInfo | null> {
+  return null;
+}
+
+/** F002: nothing to install in the browser host — resolves immediately.
+ *  Takes no arguments even though `Host#installUpdate` declares an
+ *  `onProgress` callback param — there is nothing to report progress on,
+ *  and TS allows an implementation with fewer parameters than its
+ *  declared function type. */
+async function installUpdate(): Promise<void> {
+  // No-op — there is no update to download or install.
+}
+
+/** F002: the browser host's stand-in for a native app restart. */
+async function relaunch(): Promise<void> {
+  location.reload();
+}
+
+/** F002: the browser host is never the portable build. */
+async function isPortableBuild(): Promise<boolean> {
+  return false;
+}
+
 export function createBrowserHost(): Host {
   return {
     kind: "browser",
@@ -325,5 +350,9 @@ export function createBrowserHost(): Host {
     openBinaryFile,
     saveTextFile,
     openTextFile,
+    checkForUpdate,
+    installUpdate,
+    relaunch,
+    isPortableBuild,
   };
 }

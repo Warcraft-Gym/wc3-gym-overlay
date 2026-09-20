@@ -31,6 +31,14 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: vi.fn(),
 }));
 
+vi.mock("@tauri-apps/plugin-updater", () => ({
+  check: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock("@tauri-apps/plugin-process", () => ({
+  relaunch: vi.fn(),
+}));
+
 const openMock = vi.fn();
 const saveMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({

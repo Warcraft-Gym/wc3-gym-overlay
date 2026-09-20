@@ -23,6 +23,25 @@ export type ShortcutRegistrationResult = {
 
 export type WindowBounds = { x: number; y: number; width: number; height: number };
 
+/** F002: an update the host found available. `portable` is true when the
+ *  running build has no updater (the portable exe) — the UI should offer
+ *  `downloadUrl` instead of an in-place install. */
+export type UpdateInfo = {
+  version: string;
+  currentVersion: string;
+  notes?: string;
+  date?: string;
+  portable: boolean;
+  downloadUrl?: string;
+};
+
+/** F002: progress reported while `installUpdate` downloads the update.
+ *  `contentLength` is `null` when the server didn't report a size. */
+export type UpdateProgress = {
+  downloaded: number;
+  contentLength: number | null;
+};
+
 export interface Host {
   readonly kind: "tauri" | "browser";
   showWindow(label: string): Promise<void>;
@@ -62,4 +81,17 @@ export interface Host {
   openBinaryFile(
     filters: { name: string; extensions: string[] }[],
   ): Promise<{ name: string; bytes: Uint8Array } | null>;
+  /** F002: resolves the available update, or `null` when already up to
+   *  date. Browser host always resolves `null` — there is no updater. */
+  checkForUpdate(): Promise<UpdateInfo | null>;
+  /** F002: downloads + installs the update found by the last
+   *  `checkForUpdate()` call, reporting progress via `onProgress`. Browser
+   *  host resolves immediately without downloading anything. */
+  installUpdate(onProgress: (progress: UpdateProgress) => void): Promise<void>;
+  /** F002: restarts the app after an install. Browser host reloads the
+   *  page instead, matching the "come back on the new version" effect. */
+  relaunch(): Promise<void>;
+  /** F002: true when running the portable exe, which has no updater
+   *  wired up — the UI should offer a manual download instead. */
+  isPortableBuild(): Promise<boolean>;
 }

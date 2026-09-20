@@ -17,11 +17,15 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { writeTextFile, readTextFile, readFile } from "@tauri-apps/plugin-fs";
 import { documentDir } from "@tauri-apps/api/path";
+import { check as checkUpdate, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch as relaunchApp } from "@tauri-apps/plugin-process";
 import type {
   Host,
   ShortcutAction,
   ShortcutMap,
   ShortcutRegistrationResult,
+  UpdateInfo,
+  UpdateProgress,
   WindowBounds,
 } from "./bridge";
 import { WINDOW_OVERLAY } from "../config";
@@ -218,6 +222,63 @@ async function openBinaryFile(
   return { name: basename(path), bytes };
 }
 
+/** F002: holds the `Update` resource resolved by the last `checkForUpdate()`
+ *  call so `installUpdate()` can act on it without the `Host` interface
+ *  needing to round-trip the native object through the rest of the app. */
+let pendingUpdate: Update | null = null;
+
+/** F002: real `check()` from the updater plugin, mapped onto `UpdateInfo`.
+ *  `portable` is always `false` here — the updater endpoint only exists in
+ *  installed builds; portable detection lands in F002. */
+async function checkForUpdate(): Promise<UpdateInfo | null> {
+  const update = await checkUpdate();
+  pendingUpdate = update;
+  if (!update) return null;
+  return {
+    version: update.version,
+    currentVersion: update.currentVersion,
+    notes: update.body,
+    date: update.date,
+    portable: false,
+  };
+}
+
+/** F002: downloads + installs the update found by the last
+ *  `checkForUpdate()` call, translating the plugin's `DownloadEvent` stream
+ *  into a running byte count `onProgress` can render as a percentage. */
+async function installUpdate(onProgress: (progress: UpdateProgress) => void): Promise<void> {
+  if (!pendingUpdate) throw new Error("installUpdate() called with no update — call checkForUpdate() first");
+  let downloaded = 0;
+  let contentLength: number | null = null;
+  await pendingUpdate.downloadAndInstall((event) => {
+    switch (event.event) {
+      case "Started":
+        contentLength = event.data.contentLength ?? null;
+        onProgress({ downloaded, contentLength });
+        break;
+      case "Progress":
+        downloaded += event.data.chunkLength;
+        onProgress({ downloaded, contentLength });
+        break;
+      case "Finished":
+        onProgress({ downloaded, contentLength });
+        break;
+    }
+  });
+}
+
+async function relaunch(): Promise<void> {
+  await relaunchApp();
+}
+
+// F002: portable-build detection isn't wired up yet — always report
+// "installed build" so the updater path is what gets exercised until F002
+// lands the real check (a marker file the portable launcher writes, or
+// similar).
+async function isPortableBuild(): Promise<boolean> {
+  return false;
+}
+
 export function createTauriHost(): Host {
   return {
     kind: "tauri",
@@ -237,5 +298,9 @@ export function createTauriHost(): Host {
     saveTextFile,
     openTextFile,
     openBinaryFile,
+    checkForUpdate,
+    installUpdate,
+    relaunch,
+    isPortableBuild,
   };
 }
