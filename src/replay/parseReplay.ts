@@ -353,16 +353,17 @@ function collectLowLevelEvents(replay: W3GReplay): LowLevelResult {
           }
 
           if (HERO_IDS.has(decoded.value)) {
-            // F001 (oracle parity): a *racial* hero can only ever be
-            // trained once, so repeat orders (re-clicking an already-
-            // training hero) are deduped to its first order. A *tavern*
-            // hero has no such limit — a player can genuinely buy the same
-            // tavern hero twice from two different taverns, and the oracle
-            // records both (verified against
+            // F001 (oracle parity): every hero-training order is recorded
+            // as its own raw event, redundant repeats included — the oracle
+            // itself logs every order verbatim rather than simulating which
+            // ones the game actually accepted (verified against
+            // `oracle_6aaef370d867fad24f913624.json`'s two "Mountain King"
+            // entries 90ms apart, and
             // `oracle_6aaef285d867fad24f9135d5.json`'s two "Dark Ranger"
-            // entries 121ms apart), so those are never deduped.
-            const isTavernHero = PRODUCER_OF[decoded.value] === "tavern";
-            if (!isTavernHero && playerEvents.some((e) => e.kind === "hero" && e.id === decoded.value)) continue;
+            // ones 121ms apart). Collapsing a redundant re-click into one
+            // *displayed* step is `extractBuild.ts`'s `dedupeAndMerge`'s job
+            // (the same 2s reorder window it already uses for buildings),
+            // not this raw event stream's.
             playerEvents.push({ kind: "hero", id: decoded.value, ms: elapsedMs });
             events.set(commandBlock.playerId, playerEvents);
           }

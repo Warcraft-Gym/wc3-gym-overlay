@@ -127,12 +127,30 @@ const MAX_MERGE_COUNT = 5;
 function dedupeAndMerge(events: readonly ReplayEvent[], removed: ReadonlySet<ReplayEvent>): MergedStep[] {
   const deduped: ReplayEvent[] = [];
   const lastBuildingMs = new Map<string, number>();
+  const lastHeroIndex = new Map<string, number>();
   for (const event of events) {
     if (event.kind === "cancel") continue; // never itself a step
     if (event.kind === "building") {
       const lastMs = lastBuildingMs.get(event.id);
       if (lastMs !== undefined && event.ms - lastMs <= DEDUPE_WINDOW_MS) continue;
       lastBuildingMs.set(event.id, event.ms);
+    }
+    if (event.kind === "hero") {
+      // F001 (oracle parity): the raw event stream now carries every
+      // hero-training order verbatim, including a redundant re-click on an
+      // already-training hero (see `parseReplay.ts`) — collapsed here, same
+      // 2s reorder window as buildings above, so it never shows up twice.
+      // Prefers whichever of the pair *survived* a cancel, if only one did,
+      // so a genuinely cancelled duplicate can't hide a real one.
+      const lastIndex = lastHeroIndex.get(event.id);
+      if (lastIndex !== undefined) {
+        const lastEvent = deduped[lastIndex]!;
+        if (event.ms - lastEvent.ms <= DEDUPE_WINDOW_MS) {
+          if (removed.has(lastEvent) && !removed.has(event)) deduped[lastIndex] = event;
+          continue;
+        }
+      }
+      lastHeroIndex.set(event.id, deduped.length);
     }
     deduped.push(event);
   }

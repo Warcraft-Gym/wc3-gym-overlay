@@ -96,16 +96,17 @@ describe("oracle parity (C-802)", () => {
           const player = summary.players.find((p) => p.name === oraclePlayer.playerName);
           expect(player, `${replay}: no matching player for oracle name "${oraclePlayer.playerName}"`).toBeDefined();
           const events = summary.events[player!.id] ?? [];
+          const race = player!.raceDetected !== "random" ? player!.raceDetected : player!.race;
 
           expectItemsMatch(
             ourCancelItems(events),
-            oracleCancelItems(oraclePlayer),
+            oracleCancelItems(oraclePlayer, race),
             `${replay}/${oraclePlayer.playerName} cancels`,
           );
 
           expectItemsMatch(
             ourBuildItems(events),
-            oracleBuildItems(oraclePlayer),
+            oracleBuildItems(oraclePlayer, race),
             `${replay}/${oraclePlayer.playerName} builds`,
           );
         }
