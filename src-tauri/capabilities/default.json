@@ -30,7 +30,8 @@
       "allow": [
         { "url": "https://wc3-gnl-website.vercel.app/*" },
         { "url": "https://discord.gg/*" },
-        { "url": "https://discord.com/*" }
+        { "url": "https://discord.com/*" },
+        { "url": "https://github.com/Warcraft-Gym/wc3-gnl-website/*" }
       ]
     },
     "dialog:allow-save",

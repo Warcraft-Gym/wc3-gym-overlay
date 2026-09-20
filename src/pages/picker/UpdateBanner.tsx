@@ -5,12 +5,14 @@
  * shows a download link instead, regardless of which non-idle state the
  * flow is in (there's nothing to install, so it never leaves `available`).
  */
+import { useState } from "react";
 import { Button } from "../../components/Button";
 import { host } from "../../host";
 import { RELEASES_PAGE_URL } from "../../config";
 import type { UpdateFlow } from "./useUpdateFlow";
 
 const NOTES_MAX_LENGTH = 200;
+const OPENER_ERROR_TEXT = "Couldn't open the download page";
 
 function percentOf(progress: { downloaded: number; contentLength: number | null }): number {
   if (!progress.contentLength) return 0;
@@ -19,6 +21,19 @@ function percentOf(progress: { downloaded: number; contentLength: number | null 
 
 export function UpdateBanner({ flow }: { flow: UpdateFlow }) {
   const { state, later, skip, install } = flow;
+  const [openerError, setOpenerError] = useState(false);
+
+  /** F002-followup-1: the opener ACL can reject a URL at the native layer
+   *  (e.g. one not covered by the capability's allow-list) — surface that
+   *  as banner state instead of letting it fall through as an unhandled
+   *  rejection. */
+  function openExternal(url: string) {
+    setOpenerError(false);
+    host.openExternal(url).catch((error: unknown) => {
+      console.warn("Failed to open external URL", url, error);
+      setOpenerError(true);
+    });
+  }
 
   if (state.kind === "idle") return null;
 
@@ -46,12 +61,14 @@ export function UpdateBanner({ flow }: { flow: UpdateFlow }) {
         role="status"
         className="panel flex flex-wrap items-center justify-between gap-3 rounded-none border-x-0 border-t-0 border-loss/40 px-6 py-3 text-sm"
       >
-        <span className="text-muted">Update failed — try again or download from the releases page</span>
+        <span className="text-muted">
+          {openerError ? OPENER_ERROR_TEXT : "Update failed — try again or download from the releases page"}
+        </span>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => void install()}>
             Try again
           </Button>
-          <Button variant="ghost" onClick={() => void host.openExternal(RELEASES_PAGE_URL)}>
+          <Button variant="ghost" onClick={() => openExternal(RELEASES_PAGE_URL)}>
             Releases
           </Button>
         </div>
@@ -65,10 +82,10 @@ export function UpdateBanner({ flow }: { flow: UpdateFlow }) {
     return (
       <div role="status" className="panel flex flex-wrap items-center justify-between gap-3 rounded-none border-x-0 border-t-0 px-6 py-3 text-sm">
         <span className="text-muted">
-          A new version is available ({state.info.version}) — download the portable build
+          {openerError ? OPENER_ERROR_TEXT : `A new version is available (${state.info.version}) — download the portable build`}
         </span>
         <div className="flex gap-2">
-          <Button variant="gold" onClick={() => void host.openExternal(downloadUrl)}>
+          <Button variant="gold" onClick={() => openExternal(downloadUrl)}>
             Download
           </Button>
           <Button variant="ghost" onClick={later}>

@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const CONF_PATH = join(ROOT, "src-tauri/tauri.conf.json");
 const PKG_PATH = join(ROOT, "package.json");
+const CONFIG_TS_PATH = join(ROOT, "src/config.ts");
 const CAPS_DIR = join(ROOT, "src-tauri/capabilities");
 const SCHEMA_PATH = join(ROOT, "src-tauri/gen/schemas/desktop-schema.json");
 const DIST_DIR = join(ROOT, "dist");
@@ -80,6 +81,21 @@ function openerAllowScopes(caps) {
       .filter((p) => typeof p === "object" && p.identifier === "opener:allow-open-url")
       .flatMap((p) => p.allow ?? []),
   );
+}
+
+/** F002-followup-1: turns a Tauri opener/fs scope glob (`*` = any chars,
+ *  everything else literal) into a RegExp anchored to the whole string. */
+function globToRegExp(glob) {
+  const escaped = glob.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+  return new RegExp(`^${escaped}$`);
+}
+
+/** F002-followup-1: pulls the literal string value of `export const NAME =
+ *  "...";` out of `src/config.ts` via regex — no TS import, since this
+ *  script runs under plain Node. */
+function configStringLiteral(source, name) {
+  const match = source.match(new RegExp(`export const ${name}\\s*=\\s*"([^"]+)"`));
+  return match?.[1];
 }
 
 /** F004: the `allow` path list for a given fs permission identifier (e.g.
@@ -175,6 +191,22 @@ function main() {
   const openerScopes = openerAllowScopes(caps);
   const openerAllowsAll = openerScopes.some((s) => s.url === "*" || s.url === undefined);
   report("opener scope is an explicit allow-list (no wildcard-all)", openerScopes.length > 0 && !openerAllowsAll);
+
+  // F002-followup-1: the update banner's Download (portable) and Releases
+  // buttons open these `src/config.ts` URLs directly — the opener ACL must
+  // actually cover them, or the native app rejects the call (unit tests mock
+  // the opener and can't catch this).
+  const configSource = readFileSync(CONFIG_TS_PATH, "utf8");
+  const openedUrlNames = ["PORTABLE_DOWNLOAD_URL", "RELEASES_PAGE_URL"];
+  const openedUrls = openedUrlNames.map((name) => ({ name, url: configStringLiteral(configSource, name) }));
+  const uncoveredUrls = openedUrls.filter(
+    ({ url }) => url == null || !openerScopes.some((s) => globToRegExp(s.url).test(url)),
+  );
+  report(
+    "opener scope covers the URLs the app opens",
+    uncoveredUrls.length === 0,
+    `uncovered: ${JSON.stringify(uncoveredUrls)}`,
+  );
 
   // F004: the fs plugin's write/read-text-file grants must be scoped to the
   // dialog-chosen directories only — never a bare `fs:default` or an

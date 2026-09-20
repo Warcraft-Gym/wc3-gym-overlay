@@ -110,4 +110,42 @@ describe("UpdateBanner", () => {
     screen.getByRole("button", { name: "Releases" }).click();
     expect(openExternal).toHaveBeenCalledWith("https://github.com/Warcraft-Gym/wc3-gnl-website/releases");
   });
+
+  it("F002-followup-1: shows an opener-failure message when Releases is rejected by the native opener ACL", async () => {
+    vi.spyOn(host, "openExternal").mockRejectedValue(new Error("opener scope rejected the URL"));
+    vi.spyOn(host, "installUpdate").mockRejectedValue(new Error("network down"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { result } = renderHook(() => useUpdateFlow(null));
+    act(() => result.current.open(AVAILABLE));
+
+    const { rerender } = render(<UpdateBanner flow={result.current} />);
+    await act(async () => {
+      await result.current.install();
+    });
+    rerender(<UpdateBanner flow={result.current} />);
+
+    await act(async () => {
+      screen.getByRole("button", { name: "Releases" }).click();
+    });
+    rerender(<UpdateBanner flow={result.current} />);
+
+    screen.getByText("Couldn't open the download page");
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it("F002-followup-1: shows an opener-failure message when Download is rejected by the native opener ACL", async () => {
+    vi.spyOn(host, "openExternal").mockRejectedValue(new Error("opener scope rejected the URL"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { result } = renderHook(() => useUpdateFlow(null));
+    act(() => result.current.open(PORTABLE_AVAILABLE));
+    const { rerender } = render(<UpdateBanner flow={result.current} />);
+
+    await act(async () => {
+      screen.getByRole("button", { name: "Download" }).click();
+    });
+    rerender(<UpdateBanner flow={result.current} />);
+
+    screen.getByText("Couldn't open the download page");
+    expect(warn).toHaveBeenCalled();
+  });
 });
