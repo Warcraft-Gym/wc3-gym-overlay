@@ -652,3 +652,37 @@ function draftBase() {
     description: "",
   };
 }
+
+describe("extractBuild — Random players (a Computer opponent, or an undetected race)", () => {
+  function summary(players: ReplaySummary["players"]): ReplaySummary {
+    return {
+      map: { file: "synthetic.w3x", name: "Synthetic" },
+      version: "3.00",
+      buildNumber: 1,
+      durationMs: 120_000,
+      players,
+      events: { 0: [{ kind: "unit", id: "uaco", ms: 4000 }, { kind: "building", id: "usep", ms: 7000 }, { kind: "building", id: "ugrv", ms: 10000 }], 1: [] },
+    };
+  }
+
+  it("leaves a Random opponent out of vsRaces so the draft still validates (vs any)", () => {
+    const s = summary([
+      { id: 0, name: "Me#1", race: "undead", raceDetected: "undead", teamId: 0, isObserver: false },
+      { id: 1, name: "Computer", race: "random", raceDetected: "random", teamId: 1, isObserver: false },
+    ]);
+    const draft = extractBuild(s, 0);
+    expect(draft.vsRaces).toEqual([]);
+    expect(draft.title).toContain("vs Random");
+    expect(editorFormSchema.safeParse(draft).success).toBe(true);
+  });
+
+  it("leaves the player's own race empty when it resolved to Random, so the editor asks for it", () => {
+    const s = summary([
+      { id: 0, name: "Me#1", race: "random", raceDetected: "random", teamId: 0, isObserver: false },
+      { id: 1, name: "Them#2", race: "orc", raceDetected: "orc", teamId: 1, isObserver: false },
+    ]);
+    const draft = extractBuild(s, 0);
+    expect(draft.race).toBe("");
+    expect(draft.vsRaces).toEqual(["orc"]);
+  });
+});

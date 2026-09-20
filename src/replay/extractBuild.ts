@@ -300,14 +300,20 @@ export function extractBuild(summary: ReplaySummary, playerId: number, opts: Ext
   });
 
   const race = effectiveRace(player);
-  const vsRaces = [...new Set(opponents.map(effectiveRace))];
+  // "random" is not a race the editor (or the site) accepts: a Computer
+  // opponent, or a human one whose race could not be detected, resolves to
+  // it. Leave such opponents out (the build is then "vs any"), and leave
+  // the player's own race empty so the editor asks for it instead of
+  // failing on Save with no message.
+  const opponentRaces = [...new Set(opponents.map(effectiveRace))];
+  const vsRaces = opponentRaces.filter((r) => r !== "random");
   const raceLabel = RACE_LABELS[race];
-  const vsLabel = vsRaces.map((r) => RACE_LABELS[r]).join(" & ") || "the field";
+  const vsLabel = opponentRaces.map((r) => RACE_LABELS[r]).join(" & ") || "the field";
   const durationLabel = formatClock(summary.durationMs);
 
   return {
     title: clamp(`${player.name} (${raceLabel}) vs ${vsLabel} — ${summary.map.name}`, 90),
-    race,
+    race: race === "random" ? "" : race,
     vsRaces,
     difficulty: "intermediate",
     patch: "",
