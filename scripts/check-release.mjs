@@ -247,6 +247,20 @@ async function main() {
   const latestJsonAsset = assetByName.get("latest.json");
   report("latest.json asset present on the release", Boolean(latestJsonAsset));
 
+  // Release-asset trim: the MSI and the versioned portable copy are no
+  // longer published (the stable-name portable exe stays) — a regression in
+  // the workflow's bundle targets or its "Publish portable Windows exe" step
+  // would bring either back.
+  const versionedPortableRe = /_\d+\.\d+\.\d+_portable\.exe$/;
+  const strayAssets = assets.filter(
+    (a) => a.name.endsWith(".msi") || versionedPortableRe.test(a.name),
+  );
+  report(
+    "no msi / versioned portable assets",
+    strayAssets.length === 0,
+    `found: ${JSON.stringify(strayAssets.map((a) => a.name))}`,
+  );
+
   let manifest = null;
   if (latestJsonAsset) {
     try {

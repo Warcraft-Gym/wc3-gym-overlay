@@ -272,6 +272,16 @@ function main() {
     typeof updaterPubkey === "string" && /^[A-Za-z0-9+/=\s]{40,}$/.test(updaterPubkey),
   );
 
+  // Release-asset trim: the MSI is dropped from the release (docs/overlay.md
+  // "Trim release assets") — a stray "all" or a re-added "msi" target would
+  // silently bring it back, so pin the exact target list.
+  report(
+    "bundle.targets is exactly [\"nsis\",\"app\",\"dmg\"]",
+    Array.isArray(conf.bundle?.targets) &&
+      JSON.stringify([...conf.bundle.targets].sort()) === JSON.stringify(["app", "dmg", "nsis"]),
+    `found: ${JSON.stringify(conf.bundle?.targets)}`,
+  );
+
   report(
     "capabilities include updater:default + process:allow-restart, and not process:default",
     declaredIdentifiers.includes("updater:default") &&
