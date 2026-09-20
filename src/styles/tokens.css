@@ -33,14 +33,14 @@
   --wg-arcane-deep: oklch(48% 0.14 255);
 
   /* --- Status --- */
-  --wg-win: oklch(80% 0.18 150);
-  --wg-loss: oklch(64% 0.19 25);
+  --wg-win: #4F95D8; /* tested on black with the dataviz validator */
+  --wg-loss: #DE6E52; /* tested on black with the dataviz validator */
 
   /* --- Race / faction semantic color --- */
-  --wg-human: oklch(68% 0.15 250);
-  --wg-orc: oklch(63% 0.19 30);
-  --wg-nightelf: oklch(72% 0.15 300);
-  --wg-undead: oklch(78% 0.17 155);
+  --wg-human: #02809C; /* tested on black with the dataviz validator */
+  --wg-orc: #BA4C4B; /* tested on black with the dataviz validator */
+  --wg-nightelf: #44AB46; /* tested on black with the dataviz validator */
+  --wg-undead: #9B6FE4; /* tested on black with the dataviz validator */
   --wg-random: oklch(72% 0.02 265);
 
   /* --- Type --- */
