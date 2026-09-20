@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { host } from "../../host";
 import type { UpdateInfo } from "../../host/bridge";
 import { SETTINGS } from "../../store/keys";
-import { readKey } from "../../store/state";
+import { readKey, updateKey } from "../../store/state";
 import { useUpdateFlow } from "./useUpdateFlow";
 
 const AVAILABLE: UpdateInfo = {
@@ -141,6 +141,35 @@ describe("useUpdateFlow", () => {
     expect(onProgress).not.toBeNull();
     expect(result.current.state).toEqual({ kind: "relaunching", info: AVAILABLE });
     expect(relaunch).toHaveBeenCalledTimes(1);
+  });
+
+  it("install() clears settings.skippedVersion before relaunching", async () => {
+    await updateKey(SETTINGS, (s) => ({ ...s, skippedVersion: "9.9.9" }));
+    vi.spyOn(host, "installUpdate").mockResolvedValue(undefined);
+    vi.spyOn(host, "relaunch").mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useUpdateFlow("9.9.9"));
+    act(() => result.current.open(AVAILABLE));
+
+    await act(async () => {
+      await result.current.install();
+    });
+
+    expect(readKey(SETTINGS).skippedVersion).toBeNull();
+  });
+
+  it("checkAuto() clears a stale skippedVersion once the running app has caught up to it", async () => {
+    await updateKey(SETTINGS, (s) => ({ ...s, skippedVersion: "0.3.0" }));
+    // currentVersion (0.3.2) is already >= the skipped 0.3.0 — stale, clear it.
+    vi.spyOn(host, "checkForUpdate").mockResolvedValue({ ...AVAILABLE, version: "0.4.5" });
+    const { result } = renderHook(() => useUpdateFlow("0.3.0"));
+
+    await act(async () => {
+      await result.current.checkAuto();
+    });
+
+    await waitFor(() => expect(readKey(SETTINGS).skippedVersion).toBeNull());
+    expect(result.current.state).toEqual({ kind: "available", info: { ...AVAILABLE, version: "0.4.5" } });
   });
 
   it("install() moves to the error state when installUpdate() rejects", async () => {

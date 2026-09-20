@@ -47,13 +47,42 @@ function infoOf(state: UpdateFlowState): UpdateInfo | null {
   return state.kind === "idle" ? null : state.info;
 }
 
+/** Numeric dotted-version compare (`"0.4.0"` vs `"0.3.2"`), no pre-release
+ *  tags — every version this app ever compares comes from its own
+ *  `package.json`/updater feed, both plain `major.minor.patch`. */
+function compareVersions(a: string, b: string): number {
+  const partsA = a.split(".").map(Number);
+  const partsB = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/** F003: a stored `skippedVersion` goes stale once the running app has
+ *  caught up to (or past) it — e.g. the user updated some other way, or the
+ *  release that was skipped got superseded. Clearing it here means a later
+ *  check for a *different* newer version shows the banner again instead of
+ *  silently comparing against a version that no longer means anything. */
+function clearStaleSkip(skippedVersion: string | null): void {
+  if (skippedVersion === null) return;
+  void updateKey(SETTINGS, (s) => ({ ...s, skippedVersion: null }));
+}
+
 export function useUpdateFlow(skippedVersion: string | null): UpdateFlow {
   const [state, setState] = useState<UpdateFlowState>({ kind: "idle" });
 
   const checkAuto = useCallback(async () => {
     try {
       const info = await host.checkForUpdate();
-      if (!info) return;
+      if (!info) {
+        clearStaleSkip(skippedVersion); // no update — current is already latest
+        return;
+      }
+      if (skippedVersion !== null && compareVersions(info.currentVersion, skippedVersion) >= 0) {
+        clearStaleSkip(skippedVersion);
+      }
       if (info.version === skippedVersion) return; // silent — see module doc
       setState({ kind: "available", info });
     } catch (err) {
@@ -84,6 +113,10 @@ export function useUpdateFlow(skippedVersion: string | null): UpdateFlow {
       await host.installUpdate((progress) => {
         setState((current) => (current.kind === "installing" ? { ...current, progress } : current));
       });
+      // Install succeeded — whatever version was previously skipped is now
+      // moot; clear it before relaunching so a future check never compares
+      // against a stale skip.
+      await updateKey(SETTINGS, (s) => ({ ...s, skippedVersion: null }));
       setState({ kind: "relaunching", info });
       // Briefly hold on the completed 100% state before restarting — purely
       // cosmetic (lets the user actually see "Installing…" finish rather

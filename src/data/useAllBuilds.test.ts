@@ -43,10 +43,22 @@ describe("useAllBuilds", () => {
   });
 
   it("stamps site builds with source:'site' and local builds keep source:'local'", async () => {
+    // F003: `useBuilds`'s own fetch effect fires on mount and overwrites
+    // `BUILDS_CACHE` with whatever `fetchBuilds` resolves to — so the mock
+    // must resolve to the *same* site build seeded below. Leaving the
+    // default `mockResolvedValue([])` from `beforeEach` in place raced that
+    // overwrite against this test's `waitFor` (cache "site-a" → briefly
+    // clobbered back to `[]` by the in-flight fetch → "site-a" again once
+    // `useBuilds` re-derives from the still-present raw response), which
+    // only stayed stable when earlier tests in the file happened to leave
+    // the module's `parsedCache` (`store/state.ts`) primed a particular
+    // way — hence "passes in the suite, fails alone".
+    const site = [siteBuild("site-a", "2026-01-01T00:00:00.000Z")];
+    fetchBuildsMock.mockResolvedValue(site);
     await writeKey(BUILDS_CACHE, {
       fetchedAt: "x",
       apiBase: "http://x",
-      builds: [siteBuild("site-a", "2026-01-01T00:00:00.000Z")],
+      builds: site,
     });
     await writeLocalBuilds([createLocalBuild({
       title: "Private",
