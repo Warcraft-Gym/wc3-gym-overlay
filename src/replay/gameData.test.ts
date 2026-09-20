@@ -176,6 +176,12 @@ describe("HALL_LINE", () => {
       etoe: "etol",
       unp1: "unpl",
       unp2: "unpl",
+      // F001: tower tiers upgrade in place too (see gameData.ts's docblock).
+      hgtw: "hwtw",
+      hatw: "hwtw",
+      hctw: "hwtw",
+      uzg1: "uzig",
+      uzg2: "uzig",
     });
   });
 });

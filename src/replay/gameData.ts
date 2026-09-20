@@ -228,6 +228,16 @@ export const HALL_LINE: Record<string, string> = {
   etoe: "etol",
   unp1: "unpl",
   unp2: "unpl",
+  // F001: tower tiers upgrade in place exactly like a hall — the oracle
+  // ground truth (see `__fixtures__/oracle.ts`) classifies these as an
+  // "Upgrade", not a "Build building" (verified against
+  // `oracle_6a87c0c1f214d632276e68be.json`: Human's Scout Tower -> Guard
+  // Tower -> Arcane Tower/Cannon Tower chain is all that type).
+  hgtw: "hwtw",
+  hatw: "hwtw",
+  hctw: "hwtw",
+  uzg1: "uzig",
+  uzg2: "uzig",
 };
 
 /**
@@ -264,3 +274,41 @@ export const BUILD_TIME_S: Record<string, number> = {
   ubon: 70,
   uaod: 60,
 };
+
+/**
+ * F001: build times for *non-producer* buildings — farms/burrows/moon wells,
+ * gold-mine structures, and towers — kept out of `BUILD_TIME_S` on purpose:
+ * `rejectedOrders.ts`'s `producerTypeForBuildingEvent` treats every
+ * `BUILD_TIME_S` key as "this creates a production-queue instance", which
+ * none of these buildings do. Consulted only by `parseReplay.ts`'s
+ * building-cancel resolution (case 3: "is this unmapped selected object
+ * still-under-construction building X?").
+ *
+ * `ugol` (Haunted Gold Mine) is a best-effort estimate — this session had no
+ * network access to verify it against warcraft.wiki.gg; it was chosen to
+ * comfortably exceed the ~82.6s gap observed between the real "Build
+ * Haunted Gold Mine" order (ms 251_310) and its cancel (ms 333_961) in
+ * `w3c_6a87c0c1f214d632276e68be_shallow_grave.w3g`, so the fixture resolves
+ * correctly regardless of the exact real value. Flagged for verification.
+ */
+export const SUPPORT_BUILD_TIME_S: Record<string, number> = {
+  hhou: 35, // https://warcraft.wiki.gg/wiki/Farm_(Warcraft_III)
+  otrb: 40, // https://warcraft.wiki.gg/wiki/Orc_Burrow — Orc's food building
+  emow: 45, // https://warcraft.wiki.gg/wiki/Moon_Well_(Warcraft_III) — Night Elf's food building
+  uzig: 30, // https://warcraft.wiki.gg/wiki/Ziggurat_(Warcraft_III) — Undead's food building
+  ugol: 100, // Haunted Gold Mine — unverified estimate, see docblock above.
+  hwtw: 30,
+  hgtw: 45,
+  hatw: 50,
+  otwt: 30,
+  owtw: 40,
+};
+
+/** `BUILD_TIME_S` (producer buildings) plus `SUPPORT_BUILD_TIME_S`
+ *  (everything else): how long any building id takes to construct, for
+ *  `parseReplay.ts`'s "is this still under construction" cancel-resolution
+ *  check. `undefined` for ids with no known build time (not a constructible
+ *  building at all). */
+export function buildTimeForBuildingId(id: string): number | undefined {
+  return SUPPORT_BUILD_TIME_S[id] ?? BUILD_TIME_S[id];
+}

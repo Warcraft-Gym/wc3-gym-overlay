@@ -12,12 +12,30 @@ export interface ReplayEvent {
   kind: ReplayEventKind;
   id: string;
   ms: number;
-  /** Only set for `kind: "cancel"`: the `slotNumber` w3gjs's
-   *  `RemoveUnitFromBuildingQueue` action carried (0 = the unit currently
-   *  training, 1-4 = queue positions). A cancel event's `id` is the
-   *  unit/hero FourCC being *removed* from a production queue, not a
-   *  finished order — see `extractBuild.ts`'s `computeCancelledOrders`. */
+  /** Only set for `kind: "cancel"` events resolved from a queue-icon click
+   *  (`via: "slot"`): the `slotNumber` w3gjs's `RemoveUnitFromBuildingQueue`
+   *  action carried (0 = the unit currently training, 1-4 = queue
+   *  positions). A cancel event's `id` is the unit/hero FourCC being
+   *  *removed* from a production queue, not a finished order — see
+   *  `rejectedOrders.ts`'s `computeCancelledOrders`. */
   slot?: number;
+  /** F001: only set for `kind: "cancel"` — how the cancel was issued.
+   *  `"slot"` is the pre-existing queue-icon-click cancel (`slot` is set);
+   *  `"esc"` is the Esc/Cancel-button cancel resolved via the player's
+   *  selection (`parseReplay.ts`'s `resolveEscCancel`). */
+  via?: "esc" | "slot";
+  /** F001: only set for `via: "esc"` cancels resolved against a building
+   *  under construction (`"building"`) or a research/tier-up in progress
+   *  (`"research"`) — omitted for unit/hero cancels, which behave like
+   *  slot cancels downstream (see `rejectedOrders.ts`). */
+  target?: "building" | "research";
+  /** F001: only set for `via: "esc"` cancels resolved against a *known*
+   *  pending order (unit/hero train order, or a research/tier-up) — the
+   *  exact `ms` of that original order, so `rejectedOrders.ts` can match it
+   *  precisely instead of falling back to its type-level FIFO heuristic
+   *  (needed to disambiguate e.g. two same-type producers). Internal to the
+   *  cancel-resolution pipeline; not part of the oracle-parity contract. */
+  cancelsOrderMs?: number;
 }
 
 export interface ReplayPlayer {
@@ -36,6 +54,12 @@ export interface ReplaySummary {
   durationMs: number;
   players: ReplayPlayer[];
   events: Record<number, ReplayEvent[]>;
+  /** F001: how many Esc/Cancel-button cancels per player couldn't be
+   *  resolved to a unit/hero/building/research (empty or ambiguous
+   *  selection, or no matching pending order) — diagnostics only, never
+   *  thrown. Keyed by player id; optional (omitted by hand-built test
+   *  fixtures that predate F001, treated the same as "no data"). */
+  unresolvedCancels?: Record<number, number>;
 }
 
 export type ReplayParseErrorCode = "not_a_replay" | "unsupported_version" | "corrupt";

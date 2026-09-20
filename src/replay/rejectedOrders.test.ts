@@ -147,3 +147,51 @@ describe("F002-scrutiny coverage gaps (F003)", () => {
     expect(dropped.count).toBe(0);
   });
 });
+
+function escCancel(id: string, ms: number, cancelsOrderMs?: number): ReplayEvent {
+  return { kind: "cancel", id, ms, via: "esc", cancelsOrderMs };
+}
+
+/** F001 (C-803, a/b/c/g): `via: "esc"` cancels never carry a `slot` — they
+ *  always target the *newest* pending order, disambiguated by
+ *  `cancelsOrderMs` (the exact object-level order `parseReplay.ts`'s
+ *  selection tracking already resolved) rather than the slot-exact-then-
+ *  most-recent-anywhere fallback queue-icon cancels use. */
+describe("computeCancelledOrders — via: 'esc' cancels (F001, C-803)", () => {
+  it("(a) three hfoo at one Barracks, three esc cancels in a row remove the newest each time; a fourth esc has nothing left to remove", () => {
+    const buildings = [building("hbar", 0)];
+    const o1 = unit("hfoo", 61_000);
+    const o2 = unit("hfoo", 61_100);
+    const o3 = unit("hfoo", 61_200);
+    const events = [o1, o2, o3, escCancel("hfoo", 61_300), escCancel("hfoo", 61_400), escCancel("hfoo", 61_500)];
+    const removed = computeCancelledOrders(events, buildings);
+    expect(removed.has(o3)).toBe(true);
+    expect(removed.has(o2)).toBe(true);
+    expect(removed.has(o1)).toBe(true);
+    expect(removed.size).toBe(3);
+  });
+
+  it("(b) two Barracks (K1, K2) each with one hfoo — an esc cancel with K2's exact order ms removes only K2's, keeping K1's", () => {
+    const buildings = [building("hbar", 0), building("hbar", 0)];
+    const k1Order = unit("hfoo", 61_000); // bound to whichever producer instance ends up "first" — irrelevant, only ms matters
+    const k2Order = unit("hfoo", 61_050);
+    const events = [k1Order, k2Order, escCancel("hfoo", 62_000, 61_050)];
+    const removed = computeCancelledOrders(events, buildings);
+    expect(removed.has(k2Order)).toBe(true);
+    expect(removed.has(k1Order)).toBe(false);
+    expect(removed.size).toBe(1);
+  });
+
+  it("(g) a queue-icon (via: 'slot') cancel still removes the exact slot occupant, not the newest", () => {
+    const buildings = [building("hbar", 0)];
+    const o1 = unit("hfoo", 61_000);
+    const o2 = unit("hfoo", 61_100);
+    const o3 = unit("hfoo", 61_200);
+    const slotCancel: ReplayEvent = { kind: "cancel", id: "hfoo", ms: 61_300, slot: 1, via: "slot" };
+    const events = [o1, o2, o3, slotCancel];
+    const removed = computeCancelledOrders(events, buildings);
+    expect(removed.has(o2)).toBe(true); // slot 1 = the second-queued order
+    expect(removed.has(o1)).toBe(false);
+    expect(removed.has(o3)).toBe(false);
+  });
+});

@@ -8,10 +8,19 @@ used here solely as parser test inputs:
 
 The following fixtures are not from w3gjs:
 
-- w3c_6aae9d48d867fad24f911778_last_refuge.w3g   <- W3Champions public match replay, https://w3champions.com/match/6aae9d48d867fad24f911778
-- w3c_6aaef330d867fad24f91360c_turtle_rock.w3g   <- W3Champions public match replay, https://w3champions.com/match/6aaef330d867fad24f91360c
-- w3c_6aaef31bd867fad24f913602_hammerfall.w3g    <- W3Champions public match replay, https://w3champions.com/match/6aaef31bd867fad24f913602
-- w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g <- W3Champions public match replay, https://w3champions.com/match/6aaef285d867fad24f9135d5
+- w3c_6aae9d48d867fad24f911778_last_refuge.w3g    <- W3Champions public match replay, https://w3champions.com/match/6aae9d48d867fad24f911778
+- w3c_6aaef330d867fad24f91360c_turtle_rock.w3g    <- W3Champions public match replay, https://w3champions.com/match/6aaef330d867fad24f91360c
+- w3c_6aaef31bd867fad24f913602_hammerfall.w3g     <- W3Champions public match replay, https://w3champions.com/match/6aaef31bd867fad24f913602
+- w3c_6aaef285d867fad24f9135d5_autumn_leaves.w3g  <- W3Champions public match replay, https://w3champions.com/match/6aaef285d867fad24f9135d5
+- w3c_6a87c0c1f214d632276e68be_shallow_grave.w3g  <- W3Champions public match replay, https://w3champions.com/match/6a87c0c1f214d632276e68be
+- w3c_6aaef370d867fad24f913624_echo_isles.w3g     <- W3Champions public match replay, https://w3champions.com/match/6aaef370d867fad24f913624
+
+F001 (Esc/Cancel-button resolution) also ships three `oracle_<matchId>.json`
+ground-truth fixtures in this directory (`oracle_6a87c0c1f214d632276e68be.json`,
+`oracle_6aaef370d867fad24f913624.json`, `oracle_6aaef285d867fad24f9135d5.json`),
+attributed to wc3.no (https://wc3.no) / w3tools.hexcoding.de
+(https://w3tools.hexcoding.de) — replay parser output, used as test ground
+truth for `src/replay/oracle.test.ts`. Not called at runtime; test data only.
 
 w3gjs license (MIT):
 

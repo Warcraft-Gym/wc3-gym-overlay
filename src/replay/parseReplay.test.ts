@@ -125,7 +125,13 @@ describe("parseReplay", () => {
     );
 
     it(
-      "Hammerfall: Starglobal#4361 cancelled opeo around 92s; shiNe#1396 has none",
+      // F001: shiNe#1396 turns out to have three real Esc/Cancel-button
+      // cancels this ground truth (a pre-F001 spec written before Esc
+      // cancels were resolvable) simply never saw — a peasant cancelled
+      // ~2s after being ordered (ms 121_080) and two footmen (ms 166_680,
+      // 263_581), each shortly after their own order. Verified by hand
+      // against the raw `gamedatablock` stream during F001 development.
+      "Hammerfall: Starglobal#4361 cancelled opeo around 92s; shiNe#1396 has three real Esc cancels",
       async () => {
         const summary = await parseReplay(loadFixture("w3c_6aaef31bd867fad24f913602_hammerfall.w3g"));
         const starglobalCancels = cancelsFor(summary, "Starglobal#4361");
@@ -134,7 +140,12 @@ describe("parseReplay", () => {
         expect(starglobalCancels[0]!.ms).toBeGreaterThanOrEqual(91_000);
         expect(starglobalCancels[0]!.ms).toBeLessThanOrEqual(93_000);
 
-        expect(cancelsFor(summary, "shiNe#1396")).toHaveLength(0);
+        const shineCancels = cancelsFor(summary, "shiNe#1396");
+        expect(shineCancels).toHaveLength(3);
+        for (const cancel of shineCancels) {
+          expect(cancel).toMatchObject({ kind: "cancel", via: "esc" });
+          expect(["hpea", "hfoo"]).toContain(cancel.id);
+        }
       },
       FIXTURE_TIMEOUT_MS,
     );

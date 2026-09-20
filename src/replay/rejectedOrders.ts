@@ -118,6 +118,22 @@ function findMostRecentPending(producers: readonly ProducerInstance[], id: strin
   return best;
 }
 
+/** F001: exact match on the *original* order's own `ms` — used for
+ *  `via: "esc"` cancels, which carry `cancelsOrderMs` (the precise order
+ *  `parseReplay.ts`'s object-keyed selection tracking resolved, not a
+ *  slot). Falls back to `findMostRecentPending` when there's no exact
+ *  match (e.g. the order and its producer instance were both already
+ *  dropped by an earlier resolution) — see `computeCancelledOrders`. */
+function findByExactOrderMs(producers: readonly ProducerInstance[], id: string, orderMs: number): QueueSlot | undefined {
+  for (const producer of producers) {
+    for (let index = 0; index < producer.queue.length; index++) {
+      const entry = producer.queue[index]!;
+      if (entry.order.id === id && entry.order.ms === orderMs) return { producer, index, order: entry.order };
+    }
+  }
+  return undefined;
+}
+
 /**
  * The shared per-producer FIFO simulation behind `computeCancelledOrders`
  * and `filterLikelyRejected` — see the feature spec's "design input from
@@ -149,8 +165,17 @@ function simulate(
       const type = PRODUCER_OF[event.id];
       if (!type || type === "tavern") continue;
       const producers = producersOfType(byType, type, event.ms);
-      const slot = event.slot ?? 0;
-      const target = findExactSlot(producers, event.id, slot) ?? findMostRecentPending(producers, event.id);
+      // F001: an `via: "esc"` cancel never carries a `slot` — it cancels
+      // whichever order `parseReplay.ts` already resolved (the newest
+      // pending one at the exact object it was issued against), not the
+      // occupant of queue slot 0. `cancelsOrderMs` (that order's own `ms`)
+      // finds it precisely; only a queue-icon (`via: "slot"`) cancel uses
+      // the slot-exact-then-most-recent fallback below.
+      const target =
+        event.via === "esc"
+          ? (event.cancelsOrderMs !== undefined ? findByExactOrderMs(producers, event.id, event.cancelsOrderMs) : undefined) ??
+            findMostRecentPending(producers, event.id)
+          : (findExactSlot(producers, event.id, event.slot ?? 0) ?? findMostRecentPending(producers, event.id));
       if (!target) continue;
       target.producer.queue.splice(target.index, 1);
       cancelled.add(target.order);
@@ -222,4 +247,44 @@ export function filterLikelyRejected(
   });
 
   return { accepted, dropped: { count: orderIndices.length, byId, orderIndices } };
+}
+
+/** F001: which `ReplayEvent.kind` an Esc-resolved building/research cancel's
+ *  `id` would have shown up as in the raw event stream — a tier-up
+ *  (`id in HALL_LINE`) is recorded as a `"building"` event ("Build Keep"),
+ *  same as a brand-new building; a true research/upgrade is a
+ *  `"upgrade"` event. */
+function kindForCancelledId(id: string): ReplayEvent["kind"] {
+  return id in HALL_LINE ? "building" : "upgrade";
+}
+
+/**
+ * F001: `extractBuild.ts`'s counterpart to `computeCancelledOrders` for the
+ * two Esc-resolved cancel shapes that aren't unit/hero orders —
+ * `target: "building"` (a building under construction) and
+ * `target: "research"` (a research or tier-up in progress, per
+ * `kindForCancelledId`). Matches each cancel to the most recent
+ * not-yet-matched `"building"`/`"upgrade"` event with the same `id` at or
+ * before the cancel's `ms` — preferring an exact `cancelsOrderMs` match
+ * when present (see `parseReplay.ts`'s `resolveEscCancel`). Returns the set
+ * of `"building"`/`"upgrade"` events to drop entirely (they never finished,
+ * so — unlike a cancelled unit/hero order — there's no partial step to
+ * count, just an absent one).
+ */
+export function computeCancelledBuildOrResearch(sortedEvents: readonly ReplayEvent[]): ReadonlySet<ReplayEvent> {
+  const removed = new Set<ReplayEvent>();
+  for (const cancel of sortedEvents) {
+    if (cancel.kind !== "cancel" || (cancel.target !== "building" && cancel.target !== "research")) continue;
+    const kind = cancel.target === "building" ? "building" : kindForCancelledId(cancel.id);
+
+    const candidates = sortedEvents.filter(
+      (e) => e.kind === kind && e.id === cancel.id && e.ms <= cancel.ms && !removed.has(e),
+    );
+    if (candidates.length === 0) continue;
+
+    const exact = cancel.cancelsOrderMs !== undefined ? candidates.find((e) => e.ms === cancel.cancelsOrderMs) : undefined;
+    const match = exact ?? candidates[candidates.length - 1]!; // most recent by ms (candidates is ms-sorted, same order as sortedEvents)
+    removed.add(match);
+  }
+  return removed;
 }

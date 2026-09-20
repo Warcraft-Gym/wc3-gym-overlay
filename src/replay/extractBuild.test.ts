@@ -323,6 +323,71 @@ describe("extractBuild — cancel-aware extraction, real fixtures (F001, C-702)"
   );
 });
 
+/** F001 (C-804): the user's exact case, end to end — Esc/Cancel-button
+ *  cancels resolved through selection tracking, applied all the way to the
+ *  extracted build-order draft. */
+describe("extractBuild — Esc/Cancel-button cancels, the user's case (F001, C-804)", () => {
+  it(
+    "Shallow Grave, skyplague: no 'Hero: Mountain King' step; 'Hero: Archmage' at 1:13 supply 10; the next step (1:16) has supply 15",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6a87c0c1f214d632276e68be_shallow_grave.w3g"));
+      const skyplagueId = summary.players.find((p) => p.name === "skyplague#11228")!.id;
+      const draft = extractBuild(summary, skyplagueId, { cutoffMs: 480_000 });
+
+      expect(draft.steps.some((s) => s.instruction === "Hero: Mountain King")).toBe(false);
+
+      const archmageIdx = draft.steps.findIndex((s) => s.instruction === "Hero: Archmage");
+      expect(archmageIdx).toBeGreaterThanOrEqual(0);
+      expect(draft.steps[archmageIdx]!.time).toBe("1:13");
+      expect(draft.steps[archmageIdx]!.supply).toBe("10");
+
+      const next = draft.steps[archmageIdx + 1]!;
+      expect(next.time).toBe("1:16");
+      expect(next.supply).toBe("15");
+    },
+    15_000,
+  );
+
+  it(
+    "Shallow Grave, React: the ~4:10 ghoul group loses one order; 'Build Haunted Gold Mine' at ~4:11 is absent; supply is non-decreasing for both players",
+    async () => {
+      const summary = await parseReplay(loadFixture("w3c_6a87c0c1f214d632276e68be_shallow_grave.w3g"));
+      const reactId = summary.players.find((p) => p.name === "React#21633")!.id;
+      const draft = extractBuild(summary, reactId, { cutoffMs: 480_000 });
+      const blind = extractBuild(summary, reactId, { cutoffMs: 480_000, applyCancels: false });
+
+      // The Haunted Gold Mine order at ~4:11 (before the ~5:34 cancel) never
+      // shows up as a step; the *later*, uncancelled one (~6:06, per the
+      // oracle) still does.
+      const goldMines = draft.steps.filter((s) => s.instruction === "Build Haunted Gold Mine");
+      expect(goldMines).toHaveLength(1);
+      expect(clockToMs(goldMines[0]!.time)).toBeGreaterThan(300_000); // well after 4:11
+
+      // The cancel-blind extraction (pre-fix behaviour) shows the ~4:11
+      // attempt too — proving the fix actually removed a real step, not
+      // that it was never there.
+      expect(blind.steps.some((s) => s.instruction === "Build Haunted Gold Mine" && clockToMs(s.time) < 300_000)).toBe(
+        true,
+      );
+
+      const ghoulStep = draft.steps.find((s) => clockToMs(s.time) >= 240_000 && clockToMs(s.time) < 260_000 && s.instruction.includes("Ghoul"));
+      expect(ghoulStep?.importNote).toMatch(/cancelled/);
+
+      for (const playerName of ["skyplague#11228", "React#21633"] as const) {
+        const id = summary.players.find((p) => p.name === playerName)!.id;
+        const steps = extractBuild(summary, id, { cutoffMs: 480_000 }).steps;
+        let last = 5;
+        for (const step of steps) {
+          const supply = Number(step.supply);
+          expect(supply).toBeGreaterThanOrEqual(last);
+          last = supply;
+        }
+      }
+    },
+    15_000,
+  );
+});
+
 /** F002 (C-704): the opt-in "likely rejected" filter — real fixtures. */
 describe("extractBuild — likely-rejected filter (F002, C-704)", () => {
   let dretwiak: ReturnType<typeof extractBuild>;

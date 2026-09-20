@@ -1,7 +1,7 @@
 import type { EditorFormInput } from "../lib/buildEditorSchema";
 import { describeId } from "./idMap";
 import { FOOD_COST } from "./foodCost";
-import { computeCancelledOrders, filterLikelyRejected, type DroppedInfo } from "./rejectedOrders";
+import { computeCancelledBuildOrResearch, computeCancelledOrders, filterLikelyRejected, type DroppedInfo } from "./rejectedOrders";
 import type {
   ExtractBuildOptions,
   ImportedBuildStep,
@@ -247,12 +247,18 @@ export function extractBuild(summary: ReplaySummary, playerId: number, opts: Ext
   const removedOrders = applyCancels ? computeCancelledOrders(filtered, filtered) : new Set<ReplayEvent>();
   const survivingOrders = filtered.filter((e) => (e.kind === "unit" || e.kind === "hero") && !removedOrders.has(e));
 
+  // F001: buildings under construction and research/tier-ups cancelled via
+  // Esc never produce a step at all (unlike a cancelled unit/hero order,
+  // there's no "N ordered, M cancelled" partial count to show) — dropped
+  // from `eventsForMerge` outright, same as a `filterLikelyRejected` drop.
+  const removedBuildOrResearch = applyCancels ? computeCancelledBuildOrResearch(filtered) : new Set<ReplayEvent>();
+
   const { accepted, dropped } = dropLikelyRejected
     ? filterLikelyRejected(survivingOrders, filtered)
     : { accepted: survivingOrders, dropped: EMPTY_DROPPED };
   const rejectedSet = new Set(survivingOrders.filter((order) => !accepted.includes(order)));
 
-  const eventsForMerge = filtered.filter((e) => !rejectedSet.has(e));
+  const eventsForMerge = filtered.filter((e) => !rejectedSet.has(e) && !removedBuildOrResearch.has(e));
   const mergedSteps = dedupeAndMerge(eventsForMerge, removedOrders);
   const droppedMeta = attachDroppedToSteps(mergedSteps, [...rejectedSet]);
 

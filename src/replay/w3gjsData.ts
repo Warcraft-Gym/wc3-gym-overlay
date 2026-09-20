@@ -512,15 +512,29 @@ export const HERO_IDS: ReadonlySet<string> = new Set(Object.values(ABILITY_TO_HE
  *  a 4-byte order id is "stringencoded" (a FourCC like "Ofar" or "hfoo")
  *  when its *last* byte is a printable letter (0x41-0x7a); otherwise it's
  *  a raw numeric order (move/attack/right-click/etc.) we don't care about
- *  here. Source: `node_modules/w3gjs/dist/esm/parsers/formatters.js`. */
-export function decodeOrderId(bytes: readonly number[]): { isFourCC: boolean; value: string } {
+ *  here. Source: `node_modules/w3gjs/dist/esm/parsers/formatters.js`.
+ *
+ *  F001: numeric (non-FourCC) orders also carry a meaningful id — the
+ *  Esc/Cancel-button order is the numeric id `0x0D0008`, verified against
+ *  `w3c_6a87c0c1f214d632276e68be_shallow_grave.w3g` (a `0x10` action with
+ *  raw bytes `[0x08, 0x00, 0x0D, 0x00]` at the moment skyplague's Mountain
+ *  King order was cancelled). Unlike the FourCC branch's reversed-bytes
+ *  decoding, numeric order ids are a plain little-endian `uint32` — this is
+ *  always computed (even for FourCC ids, where it's unused) so callers
+ *  never need to re-derive it. */
+export function decodeOrderId(bytes: readonly number[]): { isFourCC: boolean; value: string; numeric: number } {
   const lastByte = bytes[3];
+  const numeric = (bytes[0] ?? 0) | ((bytes[1] ?? 0) << 8) | ((bytes[2] ?? 0) << 16) | ((bytes[3] ?? 0) << 24);
   if (lastByte !== undefined && lastByte >= 0x41 && lastByte <= 0x7a) {
     const value = bytes
       .map((byte) => String.fromCharCode(byte))
       .reverse()
       .join("");
-    return { isFourCC: true, value };
+    return { isFourCC: true, value, numeric };
   }
-  return { isFourCC: false, value: "" };
+  return { isFourCC: false, value: "", numeric };
 }
+
+/** The Esc/Cancel-button order — a `0x10` action whose order id decodes to
+ *  this numeric value rather than a FourCC. See `decodeOrderId`'s docblock. */
+export const ESC_CANCEL_ORDER_NUMERIC = 0x0d0008;
