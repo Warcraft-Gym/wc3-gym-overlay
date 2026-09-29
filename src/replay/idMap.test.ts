@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseReplay } from "./parseReplay";
-import { describeId, ID_MAP, NO_ICON_IDS } from "./idMap";
+import { describeId, ID_MAP } from "./idMap";
 import { FOOD_COST } from "./foodCost";
+import { UNIT_NAMES } from "./w3gjsData";
 
 const FIXTURES_DIR = join(__dirname, "__fixtures__");
 const FIXTURES = [
@@ -49,7 +50,7 @@ describe("idMap", () => {
         expect(described.title, `describeId(${id}) should have a real title`).not.toBe(id);
 
         const needsIcon = described.kind === "unit" || described.kind === "building" || described.kind === "hero";
-        if (needsIcon && !NO_ICON_IDS.has(id)) {
+        if (needsIcon) {
           expect(described.iconKey, `describeId(${id}) (${described.kind}) should have a manifest icon key`).toBeDefined();
           expect(
             manifestKeys.has(described.iconKey as string),
@@ -67,6 +68,15 @@ describe("idMap", () => {
     expect(described.iconKey).toBeUndefined();
   });
 
+  it("names creep and mercenary ids from w3gjs's unit table, with their icon", () => {
+    expect(describeId("nfsp")).toEqual({ iconKey: "foresttrollshadowpriest", title: "Forest Troll Shadow Priest", kind: "unit" });
+  });
+
+  it("draws every creep and mercenary id with a manifest icon", () => {
+    const missing = Object.keys(UNIT_NAMES).filter((id) => !manifestKeys.has(describeId(id).iconKey ?? ""));
+    expect(missing).toEqual([]);
+  });
+
   it("maps 'stwp' to the town portal scroll icon", () => {
     expect(describeId("stwp")).toMatchObject({ iconKey: "nt-scroll-of-town-portal", kind: "item" });
   });
@@ -80,14 +90,6 @@ describe("idMap", () => {
 });
 
 describe("FOOD_COST", () => {
-  it("has exactly the unit+hero key set of ID_MAP", () => {
-    const expectedKeys = Object.entries(ID_MAP)
-      .filter(([, entry]) => entry.kind === "unit" || entry.kind === "hero")
-      .map(([id]) => id)
-      .sort();
-    expect(Object.keys(FOOD_COST).sort()).toEqual(expectedKeys);
-  });
-
   it("never has negative costs", () => {
     for (const cost of Object.values(FOOD_COST)) {
       expect(cost).toBeGreaterThanOrEqual(0);

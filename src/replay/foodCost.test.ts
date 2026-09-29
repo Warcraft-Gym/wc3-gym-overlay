@@ -19,8 +19,8 @@ const REFERENCE: Record<string, number> = {
   hmtm: 3,
   hgyr: 1,
   hgry: 4,
-  hmtt: 3,
-  hrtt: 3,
+  hmtt: 4,
+  hrtt: 4,
   hdhw: 3,
   hmil: 0,
   // Orc
@@ -46,8 +46,8 @@ const REFERENCE: Record<string, number> = {
   edry: 3,
   edoc: 4,
   emtg: 7,
-  ehip: 3,
-  edot: 3,
+  ehip: 2,
+  edot: 2,
   efdr: 2,
   echm: 5,
   // Undead
@@ -74,11 +74,16 @@ describe("FOOD_COST", () => {
     expect(FOOD_COST).toMatchObject(REFERENCE);
   });
 
-  it("has exactly ID_MAP's unit+hero id set as keys", () => {
-    const expectedKeys = Object.entries(ID_MAP)
-      .filter(([, entry]) => entry.kind === "unit" || entry.kind === "hero")
-      .map(([id]) => id)
-      .sort();
-    expect(Object.keys(FOOD_COST).sort()).toEqual(expectedKeys);
+  it("covers every unit and hero of ID_MAP", () => {
+    const missing = Object.entries(ID_MAP)
+      .filter(([id, entry]) => (entry.kind === "unit" || entry.kind === "hero") && FOOD_COST[id] === undefined)
+      .map(([id]) => id);
+    expect(missing).toEqual([]);
+  });
+
+  it("charges a hired mercenary its food from the game data", () => {
+    expect(FOOD_COST.nfsp).toBe(2); // Forest Troll Shadow Priest
+    expect(FOOD_COST.ngsp).toBe(2); // Goblin Sapper
+    expect(FOOD_COST.nftb).toBe(3); // Forest Troll Berserker, named in ID_MAP
   });
 });

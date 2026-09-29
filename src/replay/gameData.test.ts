@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ID_MAP } from "./idMap";
-import { FOOD_COST } from "./foodCost";
 import { BUILD_TIME_S, HALL_LINE, PRODUCER_OF, TRAIN_TIME_S } from "./gameData";
 
 describe("TRAIN_TIME_S", () => {
-  it("has exactly the same key set as FOOD_COST (every unit/hero id in ID_MAP)", () => {
-    expect(Object.keys(TRAIN_TIME_S).sort()).toEqual(Object.keys(FOOD_COST).sort());
-  });
-
   it("covers every unit/hero id in ID_MAP and nothing else", () => {
     const expectedIds = Object.entries(ID_MAP)
       .filter(([, entry]) => entry.kind === "unit" || entry.kind === "hero")
