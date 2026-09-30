@@ -20,6 +20,16 @@
  * Unlike `dropLikelyRejected`, these three are sent explicitly on *every*
  * request (simplest, unambiguous) rather than only when they differ from
  * the server's default.
+ *
+ * F004c — F004's "response shape verified live" was wrong in one place:
+ * `build.tags` was declared `z.string()`, but production sends (and always
+ * has sent) a JSON string array — every real import was rejected by
+ * `safeParse`. Re-verified field-by-field against a real captured response
+ * (`src/api/__fixtures__/replay-import.production.json`); every other field
+ * already matched. `tags` is now `z.array(z.string())`, and
+ * `replayBuildToFormInput` joins it into the editor's comma-separated
+ * string with the same convention `fromBuild` uses
+ * (`src/lib/buildEditorSchema.ts`).
  */
 
 import { z } from "zod";
@@ -39,7 +49,10 @@ const replayImportBuildSchema = z.object({
   vsRaces: z.array(z.string()),
   difficulty: z.string(),
   patch: z.string(),
-  tags: z.string(),
+  // F004c: production sends `tags` as a string array and always has — a
+  // response captured before and after the site's latest deploy both had
+  // `"tags": ["replay"]`. `z.string()` here rejected every real import.
+  tags: z.array(z.string()),
   summary: z.string(),
   author: z.string(),
   authorDiscord: z.string(),
@@ -238,7 +251,10 @@ export async function requestReplayImport(
 
 /** Adapts a response player's `build` into the editor form's all-string
  *  shape (`supply` is a JSON number on the wire, a string in the form —
- *  same convention `toLocalBuildInput` uses the other way around). */
+ *  same convention `toLocalBuildInput` uses the other way around). F004c:
+ *  `tags` is a JSON string array on the wire; the editor stores it as a
+ *  comma-separated string — the same convention `fromBuild` already uses
+ *  (`src/lib/buildEditorSchema.ts`: `tags: build.tags.join(", ")`). */
 export function replayBuildToFormInput(build: ReplayImportBuild): EditorFormInput {
   return {
     title: build.title,
@@ -246,7 +262,7 @@ export function replayBuildToFormInput(build: ReplayImportBuild): EditorFormInpu
     vsRaces: build.vsRaces,
     difficulty: build.difficulty,
     patch: build.patch,
-    tags: build.tags,
+    tags: build.tags.join(", "),
     summary: build.summary,
     author: build.author,
     authorDiscord: build.authorDiscord,
