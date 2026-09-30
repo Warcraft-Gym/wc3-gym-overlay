@@ -4,6 +4,7 @@ import { IconButton } from "../../../components/IconButton";
 import { Modal } from "../../../components/Modal";
 import { RaceCrest, RACE_LABEL, type Race } from "../../../components/RaceCrest";
 import { cn } from "../../../lib/cn";
+import { parseClock } from "../../../store/timer";
 import {
   ReplayImportError,
   replayBuildToFormInput,
@@ -28,15 +29,37 @@ function isKnownRace(race: string): race is Race {
   return race in RACE_LABEL;
 }
 
+// F004a: the cutoff/upgrades/items controls F004 removed, restored with the
+// same defaults/feel as the pre-F004 screen (`origin/main`'s
+// `ReplayImportModal.tsx`) but now sent to the API as `cutoffSeconds` /
+// `includeUpgrades` / `includeItems` instead of driving a local parse.
+const MIN_CUTOFF_SECONDS = 60;
+const MAX_CUTOFF_SECONDS = 20 * 60;
+const DEFAULT_CUTOFF_SECONDS = 8 * 60;
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+/** "mm:ss", always rendered with a zero-padded 2-digit minute (the field's
+ *  own default value is "08:00", not "8:00"). */
+function formatMmSs(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${pad2(minutes)}:${pad2(seconds)}`;
+}
+
 /**
- * F002 (file) / F004 (W3Champions link, API-backed import) — shown after
- * the user picks a `.w3g` file via the picker's "Import replay" button, or
- * after they open the "From W3Champions" flow and paste a match link.
- * Either way this POSTs to the website's `/api/replay-import` (never parses
- * a replay locally — see `src/api/replayImport.ts`), lets the user choose a
- * player and toggle "drop likely-rejected orders" (which re-requests the
- * API), then hands that player's `build` to `onOpenInEditor` — nothing is
- * persisted here; saving happens in `BuildEditorModal`.
+ * F002 (file) / F004 (W3Champions link, API-backed import) / F004a (cutoff,
+ * include-upgrades, include-items controls) — shown after the user picks a
+ * `.w3g` file via the picker's "Import replay" button, or after they open
+ * the "From W3Champions" flow and paste a match link. Either way this POSTs
+ * to the website's `/api/replay-import` (never parses a replay locally —
+ * see `src/api/replayImport.ts`), lets the user choose a player, an import
+ * cutoff, and toggle "include upgrades" / "include items" / "drop
+ * likely-rejected orders" (each of which re-requests the API), then hands
+ * that player's `build` to `onOpenInEditor` — nothing is persisted here;
+ * saving happens in `BuildEditorModal`.
  */
 export function ReplayImportModal({
   source,
@@ -56,6 +79,15 @@ export function ReplayImportModal({
   const [linkText, setLinkText] = useState("");
   const [playerId, setPlayerId] = useState<number | null>(null);
   const [dropLikelyRejected, setDropLikelyRejected] = useState(true);
+  // F004a: `cutoffSeconds` is the applied value (drives the request);
+  // `cutoffText` is the raw field contents, which can be transiently
+  // invalid while the user is typing — they only reconcile on blur/Enter
+  // (see `commitCutoff`), so keystrokes never fire a request per se.
+  const [cutoffSeconds, setCutoffSeconds] = useState(DEFAULT_CUTOFF_SECONDS);
+  const [cutoffText, setCutoffText] = useState(formatMmSs(DEFAULT_CUTOFF_SECONDS));
+  const [cutoffError, setCutoffError] = useState<string | undefined>(undefined);
+  const [includeUpgrades, setIncludeUpgrades] = useState(true);
+  const [includeItems, setIncludeItems] = useState(false);
 
   // Guards every async setState below against firing after the modal has
   // been closed/unmounted (an import still in flight when the user hits
@@ -87,12 +119,14 @@ export function ReplayImportModal({
   // source `payload` is available (immediately for a file, only after the
   // user clicks Fetch for a link) and re-fires whenever `dropLikelyRejected`
   // changes, since that toggle is a server-side filter, not a client-side
-  // recompute (see the API's `dropLikelyRejected` field).
+  // recompute (see the API's `dropLikelyRejected` field). F004a: also
+  // re-fires on `cutoffSeconds` (only after it's been committed — see
+  // `commitCutoff`), `includeUpgrades` and `includeItems`, same reasoning.
   useEffect(() => {
     if (!payload) return;
     let cancelled = false;
     setState(payload.kind === "match" ? { kind: "link", fetching: true } : { kind: "loading" });
-    requestReplayImport(apiBase, payload, { dropLikelyRejected })
+    requestReplayImport(apiBase, payload, { dropLikelyRejected, cutoffSeconds, includeUpgrades, includeItems })
       .then((data) => {
         if (cancelled || !mountedRef.current) return;
         setState({ kind: "ready", data });
@@ -107,7 +141,24 @@ export function ReplayImportModal({
     return () => {
       cancelled = true;
     };
-  }, [payload, dropLikelyRejected, apiBase]);
+  }, [payload, dropLikelyRejected, cutoffSeconds, includeUpgrades, includeItems, apiBase]);
+
+  // F004a: applies the cutoff field on blur/Enter — never on every
+  // keystroke, so typing doesn't fire a request per key (production is
+  // rate-limited). An unparseable "m:ss" shows an inline error and leaves
+  // `cutoffSeconds` (and so the last request) untouched; a parseable value
+  // out of range is clamped, same feel as the pre-F004 screen.
+  function commitCutoff(): void {
+    const parsed = parseClock(cutoffText.trim());
+    if (parsed === undefined) {
+      setCutoffError("Enter a time as m:ss, e.g. 8:00.");
+      return;
+    }
+    const clamped = Math.min(MAX_CUTOFF_SECONDS, Math.max(MIN_CUTOFF_SECONDS, parsed));
+    setCutoffError(undefined);
+    setCutoffText(formatMmSs(clamped));
+    setCutoffSeconds(clamped);
+  }
 
   function handleFetch(): void {
     const trimmed = linkText.trim();
@@ -230,14 +281,59 @@ export function ReplayImportModal({
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
+          <label className="block text-xs">
+            <span className="mb-1 block font-mono uppercase tracking-[0.14em] text-faint">Import up to</span>
             <input
-              type="checkbox"
-              checked={dropLikelyRejected}
-              onChange={(event) => setDropLikelyRejected(event.target.checked)}
+              type="text"
+              inputMode="numeric"
+              aria-label="Import up to"
+              aria-invalid={cutoffError ? true : undefined}
+              aria-describedby={cutoffError ? "replay-import-cutoff-error" : undefined}
+              value={cutoffText}
+              onChange={(event) => setCutoffText(event.target.value)}
+              onBlur={commitCutoff}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commitCutoff();
+                }
+              }}
+              className="tnum h-9 w-24 rounded border border-line bg-surface-2/60 px-2.5 text-sm text-fg outline-none focus:border-gold/60"
             />
-            Drop orders the game likely rejected
           </label>
+
+          {cutoffError ? (
+            <p id="replay-import-cutoff-error" role="alert" className="text-sm text-loss">
+              {cutoffError}
+            </p>
+          ) : null}
+
+          <div className="flex flex-col gap-2 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={includeUpgrades}
+                onChange={(event) => setIncludeUpgrades(event.target.checked)}
+              />
+              Include upgrades
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={includeItems}
+                onChange={(event) => setIncludeItems(event.target.checked)}
+              />
+              Include items
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={dropLikelyRejected}
+                onChange={(event) => setDropLikelyRejected(event.target.checked)}
+              />
+              Drop orders the game likely rejected
+            </label>
+          </div>
 
           <p className="tnum" data-preview-count={stepCount} data-dropped-count={droppedCount}>
             {droppedCount > 0 ? `${stepCount} steps · ${droppedCount} dropped` : `${stepCount} steps`}

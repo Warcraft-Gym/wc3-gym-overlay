@@ -101,6 +101,11 @@ describe("requestReplayImport — file import", () => {
     // dropLikelyRejected defaults to true (drop), which per the verified API
     // shape is the *absence* of the field, not an explicit "true".
     expect(form.has("dropLikelyRejected")).toBe(false);
+    // F004a: cutoffSeconds/includeUpgrades/includeItems are sent explicitly
+    // every time, using their defaults when the caller omits them.
+    expect(form.get("cutoffSeconds")).toBe("480");
+    expect(form.get("includeUpgrades")).toBe("true");
+    expect(form.get("includeItems")).toBe("false");
   });
 
   it("sends dropLikelyRejected=false only when the caller explicitly asks to keep likely-rejected orders", async () => {
@@ -115,6 +120,22 @@ describe("requestReplayImport — file import", () => {
     const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
     const form = init.body as FormData;
     expect(form.get("dropLikelyRejected")).toBe("false");
+  });
+
+  it("sends cutoffSeconds/includeUpgrades/includeItems as multipart strings with the caller's values", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, VALID_RESPONSE));
+
+    await requestReplayImport(
+      "https://warcraft-gym.com",
+      { kind: "file", bytes: new Uint8Array([1]), fileName: "game.w3g" },
+      { fetchImpl, cutoffSeconds: 120, includeUpgrades: false, includeItems: true },
+    );
+
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const form = init.body as FormData;
+    expect(form.get("cutoffSeconds")).toBe("120");
+    expect(form.get("includeUpgrades")).toBe("false");
+    expect(form.get("includeItems")).toBe("true");
   });
 
   it("validates and returns the 200 body", async () => {
@@ -147,6 +168,10 @@ describe("requestReplayImport — W3Champions link import", () => {
     expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
     expect(JSON.parse(init.body as string)).toEqual({
       match: "https://w3champions.com/match/6aaef285d867fad24f9135d5",
+      // F004a: sent explicitly every time, using their defaults here.
+      cutoffSeconds: 480,
+      includeUpgrades: true,
+      includeItems: false,
     });
   });
 
@@ -163,7 +188,26 @@ describe("requestReplayImport — W3Champions link import", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       match: "6aaef285d867fad24f9135d5",
       dropLikelyRejected: false,
+      cutoffSeconds: 480,
+      includeUpgrades: true,
+      includeItems: false,
     });
+  });
+
+  it("sends cutoffSeconds/includeUpgrades/includeItems natively (not as strings) in the JSON body", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, VALID_RESPONSE));
+
+    await requestReplayImport(
+      "https://warcraft-gym.com",
+      { kind: "match", match: "6aaef285d867fad24f9135d5" },
+      { fetchImpl, cutoffSeconds: 90, includeUpgrades: false, includeItems: true },
+    );
+
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.cutoffSeconds).toBe(90);
+    expect(body.includeUpgrades).toBe(false);
+    expect(body.includeItems).toBe(true);
   });
 
   it("uses the configured apiBase, not a hardcoded host", async () => {

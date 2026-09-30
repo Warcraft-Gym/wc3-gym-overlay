@@ -13,6 +13,13 @@
  * (`src/lib/buildEditorSchema.ts`) field-for-field; `replayBuildToFormInput`
  * below is the one place that adapts the wire types (e.g. `supply` as a
  * JSON number) into the form's all-string shape.
+ *
+ * F004a — restores the cutoff/upgrades/items controls F004 dropped when the
+ * API only accepted `dropLikelyRejected`; the API now also accepts
+ * `cutoffSeconds` (integer seconds), `includeUpgrades` and `includeItems`.
+ * Unlike `dropLikelyRejected`, these three are sent explicitly on *every*
+ * request (simplest, unambiguous) rather than only when they differ from
+ * the server's default.
  */
 
 import { z } from "zod";
@@ -90,6 +97,16 @@ export interface RequestReplayImportOptions {
   /** Default `true` matches the API's own default (omit the field to drop
    *  likely-rejected orders) — only `false` is ever sent explicitly. */
   dropLikelyRejected?: boolean;
+  /** F004a: cutoff in seconds (integer 1–3600 per the API), always sent
+   *  explicitly — unlike `dropLikelyRejected`, there's no "send only when
+   *  non-default" shortcut here since the field is required-shaped and the
+   *  caller (the modal) always has a current value. Defaults to 480 (8:00),
+   *  the API's own default. */
+  cutoffSeconds?: number;
+  /** F004a: sent explicitly on every request. Defaults match the API's own
+   *  defaults (upgrades included, items not). */
+  includeUpgrades?: boolean;
+  includeItems?: boolean;
   fetchImpl?: typeof fetch;
 }
 
@@ -135,7 +152,13 @@ async function errorFromResponse(response: Response): Promise<ReplayImportError>
 export async function requestReplayImport(
   apiBase: string,
   source: ReplayImportSourcePayload,
-  { dropLikelyRejected = true, fetchImpl = globalThis.fetch }: RequestReplayImportOptions = {},
+  {
+    dropLikelyRejected = true,
+    cutoffSeconds = 480,
+    includeUpgrades = true,
+    includeItems = false,
+    fetchImpl = globalThis.fetch,
+  }: RequestReplayImportOptions = {},
 ): Promise<ReplayImportResponse> {
   const url = `${apiBase}/api/replay-import`;
 
@@ -149,9 +172,20 @@ export async function requestReplayImport(
       // buffer, so the cast is safe.
       form.append("replay", new Blob([source.bytes as BlobPart]), source.fileName);
       if (!dropLikelyRejected) form.append("dropLikelyRejected", "false");
+      // F004a: sent explicitly every time (not just when non-default) — see
+      // `RequestReplayImportOptions`.
+      form.append("cutoffSeconds", String(cutoffSeconds));
+      form.append("includeUpgrades", includeUpgrades ? "true" : "false");
+      form.append("includeItems", includeItems ? "true" : "false");
       response = await fetchImpl(url, { method: "POST", body: form });
     } else {
-      const body: { match: string; dropLikelyRejected?: false } = { match: source.match };
+      const body: {
+        match: string;
+        dropLikelyRejected?: false;
+        cutoffSeconds: number;
+        includeUpgrades: boolean;
+        includeItems: boolean;
+      } = { match: source.match, cutoffSeconds, includeUpgrades, includeItems };
       if (!dropLikelyRejected) body.dropLikelyRejected = false;
       response = await fetchImpl(url, {
         method: "POST",

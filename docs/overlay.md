@@ -224,8 +224,13 @@ instead of silently falling back to anything local.
 2. Choose which player is "you" from the response's player list — the
    replay does not record who was sitting at which seat, so a radio list of
    both players is shown and you pick.
-3. Toggle **Drop orders the game likely rejected** (on by default) to
-   re-request the import with that filter on or off — see
+3. Adjust **Import up to** (`m:ss`, default `08:00` — an invalid value shows
+   an inline error and is not sent), and toggle **Include upgrades**
+   (on by default), **Include items** (off by default) and **Drop orders
+   the game likely rejected** (on by default). Each of these is a
+   server-side filter, not a local recompute — changing one re-requests the
+   import (the cutoff field applies on blur or **Enter**, not on every
+   keystroke, so typing it doesn't fire a request per key) — see
    "What an import can and cannot know" below.
 4. Click **Open in editor** — the build editor opens pre-filled with that
    player's extracted steps, title, race, and opponent race. Trim/annotate
@@ -449,7 +454,10 @@ line as **pass/fail + notes**.
   → the step count/instruction reflects the cancel (fewer trained, or the
   step is gone entirely); toggle **Drop orders the game likely rejected**
   and compare the step count and any "dropped (likely rejected)" captions
-  before and after.
+  before and after. Also adjust **Import up to** and toggle **Include
+  upgrades** / **Include items** and confirm each re-requests and changes
+  the step list; enter an invalid cutoff (e.g. `abc`) and confirm it shows
+  an inline error and doesn't re-request.
   _record: pass/fail + notes:_
 - [ ] **M-10** — Install 0.4.0 (NSIS on Windows / `.dmg` on macOS); once a
   0.4.1 build is tagged, open the app → banner appears → **Update &

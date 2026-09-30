@@ -108,7 +108,8 @@ describe("ReplayImportModal — file import", () => {
     const [apiBase, payload, opts] = requestReplayImportMock.mock.calls[0];
     expect(apiBase).toBe("https://site.test");
     expect(payload).toEqual({ kind: "file", bytes: new Uint8Array([1, 2, 3]), fileName: "game.w3g" });
-    expect(opts).toEqual({ dropLikelyRejected: true });
+    // F004a: defaults — 8:00 cutoff, upgrades on, items off — sent on first load.
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: false });
   });
 
   it("lists the response's players, with the first one selected by default", async () => {
@@ -171,7 +172,108 @@ describe("ReplayImportModal — file import", () => {
 
     await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
     const [, , opts] = requestReplayImportMock.mock.calls[0];
-    expect(opts).toEqual({ dropLikelyRejected: false });
+    expect(opts).toEqual({ dropLikelyRejected: false, cutoffSeconds: 480, includeUpgrades: true, includeItems: false });
+  });
+
+  it("toggling 'Include upgrades' re-requests with includeUpgrades: false", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const checkbox = screen.getByRole("checkbox", { name: "Include upgrades" }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+
+    requestReplayImportMock.mockClear();
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
+    const [, , opts] = requestReplayImportMock.mock.calls[0];
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: false, includeItems: false });
+  });
+
+  it("toggling 'Include items' re-requests with includeItems: true", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const checkbox = screen.getByRole("checkbox", { name: "Include items" }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+
+    requestReplayImportMock.mockClear();
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
+    const [, , opts] = requestReplayImportMock.mock.calls[0];
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: true });
+  });
+
+  it("shows the cutoff field defaulted to 08:00, and applies a new value on blur, re-requesting with cutoffSeconds", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const cutoff = screen.getByRole("textbox", { name: "Import up to" }) as HTMLInputElement;
+    expect(cutoff.value).toBe("08:00");
+
+    requestReplayImportMock.mockClear();
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    fireEvent.change(cutoff, { target: { value: "2:00" } });
+    fireEvent.blur(cutoff);
+
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
+    const [, , opts] = requestReplayImportMock.mock.calls[0];
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 120, includeUpgrades: true, includeItems: false });
+    expect(cutoff.value).toBe("02:00");
+  });
+
+  it("applies the cutoff field on Enter, not on every keystroke", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    requestReplayImportMock.mockClear();
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    const cutoff = screen.getByRole("textbox", { name: "Import up to" }) as HTMLInputElement;
+    fireEvent.change(cutoff, { target: { value: "3" } });
+    fireEvent.change(cutoff, { target: { value: "3:" } });
+    fireEvent.change(cutoff, { target: { value: "3:0" } });
+    expect(requestReplayImportMock).not.toHaveBeenCalled();
+
+    fireEvent.change(cutoff, { target: { value: "3:00" } });
+    fireEvent.keyDown(cutoff, { key: "Enter" });
+
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
+    const [, , opts] = requestReplayImportMock.mock.calls[0];
+    expect(opts).toMatchObject({ cutoffSeconds: 180 });
+  });
+
+  it("an invalid cutoff shows an inline error and makes no request", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    requestReplayImportMock.mockClear();
+    const cutoff = screen.getByRole("textbox", { name: "Import up to" }) as HTMLInputElement;
+    fireEvent.change(cutoff, { target: { value: "not a time" } });
+    fireEvent.blur(cutoff);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Enter a time as m:ss");
+    expect(requestReplayImportMock).not.toHaveBeenCalled();
+  });
+
+  it("a 400 about cutoffSeconds shows the server's text", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    requestReplayImportMock.mockRejectedValue(
+      new ReplayImportError("http", "cutoffSeconds must be an integer between 1 and 3600.", { status: 400 }),
+    );
+    renderModal();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("cutoffSeconds must be an integer between 1 and 3600.");
+    consoleError.mockRestore();
   });
 
   it.each([
@@ -241,7 +343,7 @@ describe("ReplayImportModal — W3Champions link import (F004)", () => {
     const [apiBase, payload, opts] = requestReplayImportMock.mock.calls[0];
     expect(apiBase).toBe("https://site.test");
     expect(payload).toEqual({ kind: "match", match: "https://w3champions.com/match/6aae9d48d867fad24f911778" });
-    expect(opts).toEqual({ dropLikelyRejected: true });
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: false });
 
     await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
   });
