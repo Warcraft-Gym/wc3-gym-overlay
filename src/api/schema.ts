@@ -81,9 +81,25 @@ export const buildResponseSchema = z.object({
  * `url` its `/api/icons` route stamps on. Exported so `store/keys.ts` can
  * build `ICONS_CACHE`'s schema off the same shape instead of re-declaring
  * it, same pattern as `raceSchema`/`difficultySchema` above.
+ *
+ * F004d: the site added `kind: "ability"` on 2026-09-22 (150 of 832 icons
+ * in the production catalogue at the time — see
+ * `__fixtures__/icons.production.json`, captured 2026-09-30) with no
+ * announcement. `gameIconEntrySchema`/`iconsResponseSchema` below are kept
+ * *strict* — every `kind`/`race` must be one this build recognises — because
+ * they also back `ICONS_CACHE`'s persisted schema (`store/keys.ts`) and
+ * every entry that ever reaches that cache has already been normalised by
+ * `parseIconsResponse` below, so strict-parsing it back out is a sanity
+ * check, not a risk. The network response itself is *not* strict-parsed
+ * with these: `parseIconsResponse` validates it tolerantly, because a site
+ * deploy can add another new `kind`/`race` at any time and one unrecognised
+ * enum value must never blank out the other 831 entries again (see the
+ * F004d defect: it silently reproduces for every user once 0.5.0's new
+ * default `apiBase` means no cache from an old `apiBase` is around to
+ * mask it).
  */
 export const iconRaceSchema = z.enum(["human", "orc", "nightelf", "undead", "neutral"]);
-export const iconKindSchema = z.enum(["hero", "unit", "building", "upgrade", "misc"]);
+export const iconKindSchema = z.enum(["hero", "unit", "building", "upgrade", "misc", "ability"]);
 
 export const gameIconEntrySchema = z.object({
   key: z.string(),
@@ -96,6 +112,69 @@ export const gameIconEntrySchema = z.object({
 export const iconsResponseSchema = z.object({
   icons: z.array(gameIconEntrySchema),
 });
+
+/**
+ * Loose shape for an icon entry straight off the wire: `key`/`title`/`url`
+ * are required strings (a malformed entry missing one of those is useless
+ * and gets dropped — that part of the defect, an entry that doesn't even
+ * have the right shape, was never observed and isn't what this fixes), but
+ * `race`/`kind` are only required to be *strings*, not one of the enum
+ * values this build currently knows about.
+ */
+const rawGameIconEntrySchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  race: z.string(),
+  kind: z.string(),
+  url: z.string(),
+});
+
+const rawIconsResponseSchema = z.object({
+  icons: z.array(rawGameIconEntrySchema),
+});
+
+export type ParsedIconsResponse = {
+  icons: GameIconEntry[];
+  /** Distinct `kind` values seen that this build doesn't recognise, mapped
+   *  to `"misc"` in `icons` above. Empty when every entry's `kind` was
+   *  recognised. */
+  unknownKinds: string[];
+  /** Same as `unknownKinds`, for `race` (mapped to `"neutral"`). */
+  unknownRaces: string[];
+};
+
+/**
+ * F004d: the tolerant counterpart to `iconsResponseSchema.safeParse` used
+ * by `fetchIcons` — validates the outer `{ icons: [...] }` shape and each
+ * entry's structural fields (`key`/`title`/`url`) strictly (`.parse`
+ * throws, same "reject the whole response" behaviour as before, for a
+ * response that isn't even shaped like an icon manifest), but maps an
+ * entry's unrecognised `kind`/`race` to a safe fallback instead of
+ * rejecting the entry, let alone the whole response. Every fallen-back
+ * value is reported back (deduplicated) so the caller can log one warning
+ * naming them, instead of either failing silently or logging once per
+ * entry (150 of 832 entries currently carry `kind: "ability"` — a
+ * per-entry warning would be 150 lines).
+ */
+export function parseIconsResponse(raw: unknown): ParsedIconsResponse {
+  const { icons: rawIcons } = rawIconsResponseSchema.parse(raw);
+  const unknownKinds = new Set<string>();
+  const unknownRaces = new Set<string>();
+  const icons = rawIcons.map((entry): GameIconEntry => {
+    const kind = iconKindSchema.safeParse(entry.kind);
+    if (!kind.success) unknownKinds.add(entry.kind);
+    const race = iconRaceSchema.safeParse(entry.race);
+    if (!race.success) unknownRaces.add(entry.race);
+    return {
+      key: entry.key,
+      title: entry.title,
+      url: entry.url,
+      kind: kind.success ? kind.data : "misc",
+      race: race.success ? race.data : "neutral",
+    };
+  });
+  return { icons, unknownKinds: [...unknownKinds], unknownRaces: [...unknownRaces] };
+}
 
 export type ApiBuildStep = z.infer<typeof apiBuildStepSchema>;
 export type ApiBuildListItem = z.infer<typeof apiBuildListItemSchema>;
