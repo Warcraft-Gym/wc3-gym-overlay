@@ -9,9 +9,16 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ReplayImportError,
   replayBuildToFormInput,
+  replayImportResponseSchema,
   requestReplayImport,
   type ReplayImportBuild,
 } from "./replayImport";
+// F004c — captured live from production (`https://warcraft-gym.com`) on
+// 2026-09-30, `POST /api/replay-import` for `ced_vs_lyn.w3g`. Committed
+// verbatim (pretty-printed) so the schema is checked against a real
+// response, not a hand-written mock that can (and did) encode the same
+// mistake as the code under test — see the F004c spec.
+import PRODUCTION_FIXTURE from "./__fixtures__/replay-import.production.json";
 
 const VALID_RESPONSE = {
   map: "Northern Isles",
@@ -30,7 +37,7 @@ const VALID_RESPONSE = {
         vsRaces: ["orc"],
         difficulty: "beginner",
         patch: "1.36",
-        tags: "replay",
+        tags: ["replay"],
         summary: "Imported from a replay.",
         author: "noname#114787",
         authorDiscord: "",
@@ -50,7 +57,7 @@ const VALID_RESPONSE = {
         vsRaces: ["human"],
         difficulty: "beginner",
         patch: "1.36",
-        tags: "replay",
+        tags: ["replay"],
         summary: "Imported from a replay.",
         author: "FoCuS#31324",
         authorDiscord: "",
@@ -300,14 +307,53 @@ describe("requestReplayImport — every failure is visible", () => {
 });
 
 describe("replayBuildToFormInput", () => {
-  it("adapts the wire shape (numeric supply) into EditorFormInput's all-string steps", () => {
+  it("adapts the wire shape (numeric supply, array tags) into EditorFormInput's all-string shape", () => {
     const build: ReplayImportBuild = VALID_RESPONSE.players[0].build;
     const form = replayBuildToFormInput(build);
     expect(form.title).toBe(build.title);
     expect(form.vsRaces).toEqual(build.vsRaces);
+    // F004c: joins the wire's string array the same way `fromBuild` does
+    // (`src/lib/buildEditorSchema.ts`: `tags: build.tags.join(", ")`).
+    expect(form.tags).toBe("replay");
     expect(form.steps).toEqual([
       { time: "0:01", supply: "5", instruction: "Train 2× Peon", icon: "or-peon", importNote: undefined },
     ]);
+  });
+
+  it("joins multiple tags with ', '", () => {
+    const build: ReplayImportBuild = { ...VALID_RESPONSE.players[0].build, tags: ["replay", "fast-expand"] };
+    expect(replayBuildToFormInput(build).tags).toBe("replay, fast-expand");
+  });
+});
+
+describe("replayImportResponseSchema — real production response (F004c)", () => {
+  // Pre-fix, this fails: the schema declared `build.tags` as `z.string()`
+  // but production sends an array (`["replay"]`) and always has — every
+  // real import was rejected by `safeParse`. See the F004c spec for the
+  // verified defect.
+  it("parses the fixture captured live from production", () => {
+    const result = replayImportResponseSchema.safeParse(PRODUCTION_FIXTURE);
+    expect(result.success).toBe(true);
+  });
+
+  it("replayBuildToFormInput turns the fixture's players into valid EditorFormInput, joining tags with the fromBuild convention", () => {
+    const parsed = replayImportResponseSchema.parse(PRODUCTION_FIXTURE);
+    expect(parsed.players).toHaveLength(2);
+
+    const first = replayBuildToFormInput(parsed.players[0].build);
+    expect(first.tags).toBe("replay");
+    expect(first.title).toBe(parsed.players[0].build.title);
+    expect(first.steps).toHaveLength(parsed.players[0].build.steps.length);
+    expect(first.steps[0]).toEqual({
+      time: "0:01",
+      supply: "5",
+      instruction: "Train 2× Peon",
+      icon: "or-peon",
+      importNote: undefined,
+    });
+
+    const second = replayBuildToFormInput(parsed.players[1].build);
+    expect(second.tags).toBe("replay");
   });
 });
 

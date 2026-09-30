@@ -5,9 +5,15 @@
  * never touch the network; the real client is covered by
  * `src/api/replayImport.test.ts`.
  */
+import { StrictMode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ReplayImportError, type ReplayImportResponse } from "../../../api/replayImport";
+import { ReplayImportError, replayImportResponseSchema, type ReplayImportResponse } from "../../../api/replayImport";
+// F004c — captured live from production (`https://warcraft-gym.com`) on
+// 2026-09-30, `POST /api/replay-import` for `ced_vs_lyn.w3g`. Same fixture
+// `src/api/replayImport.test.ts` parses — used here to feed a real response
+// shape (array `tags`, etc.) through the whole modal, not just the schema.
+import PRODUCTION_FIXTURE from "../../../api/__fixtures__/replay-import.production.json";
 
 const requestReplayImportMock = vi.hoisted(() => vi.fn());
 vi.mock("../../../api/replayImport", async () => {
@@ -16,6 +22,8 @@ vi.mock("../../../api/replayImport", async () => {
 });
 
 const { ReplayImportModal } = await import("./ReplayImportModal");
+
+const PRODUCTION_RESPONSE: ReplayImportResponse = replayImportResponseSchema.parse(PRODUCTION_FIXTURE);
 
 const RESPONSE: ReplayImportResponse = {
   map: "Northern Isles",
@@ -34,7 +42,7 @@ const RESPONSE: ReplayImportResponse = {
         vsRaces: ["orc"],
         difficulty: "intermediate",
         patch: "",
-        tags: "replay",
+        tags: ["replay"],
         summary: "Imported from replay Northern Isles (v3.00, 13:43).",
         author: "Replay Import",
         authorDiscord: "",
@@ -57,7 +65,7 @@ const RESPONSE: ReplayImportResponse = {
         vsRaces: ["human"],
         difficulty: "intermediate",
         patch: "",
-        tags: "replay",
+        tags: ["replay"],
         summary: "Imported from replay Northern Isles (v3.00, 13:43).",
         author: "Replay Import",
         authorDiscord: "",
@@ -67,6 +75,13 @@ const RESPONSE: ReplayImportResponse = {
       },
     },
   ],
+};
+
+// F004b: a second, distinguishable response used by the superseded-request
+// test below — only its map name matters for the assertions.
+const SECOND_RESPONSE: ReplayImportResponse = {
+  ...RESPONSE,
+  map: "Echo Isles",
 };
 
 function renderModal(overrides: { onOpenInEditor?: (draft: unknown) => void; onClose?: () => void } = {}) {
@@ -109,7 +124,7 @@ describe("ReplayImportModal — file import", () => {
     expect(apiBase).toBe("https://site.test");
     expect(payload).toEqual({ kind: "file", bytes: new Uint8Array([1, 2, 3]), fileName: "game.w3g" });
     // F004a: defaults — 8:00 cutoff, upgrades on, items off — sent on first load.
-    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: false });
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: false, signal: expect.any(AbortSignal) });
   });
 
   it("lists the response's players, with the first one selected by default", async () => {
@@ -172,7 +187,7 @@ describe("ReplayImportModal — file import", () => {
 
     await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
     const [, , opts] = requestReplayImportMock.mock.calls[0];
-    expect(opts).toEqual({ dropLikelyRejected: false, cutoffSeconds: 480, includeUpgrades: true, includeItems: false });
+    expect(opts).toEqual({ dropLikelyRejected: false, cutoffSeconds: 480, includeUpgrades: true, includeItems: false, signal: expect.any(AbortSignal) });
   });
 
   it("toggling 'Include upgrades' re-requests with includeUpgrades: false", async () => {
@@ -189,7 +204,7 @@ describe("ReplayImportModal — file import", () => {
 
     await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
     const [, , opts] = requestReplayImportMock.mock.calls[0];
-    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: false, includeItems: false });
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: false, includeItems: false, signal: expect.any(AbortSignal) });
   });
 
   it("toggling 'Include items' re-requests with includeItems: true", async () => {
@@ -206,7 +221,7 @@ describe("ReplayImportModal — file import", () => {
 
     await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
     const [, , opts] = requestReplayImportMock.mock.calls[0];
-    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: true });
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: true, signal: expect.any(AbortSignal) });
   });
 
   it("shows the cutoff field defaulted to 08:00, and applies a new value on blur, re-requesting with cutoffSeconds", async () => {
@@ -224,7 +239,7 @@ describe("ReplayImportModal — file import", () => {
 
     await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
     const [, , opts] = requestReplayImportMock.mock.calls[0];
-    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 120, includeUpgrades: true, includeItems: false });
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 120, includeUpgrades: true, includeItems: false, signal: expect.any(AbortSignal) });
     expect(cutoff.value).toBe("02:00");
   });
 
@@ -343,7 +358,7 @@ describe("ReplayImportModal — W3Champions link import (F004)", () => {
     const [apiBase, payload, opts] = requestReplayImportMock.mock.calls[0];
     expect(apiBase).toBe("https://site.test");
     expect(payload).toEqual({ kind: "match", match: "https://w3champions.com/match/6aae9d48d867fad24f911778" });
-    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: false });
+    expect(opts).toEqual({ dropLikelyRejected: true, cutoffSeconds: 480, includeUpgrades: true, includeItems: false, signal: expect.any(AbortSignal) });
 
     await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
   });
@@ -393,5 +408,154 @@ describe("ReplayImportModal — W3Champions link import (F004)", () => {
     expect(alert.textContent).toContain("Match not found on W3Champions.");
     expect(screen.getByRole("textbox", { name: "W3Champions match link or id" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Fetch" })).toBeTruthy();
+  });
+});
+
+describe("ReplayImportModal — React StrictMode (F004b)", () => {
+  afterEach(() => {
+    cleanup();
+    document.body.style.overflow = "";
+    vi.clearAllMocks();
+  });
+
+  it("leaves 'Reading replay…' and shows the player list after StrictMode's simulated mount/unmount/remount", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+
+    render(
+      <StrictMode>
+        <ReplayImportModal
+          source={{ kind: "file", bytes: new Uint8Array([1, 2, 3]), fileName: "game.w3g" }}
+          apiBase="https://site.test"
+          onClose={vi.fn()}
+          onOpenInEditor={vi.fn()}
+        />
+      </StrictMode>,
+    );
+
+    // Pre-fix: mountedRef.current is flipped to false by StrictMode's
+    // simulated unmount and never reset, so every response (including the
+    // one from the second, "real" mount) is dropped and the modal is stuck
+    // here forever.
+    await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("aborts the request superseded by StrictMode's remount, and only the newest response is ever applied", async () => {
+    // F004b: the modal's own option controls (checkboxes, cutoff field) only
+    // render once a request has *settled* into `{ kind: "ready" }` — while
+    // one is in flight the modal shows only "Reading replay…", nothing
+    // interactive. So the one place two requests for the same modal
+    // instance are ever genuinely in flight at once — the race this test
+    // guards — is exactly the StrictMode mount/unmount/remount this
+    // feature fixes (also the source of the bug report's "two
+    // near-simultaneous POSTs per upload"): the first (simulated) mount's
+    // request must be aborted by its cleanup, and even if it still manages
+    // to resolve afterwards (racy in real life, but exercised here to prove
+    // the `cancelled` guard — not just the abort — holds), its response
+    // must never reach the screen; only the second, "real" mount's
+    // response may.
+    type PendingEntry = { resolve: (data: ReplayImportResponse) => void; aborted: boolean };
+    const pending: PendingEntry[] = [];
+    requestReplayImportMock.mockImplementation(
+      (_apiBase: string, _payload: unknown, opts: { signal?: AbortSignal } = {}) => {
+        const entry: PendingEntry = { resolve: () => {}, aborted: false };
+        const promise = new Promise<ReplayImportResponse>((resolve, reject) => {
+          entry.resolve = resolve;
+          opts.signal?.addEventListener("abort", () => {
+            entry.aborted = true;
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
+        pending.push(entry);
+        return promise;
+      },
+    );
+
+    render(
+      <StrictMode>
+        <ReplayImportModal
+          source={{ kind: "file", bytes: new Uint8Array([1, 2, 3]), fileName: "game.w3g" }}
+          apiBase="https://site.test"
+          onClose={vi.fn()}
+          onOpenInEditor={vi.fn()}
+        />
+      </StrictMode>,
+    );
+
+    // Two requests went out (the StrictMode-doubled POSTs from the bug
+    // report); exactly one is still live, the other already aborted by its
+    // effect's cleanup.
+    await waitFor(() => expect(pending.length).toBe(2));
+    const superseded = pending.find((entry) => entry.aborted);
+    const live = pending.find((entry) => !entry.aborted);
+    expect(superseded).toBeTruthy();
+    expect(live).toBeTruthy();
+
+    // The live one resolves first and is applied.
+    live!.resolve(SECOND_RESPONSE);
+    await waitFor(() => expect(screen.getByText("Echo Isles · v3.00 · 13:43")).toBeTruthy());
+
+    // The superseded one resolves late, with different data — it must not
+    // override what's already on screen.
+    superseded!.resolve(RESPONSE);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText("Echo Isles · v3.00 · 13:43")).toBeTruthy();
+    expect(screen.queryByText("Northern Isles · v3.00 · 13:43")).toBeNull();
+  });
+});
+
+describe("ReplayImportModal — real production response shape, under StrictMode (F004c)", () => {
+  afterEach(() => {
+    cleanup();
+    document.body.style.overflow = "";
+    vi.clearAllMocks();
+  });
+
+  // End-to-end from the mocked request through to `onOpenInEditor`, fed the
+  // fixture captured live from production (array `tags`, not the
+  // hand-written mocks' shape) and rendered inside `<StrictMode>` — the same
+  // combination the F004b/F004c bugs both hid from the unit tests.
+  it("lists both of the fixture's players, and opening one in the editor passes the real shape through replayBuildToFormInput", async () => {
+    requestReplayImportMock.mockResolvedValue(PRODUCTION_RESPONSE);
+    const onOpenInEditor = vi.fn();
+
+    render(
+      <StrictMode>
+        <ReplayImportModal
+          source={{ kind: "file", bytes: new Uint8Array([1, 2, 3]), fileName: "ced_vs_lyn.w3g" }}
+          apiBase="https://site.test"
+          onClose={vi.fn()}
+          onOpenInEditor={onOpenInEditor}
+        />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    const firstPlayer = PRODUCTION_RESPONSE.players[0];
+    const secondPlayer = PRODUCTION_RESPONSE.players[1];
+    const firstRadio = screen.getByRole("radio", { name: `${firstPlayer.name} · Orc` }) as HTMLInputElement;
+    const secondRadio = screen.getByRole("radio", { name: `${secondPlayer.name} · Undead` }) as HTMLInputElement;
+    expect(firstRadio.checked).toBe(true);
+    expect(secondRadio.checked).toBe(false);
+
+    fireEvent.click(secondRadio);
+    fireEvent.click(screen.getByRole("button", { name: "Open in editor" }));
+
+    expect(onOpenInEditor).toHaveBeenCalledTimes(1);
+    const draft = onOpenInEditor.mock.calls[0][0] as { tags: string; steps: unknown[] };
+    // F004c: the wire's array `tags` joined the same way `fromBuild` does.
+    expect(draft.tags).toBe(secondPlayer.build.tags.join(", "));
+    expect(draft.steps).toEqual(
+      secondPlayer.build.steps.map((step) => ({
+        time: step.time,
+        supply: String(step.supply),
+        instruction: step.instruction,
+        icon: step.icon,
+        importNote: step.importNote,
+      })),
+    );
   });
 });
