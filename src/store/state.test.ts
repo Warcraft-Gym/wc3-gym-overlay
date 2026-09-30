@@ -124,6 +124,23 @@ describe("readKey — SETTINGS apiBase migration", () => {
     expect(readKey(SETTINGS).apiBase).toBe(DEFAULT_API_BASE);
   });
 
+  /** F004 (C-047): the site's former Vercel preview domain was the default
+   *  before the app moved to the production `warcraft-gym.com` domain —
+   *  settings persisted with it as `apiBase` must migrate too. */
+  it("migrates a stored settings value with the old wc3-gnl-website.vercel.app apiBase to the new one", () => {
+    localStorage.setItem(
+      SETTINGS.name,
+      JSON.stringify({
+        apiBase: "https://wc3-gnl-website.vercel.app",
+        opacity: 0.8,
+        scale: 1.2,
+        shortcuts: { ...DEFAULT_SHORTCUTS },
+      }),
+    );
+    expect(readKey(SETTINGS).apiBase).toBe(DEFAULT_API_BASE);
+    expect(DEFAULT_API_BASE).toBe("https://warcraft-gym.com");
+  });
+
   it("leaves a custom apiBase untouched", () => {
     localStorage.setItem(
       SETTINGS.name,

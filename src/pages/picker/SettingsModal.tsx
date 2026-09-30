@@ -155,7 +155,7 @@ export function SettingsModal({
       setApiBaseError(null);
       void updateKey(SETTINGS, (s) => ({ ...s, apiBase: url.toString().replace(/\/$/, "") }));
     } catch {
-      setApiBaseError("Enter a valid URL, e.g. https://wc3-gnl-website.vercel.app");
+      setApiBaseError("Enter a valid URL, e.g. https://warcraft-gym.com");
     }
   }
 
