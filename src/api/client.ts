@@ -17,7 +17,7 @@
 import {
   buildResponseSchema,
   buildsListResponseSchema,
-  iconsResponseSchema,
+  parseIconsResponse,
   type ApiBuild,
   type ApiBuildListItem,
   type GameIconEntry,
@@ -72,13 +72,32 @@ export async function fetchBuild(apiBase: string, slug: string): Promise<ApiBuil
   return parsed.data.build;
 }
 
-/** F003: fetches the WC3 icon manifest the editor's icon picker renders,
- *  same offline-safe shape as `fetchBuilds`. */
+/**
+ * F003: fetches the WC3 icon manifest the editor's icon picker renders,
+ * same offline-safe shape as `fetchBuilds`. F004d: parsed tolerantly
+ * (`parseIconsResponse`, not a strict `.safeParse`) — the site has already
+ * shipped one `kind` value this build didn't know about (`"ability"`,
+ * 2026-09-22) with no announcement, and a single unrecognised `kind`/`race`
+ * must never invalidate the other 800+ entries again. Only a response that
+ * isn't even shaped like `{ icons: [{ key, title, race, kind, url }] }`
+ * throws; an unrecognised `kind`/`race` value is mapped to a safe fallback
+ * and reported once as a single warning naming every distinct value seen.
+ */
 export async function fetchIcons(apiBase: string): Promise<GameIconEntry[]> {
   const body = await fetchJson(`${apiBase}/api/icons`);
-  const parsed = iconsResponseSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ApiError("invalid", `icons response failed validation: ${parsed.error.message}`);
+  let parsed: ReturnType<typeof parseIconsResponse>;
+  try {
+    parsed = parseIconsResponse(body);
+  } catch (err) {
+    throw new ApiError("invalid", `icons response failed validation: ${err instanceof Error ? err.message : String(err)}`, {
+      cause: err,
+    });
   }
-  return parsed.data.icons;
+  if (parsed.unknownKinds.length > 0) {
+    console.warn(`[wc3gym] icon catalogue has unrecognised kind(s), showing as "misc":`, parsed.unknownKinds.join(", "));
+  }
+  if (parsed.unknownRaces.length > 0) {
+    console.warn(`[wc3gym] icon catalogue has unrecognised race(s), showing as "neutral":`, parsed.unknownRaces.join(", "));
+  }
+  return parsed.icons;
 }

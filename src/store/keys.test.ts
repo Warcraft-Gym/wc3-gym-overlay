@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SHORTCUTS } from "../config";
-import { localBuildSchema, settingsSchema } from "./keys";
+import { iconsCacheSchema, localBuildSchema, settingsSchema } from "./keys";
 
 /** F002: shape written by every 0.3.x settings save — no `autoUpdate` or
  *  `skippedVersion` key at all, since neither existed yet. */
@@ -60,6 +60,22 @@ describe("localBuildSchema", () => {
     const result = localBuildSchema.safeParse(raw);
     expect(result.success).toBe(true);
     expect(result.success && result.data.vsRaces).toEqual([]);
+  });
+});
+
+describe("iconsCacheSchema (F004d: ability kind round-trips through the persisted cache)", () => {
+  it("parses a cache written with ability entries", () => {
+    const cache = {
+      fetchedAt: "2026-09-30T00:00:00.000Z",
+      apiBase: "https://warcraft-gym.com",
+      icons: [
+        { key: "avatar", title: "Avatar", race: "human", kind: "ability", url: "https://warcraft-gym.com/wc3-icons/avatar.webp" },
+        { key: "hu-peasant", title: "Peasant", race: "human", kind: "unit", url: "https://warcraft-gym.com/wc3-icons/hu-peasant.webp" },
+      ],
+    };
+    const result = iconsCacheSchema.safeParse(cache);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.icons.map((i) => i.kind)).toEqual(["ability", "unit"]);
   });
 });
 
