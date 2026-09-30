@@ -107,6 +107,13 @@ export interface RequestReplayImportOptions {
    *  defaults (upgrades included, items not). */
   includeUpgrades?: boolean;
   includeItems?: boolean;
+  /** F004b: forwarded to `fetch` as-is. The caller (`ReplayImportModal`)
+   *  aborts this in its effect cleanup so a superseded or unmounted request
+   *  is cancelled at the network level instead of just having its response
+   *  ignored. The resulting `AbortError` is rethrown unwrapped (not turned
+   *  into a `ReplayImportError`) so callers can tell an abort apart from a
+   *  real network failure — see the `catch` below. */
+  signal?: AbortSignal;
   fetchImpl?: typeof fetch;
 }
 
@@ -157,6 +164,7 @@ export async function requestReplayImport(
     cutoffSeconds = 480,
     includeUpgrades = true,
     includeItems = false,
+    signal,
     fetchImpl = globalThis.fetch,
   }: RequestReplayImportOptions = {},
 ): Promise<ReplayImportResponse> {
@@ -177,7 +185,7 @@ export async function requestReplayImport(
       form.append("cutoffSeconds", String(cutoffSeconds));
       form.append("includeUpgrades", includeUpgrades ? "true" : "false");
       form.append("includeItems", includeItems ? "true" : "false");
-      response = await fetchImpl(url, { method: "POST", body: form });
+      response = await fetchImpl(url, { method: "POST", body: form, signal });
     } else {
       const body: {
         match: string;
@@ -191,9 +199,16 @@ export async function requestReplayImport(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal,
       });
     }
   } catch (err) {
+    // F004b: an abort (a superseded or unmounted request, cancelled by the
+    // caller's `AbortController`) is expected control flow, not a network
+    // failure — rethrow it unwrapped so callers (`ReplayImportModal`) can
+    // tell it apart from a real `fetch` failure and never show it as an
+    // error.
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new ReplayImportError("network", `Couldn't reach ${hostLabel(apiBase)}. Check your connection.`, {
       cause: err,
     });
