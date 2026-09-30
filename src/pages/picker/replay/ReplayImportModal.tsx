@@ -89,17 +89,6 @@ export function ReplayImportModal({
   const [includeUpgrades, setIncludeUpgrades] = useState(true);
   const [includeItems, setIncludeItems] = useState(false);
 
-  // Guards every async setState below against firing after the modal has
-  // been closed/unmounted (an import still in flight when the user hits
-  // Escape or clicks Cancel).
-  const mountedRef = useRef(true);
-  useEffect(
-    () => () => {
-      mountedRef.current = false;
-    },
-    [],
-  );
-
   // F004: deliberately *not* the `autoFocus` prop on the `<input>` below —
   // `Modal`'s own mount effect (a `useEffect`, so a *passive* effect) reads
   // `document.activeElement` to remember what to restore focus to on close,
@@ -122,24 +111,49 @@ export function ReplayImportModal({
   // recompute (see the API's `dropLikelyRejected` field). F004a: also
   // re-fires on `cutoffSeconds` (only after it's been committed — see
   // `commitCutoff`), `includeUpgrades` and `includeItems`, same reasoning.
+  //
+  // F004b: this used to also guard on a `mountedRef` set to `false` by this
+  // effect's own cleanup — redundant with `cancelled` below (both exist
+  // only to drop a stale response) and actively wrong under React
+  // StrictMode: development mounts, unmounts and remounts every component,
+  // so `mountedRef.current` was left `false` forever after the first
+  // simulated unmount and every real response was silently dropped (the
+  // modal never left "Reading replay…" — see the mission's F004b spec).
+  // `cancelled` alone already does the job, per-effect-run. The
+  // `AbortController` is new: it cancels a superseded/unmounted request at
+  // the network level (cutting dev's StrictMode-doubled request short too),
+  // and its resulting `AbortError` must never be shown to the user — see
+  // the `catch` below.
   useEffect(() => {
     if (!payload) return;
     let cancelled = false;
+    const controller = new AbortController();
     setState(payload.kind === "match" ? { kind: "link", fetching: true } : { kind: "loading" });
-    requestReplayImport(apiBase, payload, { dropLikelyRejected, cutoffSeconds, includeUpgrades, includeItems })
+    requestReplayImport(apiBase, payload, {
+      dropLikelyRejected,
+      cutoffSeconds,
+      includeUpgrades,
+      includeItems,
+      signal: controller.signal,
+    })
       .then((data) => {
-        if (cancelled || !mountedRef.current) return;
+        if (cancelled) return;
         setState({ kind: "ready", data });
         setPlayerId((prev) => (prev !== null && data.players.some((p) => p.id === prev) ? prev : (data.players[0]?.id ?? null)));
       })
       .catch((err: unknown) => {
-        if (cancelled || !mountedRef.current) return;
+        if (cancelled) return;
+        // An abort is expected (a superseded request, or the effect
+        // cleaning up) and never a user-visible error — every other
+        // failure still is.
+        if (err instanceof DOMException && err.name === "AbortError") return;
         console.error("Failed to import replay:", err);
         const message = err instanceof ReplayImportError ? err.message : "Couldn't read this replay.";
         setState(payload.kind === "match" ? { kind: "link", error: message } : { kind: "error", message });
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [payload, dropLikelyRejected, cutoffSeconds, includeUpgrades, includeItems, apiBase]);
 
