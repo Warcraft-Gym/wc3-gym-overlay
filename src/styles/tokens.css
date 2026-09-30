@@ -36,6 +36,18 @@
   --wg-win: #4F95D8; /* tested on black with the dataviz validator */
   --wg-loss: #DE6E52; /* tested on black with the dataviz validator */
 
+  /* --- Build difficulty: an ordered scale, ported byte-identical from the
+   * site's `src/app/globals.css` (`fix(builds): difficulty reads as a
+   * scale`). It used to borrow --wg-win (blue) for beginner and --wg-arcane
+   * (also blue) for intermediate, which made the first two steps of the
+   * scale look the same. Green -> amber -> red reads as a progression.
+   * The advanced step deliberately does not reuse --wg-loss even though the
+   * hex is identical: same tested red (6.4:1+ on this file's own surfaces),
+   * different semantic meaning (a skill-level label, not a match result). */
+  --wg-difficulty-beginner: #68c040;
+  --wg-difficulty-intermediate: #d0a838;
+  --wg-difficulty-advanced: #DE6E52;
+
   /* --- Race / faction semantic color --- */
   --wg-human: #02809C; /* tested on black with the dataviz validator */
   --wg-orc: #BA4C4B; /* tested on black with the dataviz validator */
@@ -77,6 +89,10 @@
 
   --color-win: var(--wg-win);
   --color-loss: var(--wg-loss);
+
+  --color-difficulty-beginner: var(--wg-difficulty-beginner);
+  --color-difficulty-intermediate: var(--wg-difficulty-intermediate);
+  --color-difficulty-advanced: var(--wg-difficulty-advanced);
 
   --color-human: var(--wg-human);
   --color-orc: var(--wg-orc);
