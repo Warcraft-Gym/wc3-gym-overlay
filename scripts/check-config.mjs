@@ -262,7 +262,7 @@ function main() {
     Array.isArray(updaterEndpoints) &&
       updaterEndpoints.length === 1 &&
       updaterEndpoints[0] ===
-        "https://github.com/Warcraft-Gym/wc3-gnl-website/releases/latest/download/latest.json",
+        "https://github.com/Warcraft-Gym/wc3-gym-overlay/releases/latest/download/latest.json",
     `found: ${JSON.stringify(updaterEndpoints)}`,
   );
 

@@ -1,0 +1,101 @@
+name: Overlay release
+
+on:
+  push:
+    tags:
+      - "overlay-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and publish release (tag push)
+        if: startsWith(github.ref, 'refs/tags/overlay-v')
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Warcraft 3 Gym Overlay ${{ github.ref_name }}"
+          releaseBody: "Signed release — the app updates itself from here. Windows may still show a SmartScreen prompt on first install; the portable exe does not self-update."
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: ${{ matrix.args }}
+
+      # Version-less copies so https://github.com/<repo>/releases/latest/download/<name>
+      # always resolves to the newest build. The site links to these.
+      - name: Publish stable-name Windows assets (tag push)
+        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/overlay-v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $setup = Get-ChildItem "src-tauri/target/release/bundle/nsis/*-setup.exe" | Select-Object -First 1
+          Copy-Item $setup.FullName "Warcraft-3-Gym-Overlay-Setup.exe"
+          Copy-Item "src-tauri/target/release/wc3gym-overlay.exe" "Warcraft-3-Gym-Overlay-Portable.exe"
+          gh release upload "${{ github.ref_name }}" "Warcraft-3-Gym-Overlay-Setup.exe" "Warcraft-3-Gym-Overlay-Portable.exe" --clobber
+
+      - name: Publish stable-name macOS asset (tag push)
+        if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/overlay-v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dmg=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -name '*.dmg' | head -1)
+          cp "$dmg" "Warcraft-3-Gym-Overlay.dmg"
+          gh release upload "${{ github.ref_name }}" "Warcraft-3-Gym-Overlay.dmg" --clobber
+
+      - name: Build and upload workflow artifacts (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          uploadWorkflowArtifacts: true
+          args: ${{ matrix.args }}
+
+      - name: Prepare portable Windows exe (manual run)
+        if: matrix.platform == 'windows-latest' && github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: Copy-Item "src-tauri/target/release/wc3gym-overlay.exe" "Warcraft-3-Gym-Overlay_portable.exe"
+
+      - name: Upload portable Windows exe artifact (manual run)
+        if: matrix.platform == 'windows-latest' && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-windows
+          path: Warcraft-3-Gym-Overlay_portable.exe

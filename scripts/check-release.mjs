@@ -10,7 +10,7 @@
 
 import { execFileSync } from "node:child_process";
 
-const REPO = "Warcraft-Gym/wc3-gnl-website";
+const REPO = "Warcraft-Gym/wc3-gym-overlay";
 
 // Version-less "stable name" assets the workflow publishes alongside the
 // versioned ones so the site's download links never need updating.
