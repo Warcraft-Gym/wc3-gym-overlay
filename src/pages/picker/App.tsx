@@ -29,8 +29,8 @@ import { useUpdateFlow } from "./useUpdateFlow";
 // once the user actually opens it — code-split so "New private build" /
 // "Duplicate" / "Edit" don't add to the picker's initial bundle.
 const BuildEditorModal = lazy(() => import("./editor/BuildEditorModal").then((m) => ({ default: m.BuildEditorModal })));
-// F002/F004: the replay-import dialog (and, transitively, `w3gjs`) is only
-// ever needed once "Import replay"/"From W3Champions" is clicked.
+// F002/F004: the replay-import dialog is only ever needed once
+// "Import replay"/"From W3Champions" is clicked.
 const ReplayImportModal = lazy(() =>
   import("./replay/ReplayImportModal").then((m) => ({ default: m.ReplayImportModal })),
 );
@@ -130,7 +130,7 @@ export function App() {
 
   async function handleImportReplay(): Promise<void> {
     const picked = await host.openBinaryFile(REPLAY_FILE_FILTERS);
-    if (picked) setReplayImport({ kind: "file", bytes: picked.bytes });
+    if (picked) setReplayImport({ kind: "file", bytes: picked.bytes, fileName: picked.name });
   }
 
   function handleImportFromW3Champions(): void {

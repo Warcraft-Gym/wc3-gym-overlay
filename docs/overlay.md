@@ -209,18 +209,27 @@ what a build contains before importing it.
 
 ## Import a build from a replay
 
-**Import replay** (top bar) turns one of your own `.w3g` replay files into a
-draft private build:
+**The overlay ships no replay parser of its own (F004).** **Import replay**
+(top bar) sends one of your own `.w3g` replay files to the website's
+`POST /api/replay-import` (the same **API base** configured in Settings —
+see [Troubleshooting](#troubleshooting)) and turns the response into a
+draft private build. **This needs a working connection** — with the site
+unreachable, rate-limited, or down, the import fails with a visible message
+(see [Troubleshooting an import](#troubleshooting-an-import) below)
+instead of silently falling back to anything local.
 
-1. Click **Import replay** and pick a `.w3g` file in the native dialog.
-2. Choose which player is "you" — the replay does not record who was sitting
-   at which seat, so a radio list of both players is shown and you pick.
-3. Adjust **Import up to** (default `08:00`) to trim how much of the game is
-   converted into steps, and the **Include upgrades** / **Include items**
-   toggles; a live "N steps" count updates as you change any of them.
-4. Click **Open in editor** — the build editor opens pre-filled with the
-   extracted steps, title, race, and opponent race. Trim/annotate as you
-   would any other build, then **Save**.
+1. Click **Import replay** and pick a `.w3g` file in the native dialog —
+   it's uploaded immediately; a "Reading replay…" status shows while the
+   request is in flight.
+2. Choose which player is "you" from the response's player list — the
+   replay does not record who was sitting at which seat, so a radio list of
+   both players is shown and you pick.
+3. Toggle **Drop orders the game likely rejected** (on by default) to
+   re-request the import with that filter on or off — see
+   "What an import can and cannot know" below.
+4. Click **Open in editor** — the build editor opens pre-filled with that
+   player's extracted steps, title, race, and opponent race. Trim/annotate
+   as you would any other build, then **Save**.
 5. The saved build is **PRIVATE**, tagged `replay`, and — like any newly
    saved build — is auto-selected: it's ready for **Show overlay**
    immediately, no extra click needed to "use" it in game.
@@ -230,9 +239,10 @@ draft private build:
 Don't have the replay file handy? Click **From W3Champions** next to
 **Import replay** and paste the link from the match page's address bar
 (`https://w3champions.com/match/<id>` — the bare id also works). Click
-**Fetch** (or press **Enter**): the app downloads the replay straight from
-W3Champions' public API — nothing is uploaded — and opens the exact same
-dialog described above, starting at step 2 (choose which player is "you").
+**Fetch** (or press **Enter**): the site fetches the replay from
+W3Champions' public API on the overlay's behalf and returns the same
+player-list response described above, starting at step 2 (choose which
+player is "you").
 
 ### Where Warcraft III stores replays
 
@@ -253,6 +263,10 @@ private build" above) rather than relying on the replay file still being
 there later.
 
 ### What an import can and cannot know (limitations)
+
+This parsing runs on the website (`POST /api/replay-import`), not in the
+overlay itself — the overlay only uploads the file/link and renders the
+result. The behavior below is what that service does with a replay.
 
 - **Cancels are honoured exactly, both ways you can issue them.** Clicking a
   queued unit's icon in the production queue cancels that exact slot. Pressing
@@ -298,11 +312,18 @@ there later.
 
 ### Troubleshooting an import
 
-- **"Not a Warcraft III replay"** — the chosen file isn't a `.w3g` (wrong
-  file picked).
-- **"Unsupported replay version"** — the replay predates patch 1.32.
-- **"Couldn't read this replay"** — the file is corrupt or truncated, e.g.
-  `TempReplay.w3g` left behind by a game that crashed before finishing.
+Every import failure shows a message in the dialog — nothing fails silently:
+
+- **"Couldn't reach \<host\>. Check your connection."** — a network or CORS
+  failure reaching the API base configured in Settings (offline, the site is
+  down, or a firewall/VPN is blocking it).
+- A server-reported error (shown verbatim, e.g. "not a Warcraft III replay",
+  "unsupported replay version", the file isn't readable) — the `.w3g` picked
+  wasn't a valid replay, or predates the site's minimum supported patch.
+- **"Too many imports in a minute, try again shortly."** — the API is
+  rate-limited; wait a minute and retry.
+- A clear message for anything else unexpected, including a malformed
+  response — never an empty/blank dialog.
 
 ## Build locally
 
@@ -379,7 +400,7 @@ enforces that the two stay equal).
   Settings, then relaunch.
 - **Build list is empty.** Check the **API base** setting (Settings
   dialog) points at the right site origin — the default is
-  `https://wc3-gnl-website.vercel.app`; if the offline banner is
+  `https://warcraft-gym.com`; if the offline banner is
   showing, the app is using a cached list because it couldn't reach the
   API. Note that `/api/builds` only serves data once the site deployment
   that ships it is live — until then a fresh install correctly shows the
@@ -402,7 +423,7 @@ line as **pass/fail + notes**.
 
 - [ ] **M-1** — Install the `.exe` from the GitHub Release (SmartScreen →
   More info → Run anyway) and confirm the picker lists builds served from
-  `wc3-gnl-website.vercel.app`.
+  `warcraft-gym.com`.
   _record: pass/fail + notes:_
 - [ ] **M-2** — With Warcraft III running borderless, open the overlay via
   the picker button and via `Ctrl+Shift+O`; confirm it stays on top while
@@ -421,9 +442,8 @@ line as **pass/fail + notes**.
   _record: pass/fail + notes:_
 - [ ] **M-6** (macOS now, Windows after release) — Import replay → pick a
   real replay of your own from your BattleNet Replays folder → choose
-  yourself → adjust the cutoff/toggles if you like → Open in editor → Save
-  → use the saved build in game. Report any unmapped units (a "?" icon) if
-  you see one.
+  yourself → Open in editor → Save → use the saved build in game. Report any
+  unmapped units (a "?" icon) if you see one.
   _record: pass/fail + notes:_
 - [ ] **M-8** — Import one of your own replays where you cancelled a unit
   → the step count/instruction reflects the cancel (fewer trained, or the

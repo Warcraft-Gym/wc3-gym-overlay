@@ -1,6 +1,6 @@
 {
   "name": "wc3gym-overlay",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.22.0",
@@ -12,8 +12,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "tauri": "tauri",
-    "check:config": "node scripts/check-config.mjs",
-    "check:bundle": "node scripts/check-bundle.mjs"
+    "check:config": "node scripts/check-config.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -23,11 +22,9 @@
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.12.0",
-    "fflate": "^0.8.3",
     "lucide-react": "^1.34.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "w3gjs": "^4.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -51,7 +48,6 @@
     "typescript": "^5",
     "typescript-eslint": "^8",
     "vite": "^7.3.6",
-    "vite-plugin-node-polyfills": "^0.28.0",
     "vitest": "^3.2.7"
   },
   "pnpm": {

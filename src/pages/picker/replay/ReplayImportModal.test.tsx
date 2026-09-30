@@ -1,83 +1,78 @@
 /**
- * F002/F004 — `ReplayImportModal`. Uses a hand-built `ReplaySummary` fixture
- * object (not a real `.w3g`) and mocks the lazily-imported `parseReplay`/
- * `extractBuild`/`w3champions` modules so these jsdom tests stay fast
- * (< 2s) — the real fixture is only exercised once, through
- * `App.importReplay.test.tsx`'s sibling in `extractBuild.test.ts` /
- * `parseReplay.test.ts` / `w3champions.test.ts`, to catch API drift.
+ * F004 — `ReplayImportModal`, now backed entirely by the website's
+ * `POST /api/replay-import` (no local `.w3g` parsing — `src/replay/` is
+ * gone). Mocks `requestReplayImport` so these jsdom tests stay fast and
+ * never touch the network; the real client is covered by
+ * `src/api/replayImport.test.ts`.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ReplayParseError, type ReplaySummary } from "../../../replay/types";
-import { W3ChampionsError } from "../../../replay/w3champions";
+import { ReplayImportError, type ReplayImportResponse } from "../../../api/replayImport";
 
-const parseReplayMock = vi.hoisted(() => vi.fn());
-const extractBuildMock = vi.hoisted(() => vi.fn());
-const parseMatchRefMock = vi.hoisted(() => vi.fn());
-const fetchW3ChampionsReplayMock = vi.hoisted(() => vi.fn());
-
-vi.mock("../../../replay/parseReplay", () => ({ parseReplay: parseReplayMock }));
-vi.mock("../../../replay/extractBuild", () => ({ extractBuild: extractBuildMock }));
-vi.mock("../../../replay/w3champions", async () => {
-  const actual = await vi.importActual<typeof import("../../../replay/w3champions")>("../../../replay/w3champions");
-  return {
-    ...actual,
-    parseMatchRef: parseMatchRefMock,
-    fetchW3ChampionsReplay: fetchW3ChampionsReplayMock,
-  };
+const requestReplayImportMock = vi.hoisted(() => vi.fn());
+vi.mock("../../../api/replayImport", async () => {
+  const actual = await vi.importActual<typeof import("../../../api/replayImport")>("../../../api/replayImport");
+  return { ...actual, requestReplayImport: requestReplayImportMock };
 });
 
 const { ReplayImportModal } = await import("./ReplayImportModal");
 
-const SUMMARY: ReplaySummary = {
-  map: { file: "NorthernIsles.w3x", name: "Northern Isles" },
+const RESPONSE: ReplayImportResponse = {
+  map: "Northern Isles",
+  duration: "13:43",
   version: "3.00",
-  buildNumber: 1,
-  durationMs: 823_000,
+  source: { label: "Local file" },
   players: [
-    { id: 0, name: "noname#114787", race: "human", raceDetected: "human", teamId: 0, isObserver: false },
-    { id: 1, name: "FoCuS#31324", race: "orc", raceDetected: "orc", teamId: 1, isObserver: false },
+    {
+      id: 0,
+      name: "noname#114787",
+      race: "human",
+      dropped: 2,
+      build: {
+        title: "noname#114787 (Human) vs Orc — Northern Isles",
+        race: "human",
+        vsRaces: ["orc"],
+        difficulty: "intermediate",
+        patch: "",
+        tags: "replay",
+        summary: "Imported from replay Northern Isles (v3.00, 13:43).",
+        author: "Replay Import",
+        authorDiscord: "",
+        sourceUrl: "",
+        description: "",
+        steps: [
+          { time: "0:00", supply: 5, instruction: "Train peasant", icon: "" },
+          { time: "0:20", supply: 6, instruction: "Build farm", icon: "" },
+        ],
+      },
+    },
+    {
+      id: 1,
+      name: "FoCuS#31324",
+      race: "orc",
+      dropped: 0,
+      build: {
+        title: "FoCuS#31324 (Orc) vs Human — Northern Isles",
+        race: "orc",
+        vsRaces: ["human"],
+        difficulty: "intermediate",
+        patch: "",
+        tags: "replay",
+        summary: "Imported from replay Northern Isles (v3.00, 13:43).",
+        author: "Replay Import",
+        authorDiscord: "",
+        sourceUrl: "",
+        description: "",
+        steps: [{ time: "0:00", supply: 5, instruction: "Train peon", icon: "" }],
+      },
+    },
   ],
-  events: {},
 };
-
-/** Deterministic step-count formula: scales with cutoff, drops 3 for
- *  "no upgrades", adds 2 for "with items" — enough to exercise every
- *  preview-recompute case below without a real replay. F002: 2 orders are
- *  "dropped" whenever `dropLikelyRejected` is on (the default). */
-function fakeExtractBuild(
-  summary: ReplaySummary,
-  playerId: number,
-  opts: { cutoffMs?: number; includeUpgrades?: boolean; includeItems?: boolean; dropLikelyRejected?: boolean },
-) {
-  const player = summary.players.find((p) => p.id === playerId)!;
-  const cutoffMs = opts.cutoffMs ?? 480_000;
-  let count = Math.floor(cutoffMs / 20_000) + 5;
-  if (opts.includeUpgrades === false) count -= 3;
-  if (opts.includeItems) count += 2;
-  count = Math.max(count, 0);
-  const droppedCount = opts.dropLikelyRejected === false ? 0 : 2;
-  return {
-    title: `${player.name} (Orc) vs Human — Northern Isles`,
-    race: "orc",
-    vsRaces: ["human"],
-    difficulty: "intermediate",
-    patch: "",
-    tags: "replay",
-    summary: "Imported from replay NorthernIsles.w3x (v3.00, 13:43). Trim and annotate before sharing.",
-    author: "Replay Import",
-    authorDiscord: "",
-    sourceUrl: "",
-    description: "",
-    steps: Array.from({ length: count }, (_, i) => ({ time: "0:00", supply: "5", instruction: `Step ${i}`, icon: "" })),
-    dropped: { count: droppedCount, byId: {}, orderIndices: [] },
-  };
-}
 
 function renderModal(overrides: { onOpenInEditor?: (draft: unknown) => void; onClose?: () => void } = {}) {
   return render(
     <ReplayImportModal
-      source={{ kind: "file", bytes: new Uint8Array([1, 2, 3]) }}
+      source={{ kind: "file", bytes: new Uint8Array([1, 2, 3]), fileName: "game.w3g" }}
       apiBase="https://site.test"
       onClose={overrides.onClose ?? vi.fn()}
       onOpenInEditor={overrides.onOpenInEditor ?? vi.fn()}
@@ -96,20 +91,29 @@ function renderLinkModal(overrides: { onOpenInEditor?: (draft: unknown) => void;
   );
 }
 
-describe("ReplayImportModal", () => {
+describe("ReplayImportModal — file import", () => {
   afterEach(() => {
     cleanup();
     document.body.style.overflow = "";
     vi.clearAllMocks();
   });
 
-  it("shows a busy state while reading, then renders players with the first non-observer selected by default", async () => {
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
-
+  it("POSTs the file to {apiBase}/api/replay-import via requestReplayImport, using the configured apiBase", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
     renderModal();
 
     expect(screen.getByRole("status").textContent).toContain("Reading replay…");
+
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
+    const [apiBase, payload, opts] = requestReplayImportMock.mock.calls[0];
+    expect(apiBase).toBe("https://site.test");
+    expect(payload).toEqual({ kind: "file", bytes: new Uint8Array([1, 2, 3]), fileName: "game.w3g" });
+    expect(opts).toEqual({ dropLikelyRejected: true });
+  });
+
+  it("lists the response's players, with the first one selected by default", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
 
     await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
 
@@ -118,136 +122,11 @@ describe("ReplayImportModal", () => {
     expect(humanRadio.checked).toBe(true);
     expect(orcRadio.checked).toBe(false);
     expect(screen.getByText("Northern Isles · v3.00 · 13:43")).toBeTruthy();
+    expect(screen.getByText("Local file")).toBeTruthy();
   });
 
-  it("clamps the cutoff field on blur: below 1:00 up, above 20:00 down, invalid text reverts", async () => {
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
-    renderModal();
-    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
-
-    const cutoff = screen.getByRole("textbox", { name: "Import up to" }) as HTMLInputElement;
-    expect(cutoff.value).toBe("08:00");
-
-    fireEvent.change(cutoff, { target: { value: "0:30" } });
-    fireEvent.blur(cutoff);
-    expect(cutoff.value).toBe("01:00");
-
-    fireEvent.change(cutoff, { target: { value: "25:00" } });
-    fireEvent.blur(cutoff);
-    expect(cutoff.value).toBe("20:00");
-
-    fireEvent.change(cutoff, { target: { value: "abc" } });
-    fireEvent.blur(cutoff);
-    expect(cutoff.value).toBe("20:00");
-  });
-
-  it("recomputes the live step-count preview when toggles change", async () => {
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
-    renderModal();
-    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
-
-    const preview = () => screen.getByText(/steps( · \d+ dropped)?$/);
-    const before = preview().getAttribute("data-preview-count");
-
-    fireEvent.click(screen.getByRole("checkbox", { name: "Include upgrades" }));
-
-    await waitFor(() => {
-      const after = preview().getAttribute("data-preview-count");
-      expect(after).not.toBe(before);
-    });
-  });
-
-  it('F002: shows "Drop orders the game likely rejected", checked by default, and the caption reads "N steps · M dropped"', async () => {
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
-    renderModal();
-    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
-
-    const checkbox = screen.getByRole("checkbox", { name: "Drop orders the game likely rejected" }) as HTMLInputElement;
-    expect(checkbox.checked).toBe(true);
-
-    const preview = screen.getByText(/steps/);
-    expect(preview.textContent).toBe("29 steps · 2 dropped");
-    expect(preview.getAttribute("data-dropped-count")).toBe("2");
-  });
-
-  it("F002: unchecking the filter drops the '· M dropped' suffix and recomputes without it; re-checking restores it", async () => {
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
-    renderModal();
-    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
-
-    const checkbox = screen.getByRole("checkbox", { name: "Drop orders the game likely rejected" });
-    const preview = () => screen.getByText(/steps/);
-
-    fireEvent.click(checkbox);
-    await waitFor(() => {
-      expect(preview().textContent).toBe("29 steps");
-      expect(preview().getAttribute("data-dropped-count")).toBe("0");
-    });
-
-    fireEvent.click(checkbox);
-    await waitFor(() => {
-      expect(preview().textContent).toBe("29 steps · 2 dropped");
-    });
-  });
-
-  it("F002: the filter checkbox is keyboard-toggleable (Space)", async () => {
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
-    renderModal();
-    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
-
-    const checkbox = screen.getByRole("checkbox", { name: "Drop orders the game likely rejected" }) as HTMLInputElement;
-    checkbox.focus();
-    fireEvent.keyDown(checkbox, { key: " " });
-    fireEvent.click(checkbox); // jsdom doesn't auto-toggle checkboxes on keydown — mirrors real browser click-from-space
-    expect(checkbox.checked).toBe(false);
-  });
-
-  it.each([
-    ["not_a_replay", "Not a Warcraft III replay"],
-    ["unsupported_version", "Unsupported replay version (5.24)"],
-    ["corrupt", "Couldn't read this replay"],
-  ] as const)("shows the typed error message for code %s", async (code, expected) => {
-    parseReplayMock.mockRejectedValue(new ReplayParseError(code, `Replay version 5.24 is not supported.`));
-    renderModal();
-
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain(expected);
-    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(false);
-    expect((screen.getByRole("button", { name: "Open in editor" }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it("shows a generic error and logs to console for an unexpected error", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    parseReplayMock.mockRejectedValue(new Error("boom"));
-    renderModal();
-
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Couldn't read this replay");
-    expect(consoleError).toHaveBeenCalled();
-    consoleError.mockRestore();
-  });
-
-  it("disables 'Open in editor' in every error state, leaving only Cancel/close actionable", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    parseReplayMock.mockRejectedValue(new ReplayParseError("not_a_replay", "not a replay"));
-    renderModal();
-
-    await screen.findByRole("alert");
-    expect(screen.queryByRole("radiogroup", { name: "Player" })).toBeNull();
-    expect((screen.getByRole("button", { name: "Open in editor" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(false);
-    expect((screen.getByLabelText("Close import") as HTMLButtonElement).disabled).toBe(false);
-    consoleError.mockRestore();
-  });
-
-  it("'Open in editor' calls onOpenInEditor with a draft titled after the selected player", async () => {
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
+  it("choosing a player opens the editor with that player's build.steps", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
     const onOpenInEditor = vi.fn();
     renderModal({ onOpenInEditor });
     await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
@@ -257,112 +136,132 @@ describe("ReplayImportModal", () => {
 
     expect(onOpenInEditor).toHaveBeenCalledTimes(1);
     const draft = onOpenInEditor.mock.calls[0][0];
-    expect(draft.title).toContain("FoCuS#31324");
+    expect(draft.title).toBe(RESPONSE.players[1].build.title);
+    expect(draft.steps).toEqual([
+      { time: "0:00", supply: "5", instruction: "Train peon", icon: "", importNote: undefined },
+    ]);
+  });
+
+  it("shows the step count, and the dropped count for the selected player", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const preview = screen.getByText(/steps/);
+    expect(preview.textContent).toBe("2 steps · 2 dropped");
+    expect(preview.getAttribute("data-dropped-count")).toBe("2");
+
+    fireEvent.click(screen.getByRole("radio", { name: "FoCuS#31324 · Orc" }));
+    await waitFor(() => expect(screen.getByText(/steps/).textContent).toBe("1 steps"));
+  });
+
+  it("toggling 'Drop orders the game likely rejected' re-requests with dropLikelyRejected", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    renderModal();
+    await waitFor(() => screen.getByRole("radiogroup", { name: "Player" }));
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Drop orders the game likely rejected",
+    }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+
+    requestReplayImportMock.mockClear();
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
+    const [, , opts] = requestReplayImportMock.mock.calls[0];
+    expect(opts).toEqual({ dropLikelyRejected: false });
+  });
+
+  it.each([
+    ["network", "Couldn't reach site.test. Check your connection."],
+    ["http", "The build was rejected (400)."],
+    ["rate_limited", "Too many imports in a minute, try again shortly."],
+    ["invalid", "The server sent back something that wasn't a valid reply."],
+  ] as const)("shows the ReplayImportError message for kind %s", async (kind, message) => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    requestReplayImportMock.mockRejectedValue(new ReplayImportError(kind, message));
+    renderModal();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(message);
+    expect((screen.getByRole("button", { name: "Open in editor" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(false);
+    consoleError.mockRestore();
+  });
+
+  it("shows a generic message and logs to console for an unexpected (non-ReplayImportError) rejection", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    requestReplayImportMock.mockRejectedValue(new Error("boom"));
+    renderModal();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Couldn't read this replay.");
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });
 
-describe("ReplayImportModal — W3Champions link (F004)", () => {
+describe("ReplayImportModal — W3Champions link import (F004)", () => {
   afterEach(() => {
     cleanup();
     document.body.style.overflow = "";
     vi.clearAllMocks();
   });
 
-  it("shows a labelled link input and a Fetch button, with no player content yet", () => {
+  it("shows a labelled link input and a Fetch button, with no player content and no request yet", () => {
     renderLinkModal();
 
     expect(screen.getByRole("textbox", { name: "W3Champions match link or id" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Fetch" })).toBeTruthy();
     expect(screen.queryByRole("radiogroup", { name: "Player" })).toBeNull();
+    expect(requestReplayImportMock).not.toHaveBeenCalled();
   });
 
-  it("shows the invalid-ref error inline without calling fetchW3ChampionsReplay", async () => {
-    parseMatchRefMock.mockReturnValue(null);
+  it("shows an inline error and makes no request when the input is blank", async () => {
     renderLinkModal();
-
-    fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
-      target: { value: "hello" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Paste a W3Champions match link (w3champions.com/match/…)");
-    expect(fetchW3ChampionsReplayMock).not.toHaveBeenCalled();
+    expect(alert.textContent).toContain("Paste a W3Champions match link or id.");
+    expect(requestReplayImportMock).not.toHaveBeenCalled();
   });
 
-  it("Enter in the input triggers Fetch", async () => {
-    parseMatchRefMock.mockReturnValue(null);
+  it("Fetch POSTs JSON {match} via requestReplayImport, using the configured apiBase", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
     renderLinkModal();
 
-    const input = screen.getByRole("textbox", { name: "W3Champions match link or id" });
-    fireEvent.change(input, { target: { value: "hello" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    await screen.findByRole("alert");
-    expect(parseMatchRefMock).toHaveBeenCalledWith("hello");
-  });
-
-  it("fetch success parses the replay and renders players, with the humanised W3Champions caption and Source line", async () => {
-    parseMatchRefMock.mockReturnValue("6aae9d48d867fad24f911778");
-    fetchW3ChampionsReplayMock.mockResolvedValue({
-      bytes: new Uint8Array([1, 2, 3]),
-      fileName: "6aae9d48d867fad24f911778.w3g",
-      match: {
-        // The raw map key the W3Champions API actually returns (F004
-        // user-test note) — no separators, version glued onto the name.
-        map: "3c2609191153LastRefugev1_5",
-        durationSeconds: 782,
-        players: [
-          { battleTag: "Dretwiak#2963", race: "human", won: true },
-          { battleTag: "SoulKeeper#1844", race: "random", won: false },
-        ],
-      },
-    });
-    parseReplayMock.mockResolvedValue(SUMMARY);
-    extractBuildMock.mockImplementation(fakeExtractBuild);
-
-    renderLinkModal();
     fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
       target: { value: "https://w3champions.com/match/6aae9d48d867fad24f911778" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
 
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
+    const [apiBase, payload, opts] = requestReplayImportMock.mock.calls[0];
+    expect(apiBase).toBe("https://site.test");
+    expect(payload).toEqual({ kind: "match", match: "https://w3champions.com/match/6aae9d48d867fad24f911778" });
+    expect(opts).toEqual({ dropLikelyRejected: true });
+
     await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
-    expect(screen.getByText(/W3Champions · Last Refuge · winner: Dretwiak#2963/)).toBeTruthy();
-    expect(extractBuildMock).toHaveBeenCalledWith(
-      SUMMARY,
-      expect.anything(),
-      expect.objectContaining({ sourceLabel: "w3champions.com/match/6aae9d48d867fad24f911778" }),
-    );
   });
 
-  it.each([
-    ["not_found", "Match not found on W3Champions"],
-    ["unreachable", "Couldn't reach W3Champions"],
-    ["bad_response", "W3Champions returned something that isn't a replay"],
-  ] as const)("shows the typed error message for code %s and keeps the input editable", async (code, expected) => {
-    parseMatchRefMock.mockReturnValue("6aae9d48d867fad24f911778");
-    fetchW3ChampionsReplayMock.mockRejectedValue(new W3ChampionsError(code, "boom"));
-
+  it("Enter in the input triggers Fetch", async () => {
+    requestReplayImportMock.mockResolvedValue(RESPONSE);
     renderLinkModal();
-    fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
-      target: { value: "6aae9d48d867fad24f911778" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
 
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain(expected);
-    // the input is still there — the user can fix the link and retry.
-    expect(screen.getByRole("textbox", { name: "W3Champions match link or id" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Fetch" })).toBeTruthy();
+    const input = screen.getByRole("textbox", { name: "W3Champions match link or id" });
+    fireEvent.change(input, { target: { value: "6aae9d48d867fad24f911778" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => expect(requestReplayImportMock).toHaveBeenCalledTimes(1));
   });
 
-  it("disables Fetch and shows a status message while fetching", async () => {
-    parseMatchRefMock.mockReturnValue("6aae9d48d867fad24f911778");
-    let resolveFetch: (value: unknown) => void = () => {};
-    fetchW3ChampionsReplayMock.mockReturnValue(
+  it("shows a fetching status and disables Fetch while the request is in flight", async () => {
+    let resolveRequest: (value: ReplayImportResponse) => void = () => {};
+    requestReplayImportMock.mockReturnValue(
       new Promise((resolve) => {
-        resolveFetch = resolve;
+        resolveRequest = resolve;
       }),
     );
 
@@ -375,6 +274,22 @@ describe("ReplayImportModal — W3Champions link (F004)", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Fetching replay from W3Champions…"));
     expect((screen.getByRole("button", { name: "Fetch" }) as HTMLButtonElement).disabled).toBe(true);
 
-    resolveFetch({ bytes: new Uint8Array([1]), fileName: "x.w3g", match: undefined });
+    resolveRequest(RESPONSE);
+    await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Player" })).toBeTruthy());
+  });
+
+  it("a rejected request shows the server's error inline and keeps the input editable for a retry", async () => {
+    requestReplayImportMock.mockRejectedValue(new ReplayImportError("http", "Match not found on W3Champions."));
+
+    renderLinkModal();
+    fireEvent.change(screen.getByRole("textbox", { name: "W3Champions match link or id" }), {
+      target: { value: "6aae9d48d867fad24f911778" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Match not found on W3Champions.");
+    expect(screen.getByRole("textbox", { name: "W3Champions match link or id" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Fetch" })).toBeTruthy();
   });
 });
