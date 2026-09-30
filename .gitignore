@@ -1,0 +1,27 @@
+# dependencies
+/node_modules
+
+# testing / build artifacts
+/coverage
+/dist
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# typescript
+*.tsbuildinfo

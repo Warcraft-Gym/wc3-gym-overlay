@@ -3,6 +3,7 @@
   "version": "0.4.2",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.22.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -38,6 +39,7 @@
     "@tauri-apps/cli": "^2",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
+    "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.2.0",
@@ -51,5 +53,10 @@
     "vite": "^7.3.6",
     "vite-plugin-node-polyfills": "^0.28.0",
     "vitest": "^3.2.7"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseReplay } from "./parseReplay";
-import { describeId, ID_MAP } from "./idMap";
+import { describeId } from "./idMap";
 import { FOOD_COST } from "./foodCost";
 import { UNIT_NAMES } from "./w3gjsData";
 
