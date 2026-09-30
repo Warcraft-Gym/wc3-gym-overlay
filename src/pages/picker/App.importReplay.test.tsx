@@ -15,6 +15,16 @@ vi.mock("../../api/client", async () => {
   return { ...actual, fetchBuilds: fetchBuildsMock, fetchIcons: vi.fn().mockResolvedValue([]) };
 });
 
+// F004: this file only cares that the dialog opens, never that an import
+// resolves — mocked with a promise that never settles so no real `fetch`
+// ever leaves the process (the real client is covered by
+// `src/api/replayImport.test.ts` and `ReplayImportModal.test.tsx`).
+const requestReplayImportMock = vi.hoisted(() => vi.fn(() => new Promise(() => {})));
+vi.mock("../../api/replayImport", async () => {
+  const actual = await vi.importActual<typeof import("../../api/replayImport")>("../../api/replayImport");
+  return { ...actual, requestReplayImport: requestReplayImportMock };
+});
+
 const { App } = await import("./App");
 
 const SETTINGS_VALUE: Settings = {

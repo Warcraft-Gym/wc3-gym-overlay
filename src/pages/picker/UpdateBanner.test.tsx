@@ -21,7 +21,7 @@ const PORTABLE_AVAILABLE: UpdateInfo = {
   version: "9.9.9",
   currentVersion: "0.3.2",
   portable: true,
-  downloadUrl: "https://github.com/Warcraft-Gym/wc3-gnl-website/releases/latest/download/Warcraft-3-Gym-Overlay-Portable.exe",
+  downloadUrl: "https://github.com/Warcraft-Gym/wc3-gym-overlay/releases/latest/download/Warcraft-3-Gym-Overlay-Portable.exe",
 };
 
 afterEach(() => {
@@ -108,7 +108,7 @@ describe("UpdateBanner", () => {
 
     screen.getByText(/Update failed/);
     screen.getByRole("button", { name: "Releases" }).click();
-    expect(openExternal).toHaveBeenCalledWith("https://github.com/Warcraft-Gym/wc3-gnl-website/releases");
+    expect(openExternal).toHaveBeenCalledWith("https://github.com/Warcraft-Gym/wc3-gym-overlay/releases");
   });
 
   it("F002-followup-1: shows an opener-failure message when Releases is rejected by the native opener ACL", async () => {

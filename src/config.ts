@@ -2,12 +2,14 @@
 
 import type { ShortcutMap } from "./host/bridge";
 
-export const DEFAULT_API_BASE = "https://wc3-gnl-website.vercel.app";
+export const DEFAULT_API_BASE = "https://warcraft-gym.com";
 
 /** Prior defaults that no longer resolve — settings read from disk with one
  *  of these as `apiBase` are migrated to `DEFAULT_API_BASE` (see
- *  `store/keys.ts`'s `settingsSchema`). */
-export const LEGACY_API_BASES: readonly string[] = ["https://warcraft3.gym"];
+ *  `store/keys.ts`'s `settingsSchema`). F004: the site's Vercel preview
+ *  domain was the default before the app moved to the production
+ *  `warcraft-gym.com` domain (C-047). */
+export const LEGACY_API_BASES: readonly string[] = ["https://warcraft3.gym", "https://wc3-gnl-website.vercel.app"];
 
 export const WINDOW_PICKER = "picker";
 export const WINDOW_OVERLAY = "overlay";
@@ -34,8 +36,8 @@ export const UPDATE_CHECK_DELAY_MS = 3000;
  *  instead of an in-place install, since the portable exe has no
  *  updater wired up. */
 export const PORTABLE_DOWNLOAD_URL =
-  "https://github.com/Warcraft-Gym/wc3-gnl-website/releases/latest/download/Warcraft-3-Gym-Overlay-Portable.exe";
+  "https://github.com/Warcraft-Gym/wc3-gym-overlay/releases/latest/download/Warcraft-3-Gym-Overlay-Portable.exe";
 
 /** F002: linked from the banner when an install fails, so the user has a
  *  manual fallback without needing to know a GitHub URL by heart. */
-export const RELEASES_PAGE_URL = "https://github.com/Warcraft-Gym/wc3-gnl-website/releases";
+export const RELEASES_PAGE_URL = "https://github.com/Warcraft-Gym/wc3-gym-overlay/releases";
