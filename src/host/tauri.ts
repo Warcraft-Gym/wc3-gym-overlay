@@ -306,6 +306,22 @@ function onReplayWatcherStatusChanged(cb: (status: ReplayWatcherStatus) => void)
   return lastReplayWatcher.onStatusChanged(cb);
 }
 
+/** F009: re-reads a replay file by absolute path for `retryReview()`:
+ *  `stat` for the current mtime (the whole point of a retry is comparing
+ *  it against the `source.mtimeMs` the failed review was captured with)
+ *  plus `readFile` for the bytes. Resolves `null` on any failure (file
+ *  gone, permission/scope error); `retryReview()` turns that into its own
+ *  user-facing message rather than this throwing. */
+async function readReplayFile(path: string): Promise<{ bytes: Uint8Array; mtimeMs: number } | null> {
+  try {
+    const [info, bytes] = await Promise.all([fsStat(path), readFile(path)]);
+    if (info.mtime === null) return null;
+    return { bytes, mtimeMs: info.mtime.getTime() };
+  } catch {
+    return null;
+  }
+}
+
 /** F002: holds the `Update` resource resolved by the last `checkForUpdate()`
  *  call so `installUpdate()` can act on it without the `Host` interface
  *  needing to round-trip the native object through the rest of the app. */
@@ -394,5 +410,6 @@ export function createTauriHost(): Host {
     watchLastReplay,
     getReplayWatcherStatus,
     onReplayWatcherStatusChanged,
+    readReplayFile,
   };
 }

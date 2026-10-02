@@ -35,7 +35,10 @@
 import { z } from "zod";
 import type { EditorFormInput, EditorStepInput } from "../lib/buildEditorSchema";
 
-const replayImportStepSchema = z.object({
+// F009 (plan-vs-actual-engine): exported so `reviews/types.ts` can validate
+// a stored review's per-player steps against the exact same wire shape,
+// instead of redeclaring it and risking the two drifting apart.
+export const replayImportStepSchema = z.object({
   time: z.string(),
   supply: z.number(),
   instruction: z.string(),

@@ -380,6 +380,10 @@ async function openFolder(): Promise<string | null> {
 let browserReplayListener: ((event: ReplayEvent) => void) | null = null;
 let browserReplayStatus: ReplayWatcherStatus = { watchingFolders: [], lastPickedUpAtMs: null, lastError: null };
 const browserReplayStatusListeners = new Set<(status: ReplayWatcherStatus) => void>();
+/** F009: every path/bytes/mtime ever handed to `injectLastReplayForTest`
+ *  (there is no real filesystem to re-read in browser mode); what
+ *  `readReplayFile` below looks up for `retryReview()`. */
+const browserReplayFilesByPath = new Map<string, { bytes: Uint8Array; mtimeMs: number }>();
 
 function setBrowserReplayStatus(next: Partial<ReplayWatcherStatus>): void {
   browserReplayStatus = { ...browserReplayStatus, ...next };
@@ -410,9 +414,16 @@ function onReplayWatcherStatusChanged(cb: (status: ReplayWatcherStatus) => void)
  *  Playwright test driving the page directly (`page.evaluate`), since that
  *  can't import this module's named export. */
 export function injectLastReplayForTest(event: ReplayEvent): void {
+  browserReplayFilesByPath.set(event.path, { bytes: event.bytes, mtimeMs: event.mtimeMs });
   if (!browserReplayListener) return;
   setBrowserReplayStatus({ lastPickedUpAtMs: Date.now(), lastError: null });
   browserReplayListener(event);
+}
+
+/** F009: browser fallback for `readReplayFile`; see
+ *  `browserReplayFilesByPath`'s doc comment above. */
+async function readReplayFile(path: string): Promise<{ bytes: Uint8Array; mtimeMs: number } | null> {
+  return browserReplayFilesByPath.get(path) ?? null;
 }
 
 export function createBrowserHost(): Host {
@@ -442,6 +453,7 @@ export function createBrowserHost(): Host {
     watchLastReplay,
     getReplayWatcherStatus,
     onReplayWatcherStatusChanged,
+    readReplayFile,
   };
 }
 

@@ -151,4 +151,14 @@ export interface Host {
    *  error, a new `watchLastReplay`/`stop()` call). Returns an unsubscribe
    *  function. */
   onReplayWatcherStatusChanged(cb: (status: ReplayWatcherStatus) => void): () => void;
+  /** F009 (plan-vs-actual-engine): re-reads a replay file by path, for
+   *  `reviews/pipeline.ts`'s `retryReview()`; resolves `null` when the
+   *  file no longer exists. Tauri: `readFile` + `stat` (the read-file scope
+   *  already covers `$DATA/Warcraft III/**` and
+   *  `$DOCUMENT/Warcraft III/**`, where every `LastReplay.w3g` this method
+   *  is ever called with lives). Browser: there is no real filesystem; it
+   *  returns whatever bytes/mtime the most recent `watchLastReplay`
+   *  event (or test injection) for that exact path handed over, or `null`
+   *  if that path was never seen. */
+  readReplayFile(path: string): Promise<{ bytes: Uint8Array; mtimeMs: number } | null>;
 }

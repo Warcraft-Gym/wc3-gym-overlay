@@ -16,6 +16,7 @@ import {
 } from "../api/schema";
 import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES } from "../config";
 import type { ShortcutMap } from "../host/bridge";
+import { reviewSchema, type Review } from "../reviews/types";
 
 /** JSON key name of the pre-F005 single-opponent field, before the site's
  *  `vsRaces` array model shipped. */
@@ -314,4 +315,24 @@ export const LAST_REPLAY_HANDLED: StoreKey<LastReplayHandled> = {
   name: "wc3gym.lastReplayHandled",
   schema: lastReplayHandledSchema,
   defaultValue: () => ({}),
+};
+
+// --- wc3gym.lastReview (F009 – plan-vs-actual-engine) ------------------------
+
+/**
+ * The most recent post-game review built by `src/reviews/pipeline.ts` off
+ * an `onLastReplay` event; see that module's doc comment for the full
+ * pipeline (snapshot the selected build, import, `pickMe`,
+ * `compareBuild`, store). `null` until the first replay is picked up.
+ * Schema/type live in `reviews/types.ts` (not redeclared here) since they
+ * also back `compareBuild`'s/`pickMe`'s own shapes in `lib/planVsActual.ts`:
+ * `store/keys.ts` only wires that schema up as a `StoreKey`, same as
+ * every other key in this file.
+ */
+export const lastReviewSchema: z.ZodType<Review | null> = reviewSchema.nullable();
+
+export const LAST_REVIEW: StoreKey<Review | null> = {
+  name: "wc3gym.lastReview",
+  schema: lastReviewSchema,
+  defaultValue: () => null,
 };

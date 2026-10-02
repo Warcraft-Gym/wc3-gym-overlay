@@ -12,6 +12,7 @@ import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
 import { startReplayWatcher } from "../../replayWatcher";
+import { startReviewPipeline } from "../../reviews/pipeline";
 import { UPDATE_CHECK_DELAY_MS } from "../../config";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
@@ -147,6 +148,13 @@ export function App() {
   // closed) for the app's whole lifetime — see `startReplayWatcher`'s doc
   // comment — so it's the only place this needs to be started.
   useEffect(() => startReplayWatcher(), []);
+
+  // F009: subscribes to the same `onLastReplay` feed to turn every
+  // picked-up replay into a stored review; see
+  // `reviews/pipeline.ts`'s doc comment. No UI reads `LAST_REVIEW` yet
+  // (a later feature builds that), but the pipeline itself must already
+  // be live so a review is there once that UI ships.
+  useEffect(() => startReviewPipeline(), []);
 
   useEffect(() => {
     applySelftestShortcutOverride()

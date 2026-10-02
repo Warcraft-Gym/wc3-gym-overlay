@@ -1,0 +1,211 @@
+{
+  "author": "Thaedalius",
+  "authorDiscord": "Thae",
+  "difficulty": "intermediate",
+  "featured": false,
+  "maintainer": null,
+  "patch": null,
+  "publishedAt": "2026-09-23T20:53:40.331Z",
+  "race": "orc",
+  "slug": "bm-mi-1-grunt-into-hhs-2-burrow-tech-622e",
+  "sourceUrl": "https://www.youtube.com/watch?v=4QlMROhu02A",
+  "steps": [
+    {
+      "_key": "f72b05ea-a2f",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "Train Peon",
+      "supply": 5,
+      "time": "0:00",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "77bad064-e2d",
+      "_type": "step",
+      "icon": "or-altar",
+      "instruction": "Build Altar of Storms",
+      "supply": 6,
+      "time": "0:01",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-altar.webp"
+    },
+    {
+      "_key": "93d49b94-216",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "Train Peon",
+      "supply": 6,
+      "time": "0:07",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "702be632-0af",
+      "_type": "step",
+      "icon": "or-burrow",
+      "instruction": "Build Orc Burrow",
+      "supply": 7,
+      "time": "0:12",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-burrow.webp"
+    },
+    {
+      "_key": "7a45705a-b16",
+      "_type": "step",
+      "icon": "or-barracks",
+      "instruction": "Build Barracks",
+      "supply": 7,
+      "time": "0:32",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-barracks.webp"
+    },
+    {
+      "_key": "4a022d56-f3f",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "Train Peon",
+      "supply": 7,
+      "time": "0:33",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "a45ee799-766",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "Train Peon",
+      "supply": 8,
+      "time": "0:45",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "4e2b6cce-bff",
+      "_type": "step",
+      "icon": "or-war-mill",
+      "instruction": "Build War Mill",
+      "supply": 9,
+      "time": "1:05",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-war-mill.webp"
+    },
+    {
+      "_key": "7195bf10-475",
+      "_type": "step",
+      "icon": "or-blademaster",
+      "instruction": "Hero: Blademaster",
+      "supply": 9,
+      "time": "1:06",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-blademaster.webp"
+    },
+    {
+      "_key": "bee8a406-823",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "Train Peon",
+      "supply": 14,
+      "time": "1:10",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "ba9e40b7-6e5",
+      "_type": "step",
+      "icon": "or-grunt",
+      "instruction": "Train Grunt",
+      "supply": 15,
+      "time": "1:32",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-grunt.webp"
+    },
+    {
+      "_key": "de23feec-a3c",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "Train Peon",
+      "supply": 18,
+      "time": "1:38",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "e86684cc-a3d",
+      "_type": "step",
+      "icon": "or-burrow",
+      "instruction": "Build Orc Burrow",
+      "supply": 19,
+      "time": "1:55",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-burrow.webp"
+    },
+    {
+      "_key": "e2095499-3f9",
+      "_type": "step",
+      "icon": "or-headhunter",
+      "instruction": "Train Troll Headhunter",
+      "supply": 19,
+      "time": "2:18",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-headhunter.webp"
+    },
+    {
+      "_key": "81af018a-b40",
+      "_type": "step",
+      "icon": "or-stronghold",
+      "instruction": "Build Stronghold",
+      "supply": 21,
+      "time": "2:41",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-stronghold.webp"
+    },
+    {
+      "_key": "380fec96-4ee",
+      "_type": "step",
+      "icon": "or-headhunter",
+      "instruction": "Train Troll Headhunter",
+      "supply": 21,
+      "time": "2:52",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-headhunter.webp"
+    },
+    {
+      "_key": "4c12b71e-8f5",
+      "_type": "step",
+      "icon": "or-voodoo-lounge",
+      "instruction": "Build Voodoo Lounge",
+      "supply": 23,
+      "time": "3:07",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-voodoo-lounge.webp"
+    },
+    {
+      "_key": "57f7f604-b4b",
+      "_type": "step",
+      "icon": "or-headhunter",
+      "instruction": "Train Troll Headhunter",
+      "supply": 23,
+      "time": "3:16",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-headhunter.webp"
+    },
+    {
+      "_key": "c4c8c022-19b",
+      "_type": "step",
+      "icon": "or-burrow",
+      "instruction": "Build Orc Burrow",
+      "supply": 25,
+      "time": "3:32",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-burrow.webp"
+    },
+    {
+      "_key": "1aade76a-788",
+      "_type": "step",
+      "icon": "or-headhunter",
+      "instruction": "Train Troll Headhunter",
+      "supply": 25,
+      "time": "3:45",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-headhunter.webp"
+    },
+    {
+      "_key": "b5d4e96c-642",
+      "_type": "step",
+      "icon": "or-headhunter",
+      "instruction": "Train Troll Headhunter",
+      "supply": 27,
+      "time": "4:09",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-headhunter.webp"
+    }
+  ],
+  "summary": "Blademaster Mirror Image 1 grunt into HHs 2 burrow tech. See replay for clarity.",
+  "tags": [
+    "replay"
+  ],
+  "title": "Blademaster MI 1 grunt into HHs 2 burrow tech",
+  "updatedAt": "2026-09-23T20:56:24Z",
+  "videoUrl": null,
+  "vsRaces": []
+}

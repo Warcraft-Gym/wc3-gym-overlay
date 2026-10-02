@@ -1,0 +1,176 @@
+{
+  "author": "Gym Coaches",
+  "authorDiscord": null,
+  "difficulty": "beginner",
+  "featured": false,
+  "maintainer": null,
+  "patch": null,
+  "publishedAt": "2026-09-17T00:00:00Z",
+  "race": "orc",
+  "slug": "farseer-headhunter-2-burrow-tech",
+  "sourceUrl": null,
+  "steps": [
+    {
+      "_key": "727cb3bd0889",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "Queue 3 peons in your Great Hall.",
+      "supply": 5,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "e53d212f1851",
+      "_type": "step",
+      "icon": "or-altar",
+      "instruction": "Send 4 of your starting peons to gold, the 5th builds an Altar.",
+      "supply": 6,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-altar.webp"
+    },
+    {
+      "_key": "a9578f19c477",
+      "_type": "step",
+      "icon": "or-burrow",
+      "instruction": "The 1st peon produced builds a burrow.",
+      "supply": 7,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-burrow.webp"
+    },
+    {
+      "_key": "7023c6f61be7",
+      "_type": "step",
+      "icon": "or-peon",
+      "instruction": "The 2nd peon produced fills up the gold mine to 5/5. Queue another (4th) peon.",
+      "supply": 8,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-peon.webp"
+    },
+    {
+      "_key": "a6522006cfa7",
+      "_type": "step",
+      "icon": "or-war-mill",
+      "instruction": "The 3rd peon produced builds a War Mill. Queue another (5th) peon.",
+      "supply": 9,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-war-mill.webp"
+    },
+    {
+      "_key": "0f81157820ec",
+      "_type": "step",
+      "icon": "nt-lumber",
+      "instruction": "The 4th peon produced gathers lumber. Queue another (6th) peon.",
+      "supply": 10,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/nt-lumber.webp"
+    },
+    {
+      "_key": "415a81dbd142",
+      "_type": "step",
+      "icon": "or-far-seer",
+      "instruction": "Build a Farseer. Peons that built the Altar and burrow gather lumber.",
+      "supply": 10,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-far-seer.webp"
+    },
+    {
+      "_key": "45265463b5e8",
+      "_type": "step",
+      "icon": "or-barracks",
+      "instruction": "The 5th produced peon builds a Barracks. Queue another (7th) peon.",
+      "supply": 16,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-barracks.webp"
+    },
+    {
+      "_key": "4ef88c8ff14d",
+      "_type": "step",
+      "icon": "nt-lumber",
+      "instruction": "The 6th and 7th produced peons gather lumber. Stop peon production now.",
+      "supply": 17,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/nt-lumber.webp"
+    },
+    {
+      "_key": "724623004a29",
+      "_type": "step",
+      "icon": "or-burrow",
+      "instruction": "Build a second burrow.",
+      "supply": 17,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-burrow.webp"
+    },
+    {
+      "_key": "14ef54374966",
+      "_type": "step",
+      "icon": "or-far-seer",
+      "instruction": "Skill Spirit Wolves and send the Farseer towards the opponent to harass (vs NE, UD or HU) or to creep (vs Orc).",
+      "supply": 17,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-far-seer.webp"
+    },
+    {
+      "_key": "337083091b67",
+      "_type": "step",
+      "icon": "or-headhunter",
+      "instruction": "Queue 2 Headhunters as soon as the Barracks finishes.",
+      "supply": 17,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-headhunter.webp"
+    },
+    {
+      "_key": "dfadccfa9c9f",
+      "_type": "step",
+      "icon": "or-stronghold",
+      "instruction": "Upgrade your Great Hall to a Stronghold.",
+      "supply": 21,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-stronghold.webp"
+    },
+    {
+      "_key": "ce5b47934efc",
+      "_type": "step",
+      "icon": "or-headhunter",
+      "instruction": "Keep Headhunter production going until you have six of them.",
+      "supply": 21,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-headhunter.webp"
+    },
+    {
+      "_key": "49a4f6f733a1",
+      "_type": "step",
+      "icon": "or-burrow",
+      "instruction": "Build a 3rd burrow or a Voodoo Lounge (if your Farseer is low on health you might want to build the Lounge first).",
+      "supply": 27,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-burrow.webp"
+    },
+    {
+      "_key": "025ccd21d8e5",
+      "_type": "step",
+      "icon": "or-voodoo-lounge",
+      "instruction": "Build a Voodoo Lounge or a third burrow (the one you did not build previously).",
+      "supply": 29,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-voodoo-lounge.webp"
+    },
+    {
+      "_key": "e445567bc611",
+      "_type": "step",
+      "icon": "or-tauren-chieftain",
+      "instruction": "As soon as tier 2 finishes, start your second hero (most common is the Tauren Chieftain or shadow hunter)).",
+      "supply": 34,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-tauren-chieftain.webp"
+    },
+    {
+      "_key": "9428fdfd539b",
+      "_type": "step",
+      "icon": "nt-upgrade",
+      "instruction": "Optional: if a lot of your Headhunters are hurt get the Troll Regeneration upgrade, or get it later.",
+      "supply": 34,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/nt-upgrade.webp"
+    },
+    {
+      "_key": "52b2925bee8d",
+      "_type": "step",
+      "icon": "or-spirit-lodge",
+      "instruction": "Build up to two tier 2 buildings depending on what you want your end game composition to be.",
+      "supply": 34,
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/or-spirit-lodge.webp"
+    }
+  ],
+  "summary": "The most versatile Orc opening: Farseer, Headhunters and two burrows before tech, with harass or creeping depending on the matchup.",
+  "tags": [
+    "headhunters",
+    "standard",
+    "farseer"
+  ],
+  "title": "Farseer Headhunter 2 Burrow Tech",
+  "updatedAt": "2026-09-24T20:31:18Z",
+  "videoUrl": null,
+  "vsRaces": []
+}

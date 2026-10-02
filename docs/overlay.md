@@ -252,15 +252,17 @@ player is "you").
 ### Where Warcraft III stores replays
 
 - **Windows:** `Documents\Warcraft III\BattleNet\<account number>\Replays\`
-- **macOS:** `~/Library/Application Support/Blizzard/Warcraft III/BattleNet/<account number>/Replays/`,
-  plus an auto-saved copy of the last game at
-  `~/Library/Application Support/Blizzard/Warcraft III/Replay/LastReplay.w3g`.
-  The `Library` folder is hidden in Finder by default — open **Finder → Go**
-  and hold **⌥ (Option)** to reveal the **Library** entry in the menu, or
-  point the file dialog directly at the path above. On macOS, the app can
-  read replays from Documents, Downloads, Desktop, and
-  `~/Library/Application Support/Blizzard` — anything else is refused by
-  the file scope (see the capability scope below).
+- **macOS:** `~/Library/Application Support/Warcraft III/BattleNet/<account number>/Replays/`
+  (no `Blizzard` folder in this path: same location "Auto-detecting a
+  finished game" below watches, not the older `.../Blizzard/Warcraft III/...`
+  path this doc used to say). The `Library` folder is hidden in Finder by
+  default — open **Finder → Go** and hold **⌥ (Option)** to reveal the
+  **Library** entry in the menu, or point the file dialog directly at the
+  path above. On macOS, the app can read replays from Documents, Downloads,
+  Desktop, `~/Library/Application Support/Warcraft III`, and
+  `~/Library/Application Support/Blizzard` (kept for older installs);
+  anything else is refused by the file scope (see the capability scope
+  below).
 
 Game patches have been reported to clear out the Replays folder — export
 any build you care about (see "Backing up, sharing, and submitting a
@@ -329,6 +331,48 @@ Documents, Desktop, or the Blizzard data folder — is the same rule already
 in effect before this feature existed). If you need to watch a folder
 outside the default locations, it has to be one of the paths the
 capability file already allows.
+
+### Post-game review
+
+Every time auto-detect (above) picks up a finished game, the app imports
+it and compares what you actually did against whatever build was selected
+at that moment: your plan. There is no separate button for this; it
+happens automatically alongside the pickup itself, using the same import
+service as **Import replay**.
+
+For each step in the selected build, the matching actual order is found by
+icon: the build's 1st Barracks matches your 1st Barracks, its 2nd matches
+your 2nd, and so on; reordering a couple of orders in the build doesn't
+throw off everything after them, since each icon is tracked on its own.
+Every matched step then gets one of these statuses:
+
+- **On plan**: within 10 seconds of the build's time (or within 1 supply,
+  for a build step that has no time, most private builds included).
+- **Early** / **Late**: outside that window, in either direction.
+- **Missed**: the build called for it and the replay never did it.
+
+Anything you did that isn't in the build at all (an extra upgrade, a hero
+the build didn't call for, units beyond what was asked) is listed
+separately rather than folded into the step-by-step comparison.
+
+If no build was selected when the game finished, there's no plan to
+compare against; the review still lists what you did, just without a
+"should have" to measure it against.
+
+Because a replay has two players, the app has to guess which one is you:
+first by matching **Settings → Replays → My BattleTag** against either
+player's full name, then, if that isn't set or doesn't match, by race,
+when only one of the two players is playing the selected build's race.
+When neither works, or the replay isn't a 1v1, the review is still kept
+(nothing is thrown away), just without an automatic "this one is you".
+
+If the import itself fails (the same network/server failures described in
+"What an import can and cannot know" below), the review records the
+error instead of a comparison, and can be retried once the underlying
+problem clears up; a retry re-reads the replay file from disk rather
+than relying on bytes already in memory, so it also catches "the game was
+already overwritten by a newer one in the meantime" rather than silently
+importing the wrong file.
 
 ### What an import can and cannot know (limitations)
 
