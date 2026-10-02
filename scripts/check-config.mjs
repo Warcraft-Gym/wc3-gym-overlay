@@ -50,6 +50,22 @@ const FORBIDDEN_FS_IDENTIFIERS = [
   "fs:scope",
 ];
 
+// F002: the four version files (package.json, tauri.conf.json, Cargo.toml,
+// and Cargo.lock's wc3gym-overlay entry, see docs/overlay.md "Release")
+// may be bumped to a semver prerelease (`0.6.0-beta.1`, `0.6.0-rc.2`) to cut
+// a beta without touching the stable version. Exported as a small, pure
+// function (no fs/process access) so it's unit-testable on its own,
+// see check-config.test.mjs. Deliberately a bit stricter than "has a dash
+// somewhere": requires a 3-part numeric core and, when present, a
+// non-empty dot-separated prerelease made of alphanumerics/hyphens (no
+// leading `v`, no empty identifiers, no build-metadata `+...` suffix,
+// none of which this project uses).
+const SEMVER_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/;
+
+export function isValidOverlayVersion(version) {
+  return typeof version === "string" && SEMVER_RE.test(version);
+}
+
 let failed = false;
 
 function report(name, ok, detail) {
@@ -167,6 +183,19 @@ function main() {
     "version matches package.json",
     conf.version === pkg.version,
     `conf=${conf.version} pkg=${pkg.version}`,
+  );
+  // F002: a beta tag (overlay-vX.Y.Z-beta.N) bumps both files to a semver
+  // prerelease version rather than a plain one; accept that shape, but
+  // still catch a typo'd/malformed version string in either file.
+  report(
+    "package.json version is a valid semver (prerelease allowed)",
+    isValidOverlayVersion(pkg.version),
+    `found: ${JSON.stringify(pkg.version)}`,
+  );
+  report(
+    "tauri.conf.json version is a valid semver (prerelease allowed)",
+    isValidOverlayVersion(conf.version),
+    `found: ${JSON.stringify(conf.version)}`,
   );
 
   if (existsSync(DIST_DIR)) {
@@ -293,4 +322,9 @@ function main() {
   process.exit(failed ? 1 : 0);
 }
 
-main();
+// F002: guarded so check-config.test.mjs can import `isValidOverlayVersion`
+// without main() running against the real filesystem and calling
+// process.exit() mid test run.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}

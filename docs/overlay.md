@@ -378,6 +378,33 @@ The tag's version must match `package.json` and
 `src-tauri/tauri.conf.json` (`pnpm check:config`
 enforces that the two stay equal).
 
+### Beta / prerelease builds
+
+A tag whose version has a semver prerelease part (`overlay-vX.Y.Z-beta.N`,
+`overlay-vX.Y.Z-rc.N`, anything with a `-` after the version) publishes a
+signed GitHub **pre-release** instead of a normal release:
+
+1. Bump the version to `X.Y.Z-beta.N` in all four version files
+   (`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`,
+   and `Cargo.lock`'s own `wc3gym-overlay` entry), then confirm with
+   `pnpm check:config`.
+2. Trigger the workflow manually (`workflow_dispatch`) first and check the
+   build actually succeeds for that prerelease version, since no release
+   gets created from a manual run (see above) and there's no cheap way to
+   delete a tag-triggered release once it's built.
+3. Tag and push: `git tag overlay-vX.Y.Z-beta.N && git push origin overlay-vX.Y.Z-beta.N`.
+
+What testers get: the release is marked **Pre-release** on GitHub and is
+never marked **Latest**, and it does not carry the stable-named installers
+(`Warcraft-3-Gym-Overlay-Setup.exe`, `-Portable.exe`, `.dmg`). Testers who
+want it have to open the release page by hand and download the versioned
+asset for their platform (e.g. `..._0.6.0-beta.1_x64-setup.exe`), same as
+browsing any other GitHub release. The in-app updater, the
+`/releases/latest/download/latest.json` endpoint, and the website's
+`/tools/overlay` page all resolve `/releases/latest`, which GitHub never
+sets to a prerelease, so stable installs and the website keep ignoring a
+beta tag entirely until a stable tag ships.
+
 ## Troubleshooting
 
 - **Overlay not visible.** Confirm Warcraft III is windowed/borderless, not

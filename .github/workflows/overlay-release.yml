@@ -40,6 +40,27 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # F002: a tag whose version (the part after "overlay-v") has a semver
+      # prerelease ("-beta.1", "-rc.2", ...) ships a GitHub pre-release
+      # instead of a normal release: never marked Latest, and without the
+      # stable-named installers below. GitHub's own "create a release" API
+      # already refuses to mark a prerelease as Latest regardless of any
+      # make_latest input (tauri-action@v1 passes none, see
+      # src/create-release.ts in that action, which only forwards `draft`
+      # and `prerelease`), so passing `prerelease: true` here is the whole
+      # fix; no separate "not latest" flag exists or is needed.
+      - name: Determine release channel (tag push)
+        id: channel
+        if: startsWith(github.ref, 'refs/tags/overlay-v')
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#overlay-v}"
+          if [[ "$version" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and publish release (tag push)
         if: startsWith(github.ref, 'refs/tags/overlay-v')
         uses: tauri-apps/tauri-action@v1
@@ -52,15 +73,18 @@ jobs:
           releaseName: "Warcraft 3 Gym Overlay ${{ github.ref_name }}"
           releaseBody: "Signed release — the app updates itself from here. Windows may still show a SmartScreen prompt on first install; the portable exe does not self-update."
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ steps.channel.outputs.is_prerelease }}
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
 
       # Version-less copies so https://github.com/<repo>/releases/latest/download/<name>
-      # always resolves to the newest build. The site links to these.
+      # always resolves to the newest build. The site links to these. Never
+      # uploaded for a prerelease tag: a beta must not carry the
+      # stable-named installers testers (or the website) could mistake for
+      # the stable build.
       - name: Publish stable-name Windows assets (tag push)
-        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/overlay-v')
+        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/overlay-v') && steps.channel.outputs.is_prerelease != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,7 +95,7 @@ jobs:
           gh release upload "${{ github.ref_name }}" "Warcraft-3-Gym-Overlay-Setup.exe" "Warcraft-3-Gym-Overlay-Portable.exe" --clobber
 
       - name: Publish stable-name macOS asset (tag push)
-        if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/overlay-v')
+        if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/overlay-v') && steps.channel.outputs.is_prerelease != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
