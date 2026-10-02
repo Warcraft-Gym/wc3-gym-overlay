@@ -112,6 +112,25 @@ describe("pollOnce", () => {
     expect(state.card?.opponent.battleTag).toBe(opponentTag);
   });
 
+  it("ends a live card when the feature is switched off or the tag cleared mid-game", async () => {
+    const d = deps();
+    const caches = freshCaches();
+    await setTag("ElTurry#1520");
+    await pollOnce(d, caches);
+    expect(readKey(OPPONENT).live).toBe(true);
+    await setTag("ElTurry#1520", false);
+    await pollOnce(d, caches);
+    expect(readKey(OPPONENT).live).toBe(false);
+
+    await setTag("ElTurry#1520");
+    await writeKey(OPPONENT, { ...readKey(OPPONENT), matchId: null });
+    await pollOnce(d, caches);
+    expect(readKey(OPPONENT).live).toBe(true);
+    await setTag(null);
+    await pollOnce(d, caches);
+    expect(readKey(OPPONENT).live).toBe(false);
+  });
+
   it("ignores a live match I am not part of (a mistyped tag)", async () => {
     const d = deps();
     await setTag("Somebody#1234");

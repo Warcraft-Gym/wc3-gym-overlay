@@ -99,13 +99,13 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
 }
 
 /** Whether the overlay should show anything for this state at all. */
-export function cardVisible(state: OpponentState, dismissedMatchId: string | null): boolean {
-  return state.live && state.status !== "idle" && state.matchId !== null && state.matchId !== dismissedMatchId;
+export function cardVisible(state: OpponentState, dismissedMatchId: string | null, enabled = true): boolean {
+  return enabled && state.live && state.status !== "idle" && state.matchId !== null && state.matchId !== dismissedMatchId;
 }
 
 export function OpponentCard() {
   const state = useStoreValue(OPPONENT);
-  const { apiBase } = useStoreValue(SETTINGS);
+  const { apiBase, opponentCard: enabled } = useStoreValue(SETTINGS);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
@@ -117,7 +117,7 @@ export function OpponentCard() {
     return () => clearTimeout(timer);
   }, [state.matchId]);
 
-  if (!cardVisible(state, dismissed)) return null;
+  if (!cardVisible(state, dismissed, enabled)) return null;
   const card = state.card;
   const title = card ? `${card.opponent.name} · ${RACE_LABEL[card.opponent.race]}` : "Your opponent";
 

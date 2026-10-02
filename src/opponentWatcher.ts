@@ -79,9 +79,14 @@ async function opponentHistory(tag: string, deps: OpponentWatcherDeps, caches: C
 export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promise<number> {
   const settings = readKey(SETTINGS);
   const tag = settings.myBattleTag?.trim() ?? "";
-  if (!settings.opponentCard || !isValidBattleTag(tag)) return OPPONENT_POLL_MS;
-
   const state = readKey(OPPONENT);
+  if (!settings.opponentCard || !isValidBattleTag(tag)) {
+    // Switched off or the tag cleared mid-game: end the live card rather
+    // than leave it on screen with nothing left to update it.
+    if (state.live) await write({ live: false }, deps.now());
+    return OPPONENT_POLL_MS;
+  }
+
   let match: W3cMatch | null;
   try {
     match = await deps.fetchOngoingMatch(tag);

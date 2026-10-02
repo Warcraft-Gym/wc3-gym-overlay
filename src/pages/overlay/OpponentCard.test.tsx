@@ -2,8 +2,8 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import season24 from "../../w3c/__fixtures__/search.d0wi.season24.json";
 import season25 from "../../w3c/__fixtures__/search.d0wi.season25.json";
-import { OPPONENT, type OpponentState } from "../../store/keys";
-import { writeKey } from "../../store/state";
+import { OPPONENT, SETTINGS, type OpponentState } from "../../store/keys";
+import { readKey, writeKey } from "../../store/state";
 import { w3cMatchSchema } from "../../w3c/client";
 import { buildOpponentCard, type LiveMatch } from "../../w3c/opponentCard";
 import { CARD_EXPANDED_MS, cardVisible, formatRecord, OpponentCard } from "./OpponentCard";
@@ -44,6 +44,7 @@ describe("cardVisible", () => {
     expect(cardVisible(state({ status: "idle" }), null)).toBe(false);
     expect(cardVisible(state(), "live-1")).toBe(false);
     expect(cardVisible(state(), "older-match")).toBe(true);
+    expect(cardVisible(state(), null, false)).toBe(false);
   });
 });
 
@@ -91,6 +92,12 @@ describe("OpponentCard", () => {
   it("shows the error message", async () => {
     await show(state({ status: "error", card: null, error: "Couldn't load d0wi#2726's games: W3Champions answered 503" }));
     expect(screen.getByRole("alert").textContent).toContain("503");
+  });
+
+  it("renders nothing when the feature is switched off", async () => {
+    await writeKey(SETTINGS, { ...readKey(SETTINGS), opponentCard: false });
+    await show(state());
+    expect(screen.queryByRole("region", { name: "Opponent" })).toBeNull();
   });
 
   it("renders nothing once the game is over", async () => {
