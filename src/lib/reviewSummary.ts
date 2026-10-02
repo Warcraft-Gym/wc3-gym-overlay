@@ -12,7 +12,13 @@ import type { ComparisonRow, ComparisonStatus, ComparisonSummary } from "./planV
  *  `compareBuild`'s own rule for what a step is measured against - see
  *  `rowStatus` in `planVsActual.ts`), falling back to supply, and is
  *  omitted entirely when every row is on plan. A middle dot joins every
- *  clause - never an em dash. */
+ *  clause - never an em dash.
+ *
+ *  F010b: when `summary.notTimed > 0` (some matched worker rows were
+ *  excluded from every count above, see `planVsActual.ts`'s
+ *  `WORKER_ICONS`), a trailing " (workers not timed)" is appended after
+ *  everything else - never when `notTimed` is 0, so a build with no worker
+ *  steps at all reads exactly as it did before this field existed. */
 export function formatComparisonSummary(summary: ComparisonSummary): string {
   const parts = [
     `${summary.onPlan}/${summary.total} on plan`,
@@ -24,7 +30,8 @@ export function formatComparisonSummary(summary: ComparisonSummary): string {
     const at = summary.firstSlip.time ?? (summary.firstSlip.supply !== null ? `${summary.firstSlip.supply} supply` : null);
     if (at) parts.push(`first slip at ${at}`);
   }
-  return parts.join(" · ");
+  const joined = parts.join(" · ");
+  return summary.notTimed > 0 ? `${joined} (workers not timed)` : joined;
 }
 
 /** Human label for a plan step's own target - "0:32", "7 supply",
@@ -40,21 +47,33 @@ export function formatPlanTarget(row: ComparisonRow): string {
 
 /** Human label for what actually happened for a row - "0:41 · 8 supply",
  *  "Not done" for a missed step, or "No icon to match" for a plan step
- *  with no icon at all (`status: "unmatched-no-icon"`). */
+ *  with no icon at all (`status: "unmatched-no-icon"`).
+ *
+ *  F010b: when the row fell short of its own plan step's count (`shortBy`
+ *  on `row`, set by `compareBuild` for a step like "Train 2× Peasant" that
+ *  found fewer occurrences than it asked for), " · 1 of 2" is appended -
+ *  the first number is how many were actually found (`count - shortBy`).
+ *  Never appended for a fully missed row (`row.actual` is `null` there -
+ *  nothing to put the count "next to"). */
 export function formatActual(row: ComparisonRow): string {
   if (row.status === "unmatched-no-icon") return "No icon to match";
   if (!row.actual) return "Not done";
-  return `${row.actual.time} · ${row.actual.supply} supply`;
+  const base = `${row.actual.time} · ${row.actual.supply} supply`;
+  if (row.shortBy && row.count !== undefined) return `${base} · ${row.count - row.shortBy} of ${row.count}`;
+  return base;
 }
 
 /** Signed delta label - time governs when the plan step has one (matching
  *  `rowStatus`'s own precedence), falling back to supply, "Not done" for a
- *  miss, "No icon to match" for an unmatched-no-icon row, or "On plan" when
+ *  miss, "No icon to match" for an unmatched-no-icon row, "–" (en dash) for
+ *  a `"not-timed"` worker row (F010b - a worker's own order is never judged
+ *  early/late, see `planVsActual.ts`'s `WORKER_ICONS`), or "On plan" when
  *  the row matched but had nothing measurable to diff (no time or supply on
  *  the plan step at all). */
 export function formatDelta(row: ComparisonRow): string {
   if (row.status === "unmatched-no-icon") return "No icon to match";
   if (row.status === "missed") return "Not done";
+  if (row.status === "not-timed") return "–";
   if (row.timeDelta !== null) return `${row.timeDelta >= 0 ? "+" : ""}${row.timeDelta} s`;
   if (row.supplyDelta !== null) return `${row.supplyDelta >= 0 ? "+" : ""}${row.supplyDelta} supply`;
   return "On plan";
@@ -67,6 +86,9 @@ export const STATUS_LABEL: Record<ComparisonStatus, string> = {
   late: "Late",
   missed: "Missed",
   "unmatched-no-icon": "Not tracked",
+  // F010b: a matched worker row (WORKER_ICONS) - not early/late/on-plan,
+  // just not judged on timing at all.
+  "not-timed": "Not timed",
 };
 
 /**
@@ -94,6 +116,11 @@ export const STATUS_LABEL: Record<ComparisonStatus, string> = {
  *    the same semantic the rest of the app uses for "this went badly".
  *  - unmatched-no-icon: `faint`/`line` (neutral) - not a deviation at all,
  *    just a plan step this build can't even compare (no icon to match).
+ *  - not-timed (F010b): the same neutral `faint`/`line` token as
+ *    unmatched-no-icon - reusing it rather than adding a colour, since this
+ *    is the same kind of "not a deviation" case: a matched worker row,
+ *    just one this view doesn't judge for timing (see `WORKER_ICONS`,
+ *    `planVsActual.ts`).
  *
  * Text labels (`STATUS_LABEL` above) are unchanged - colour is never the
  * only signal.
@@ -104,4 +131,5 @@ export const STATUS_CLASS: Record<ComparisonStatus, string> = {
   late: "border-difficulty-intermediate/50 bg-difficulty-intermediate/10 text-difficulty-intermediate",
   missed: "border-loss/50 bg-loss/10 text-loss",
   "unmatched-no-icon": "border-line text-faint",
+  "not-timed": "border-line text-faint",
 };

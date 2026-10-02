@@ -13,7 +13,7 @@ import { replayImportStepSchema } from "../api/replayImport";
 
 // --- comparison (mirrors lib/planVsActual.ts's ComparisonResult) ---------
 
-const comparisonStatusSchema = z.enum(["on-plan", "early", "late", "missed", "unmatched-no-icon"]);
+const comparisonStatusSchema = z.enum(["on-plan", "early", "late", "missed", "unmatched-no-icon", "not-timed"]);
 
 const comparisonActualSchema = z.object({ time: z.string(), supply: z.number() });
 
@@ -24,6 +24,12 @@ const comparisonRowSchema = z.object({
   supplyDelta: z.number().nullable(),
   timeDelta: z.number().nullable(),
   status: comparisonStatusSchema,
+  // F010b: the "N×" count this row consumed, and how many occurrences it
+  // fell short by (absent when it found every one it asked for) - see
+  // `lib/planVsActual.ts`'s `ComparisonRow`. Optional so a review stored
+  // before this field existed still parses.
+  count: z.number().optional(),
+  shortBy: z.number().optional(),
 });
 
 const extraGroupSchema = z.object({
@@ -49,6 +55,10 @@ const comparisonSummarySchema = z.object({
   early: z.number(),
   late: z.number(),
   missed: z.number(),
+  // F010b: matched worker rows, excluded from every count above - defaults
+  // to 0 so a review stored before this field existed still parses (see
+  // `lib/planVsActual.ts`'s `ComparisonSummary`).
+  notTimed: z.number().default(0),
   firstSlip: firstSlipSchema.nullable(),
 });
 

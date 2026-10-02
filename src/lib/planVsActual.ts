@@ -26,6 +26,25 @@
  * comment) – it never has anything to match by icon, so every such
  * occurrence always ends up in `extras`, grouped by `instruction` instead
  * of icon (see `compareBuild` below).
+ *
+ * F010b (plan-counts-and-workers): two follow-ups.
+ *
+ * 1. A plan step can itself carry an `"N×"` count (e.g. `"Train 2× Peasant"`
+ *    – published builds use this exact form), not just an actual step (see
+ *    `expandActualSteps`'s own `"N×"` handling above) – such a plan step
+ *    consumes N actual occurrences of its icon, not one, so a later plan
+ *    step for the same icon still lines up with the right occurrence
+ *    instead of reading one unit early (`parseStepCount` is shared by both
+ *    sides – see `compareBuild`'s `count`/`shortBy` below).
+ * 2. A worker icon (`WORKER_ICONS`) still matches and consumes occurrences
+ *    exactly like any other icon (so the counts above stay aligned for
+ *    later rows), but is never meaningfully "early" or "late" – a build
+ *    rarely times exactly when the Nth worker went out, only that it did –
+ *    so a matched worker row's status is `"not-timed"` instead, and it's
+ *    excluded from `summary`'s counts and from `firstSlip`. An *unmatched*
+ *    worker row (the worker was never trained at all) still reports
+ *    `"missed"` – there is nothing to "not time", that is a real gap in the
+ *    build, same as any other missed step.
  */
 
 import type { ApiBuildStep } from "../api/schema";
@@ -41,7 +60,7 @@ export const ON_PLAN_SUPPLY_TOLERANCE = 1;
  *  plan counts as "on plan" rather than early/late. */
 export const ON_PLAN_TIME_TOLERANCE_SECONDS = 10;
 
-export type ComparisonStatus = "on-plan" | "early" | "late" | "missed" | "unmatched-no-icon";
+export type ComparisonStatus = "on-plan" | "early" | "late" | "missed" | "unmatched-no-icon" | "not-timed";
 
 export type ComparisonActual = { time: string; supply: number };
 
@@ -58,7 +77,25 @@ export type ComparisonRow = {
    *  `time` (actual steps always have one). */
   timeDelta: number | null;
   status: ComparisonStatus;
+  /** F010b: the `"N×"` count parsed off this plan step's own instruction
+   *  (`parseStepCount`) – how many actual occurrences of `plan.icon` this
+   *  row consumes. Absent for a row with no icon at all (`plan.icon`
+   *  undefined – nothing to consume). Optional so a review stored before
+   *  this field existed still parses (`reviews/types.ts`). */
+  count?: number;
+  /** F010b: `count - found` when fewer than `count` occurrences remained
+   *  to consume (0 when every requested occurrence was found – then this
+   *  is left undefined, not 0, so `shortBy` truthy always means "short").
+   *  Optional for the same backward-compat reason as `count`. */
+  shortBy?: number;
 };
+
+/** F010b: icons that train a worker unit – a plan row for one of these
+ *  still matches and consumes occurrences exactly like any other icon
+ *  (see this module's doc comment), but is never judged early/late/on-plan
+ *  (`"not-timed"` instead, see `compareBuild`) and is excluded from
+ *  `summary`'s counts and `firstSlip`. */
+export const WORKER_ICONS: ReadonlySet<string> = new Set(["hu-peasant", "or-peon", "ud-acolyte", "ne-wisp"]);
 
 export type ExtraGroup = {
   /** Absent for an actual occurrence whose wire step had no `icon` at all
@@ -76,15 +113,23 @@ export type ExtraGroup = {
 export type FirstSlip = { index: number; supply: number | null; time: string | null };
 
 export type ComparisonSummary = {
+  /** `onPlan + early + late + missed` – judged rows only. Excludes
+   *  `"unmatched-no-icon"` rows (never judged) and `"not-timed"` rows
+   *  (`notTimed`, below) – see this module's doc comment. */
   total: number;
   onPlan: number;
   early: number;
   late: number;
   missed: number;
+  /** F010b: matched worker rows (`WORKER_ICONS`) – counted separately,
+   *  never folded into `onPlan`/`early`/`late` (a worker's own order isn't
+   *  meaningfully early or late, see the module doc comment). */
+  notTimed: number;
   /** The earliest row (in plan order) whose status isn't `"on-plan"`
-   *  (`"unmatched-no-icon"` rows are excluded – there is nothing to be
-   *  early/late/missed about when the plan step itself can't be matched),
-   *  or `null` when every row is on plan. */
+   *  (`"unmatched-no-icon"` and `"not-timed"` rows are excluded – there is
+   *  nothing to be early/late/missed about when the plan step itself can't
+   *  be matched, or isn't judged at all), or `null` when every judged row
+   *  is on plan. */
   firstSlip: FirstSlip | null;
 };
 
@@ -198,13 +243,20 @@ export function compareBuild(planSteps: ApiBuildStep[], actualSteps: ReplayImpor
     }
 
     matchedIcons.add(plan.icon);
+    // F010b: this plan step's own "N×" count (e.g. "Train 2× Peasant")
+    // consumes N occurrences, not one – see `parseStepCount` and this
+    // module's doc comment.
+    const count = parseStepCount(plan.instruction);
     const occurrences = actualByIcon.get(plan.icon) ?? [];
     const consumed = consumedByIcon.get(plan.icon) ?? 0;
-    consumedByIcon.set(plan.icon, consumed + 1);
-    const match = occurrences[consumed];
+    consumedByIcon.set(plan.icon, consumed + count);
+    const consumedSlice = occurrences.slice(consumed, consumed + count);
+    const found = consumedSlice.length;
+    const shortBy = found < count ? count - found : undefined;
+    const match = consumedSlice[0];
 
     if (!match) {
-      return { index, plan, actual: null, supplyDelta: null, timeDelta: null, status: "missed" };
+      return { index, plan, actual: null, supplyDelta: null, timeDelta: null, status: "missed", count, shortBy };
     }
 
     const actual: ComparisonActual = { time: match.time, supply: match.supply };
@@ -216,7 +268,12 @@ export function compareBuild(planSteps: ApiBuildStep[], actualSteps: ReplayImpor
         ? actualTimeSeconds - planTimeSeconds
         : null;
 
-    return { index, plan, actual, supplyDelta, timeDelta, status: rowStatus(plan, timeDelta, supplyDelta) };
+    // F010b: a matched worker row is never judged early/late/on-plan (see
+    // WORKER_ICONS's doc comment) – an *unmatched* one fell through to the
+    // "missed" branch above already, before this point is ever reached.
+    const status = WORKER_ICONS.has(plan.icon) ? "not-timed" : rowStatus(plan, timeDelta, supplyDelta);
+
+    return { index, plan, actual, supplyDelta, timeDelta, status, count, shortBy };
   });
 
   // Extras: actual occurrences whose icon never appears anywhere in the
@@ -253,6 +310,7 @@ export function compareBuild(planSteps: ApiBuildStep[], actualSteps: ReplayImpor
   let early = 0;
   let late = 0;
   let missed = 0;
+  let notTimed = 0;
   let firstSlip: FirstSlip | null = null;
   for (const row of rows) {
     switch (row.status) {
@@ -268,6 +326,9 @@ export function compareBuild(planSteps: ApiBuildStep[], actualSteps: ReplayImpor
       case "missed":
         missed += 1;
         break;
+      case "not-timed":
+        notTimed += 1;
+        break;
       default:
         break;
     }
@@ -276,7 +337,8 @@ export function compareBuild(planSteps: ApiBuildStep[], actualSteps: ReplayImpor
     }
   }
 
-  return { rows, extras, summary: { total: rows.length, onPlan, early, late, missed, firstSlip } };
+  const total = onPlan + early + late + missed;
+  return { rows, extras, summary: { total, onPlan, early, late, missed, notTimed, firstSlip } };
 }
 
 // --- pickMe --------------------------------------------------------------

@@ -53,7 +53,10 @@ function fakeBuild(overrides: Partial<ApiBuildListItem> = {}): ApiBuildListItem 
     featured: false,
     publishedAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
-    steps: [{ time: "0:00", supply: 5, instruction: "Train Peon", icon: "or-peon" }],
+    // or-grunt, not or-peon - a worker icon's own plan row is "not-timed"
+    // (F010b), excluded from `summary.total`/`onPlan`, which several tests
+    // below assert on against `replayResponse()`'s matching step.
+    steps: [{ time: "0:00", supply: 5, instruction: "Train Grunt", icon: "or-grunt" }],
     ...overrides,
   };
 }
@@ -95,7 +98,7 @@ function replayResponse(overrides: Partial<Record<string, unknown>> = {}): unkno
           authorDiscord: "",
           sourceUrl: "",
           description: "",
-          steps: [{ time: "0:01", supply: 5, instruction: "Train Peon", icon: "or-peon" }],
+          steps: [{ time: "0:01", supply: 5, instruction: "Train Grunt", icon: "or-grunt" }],
         },
       },
       {
@@ -426,12 +429,19 @@ describe("review pipeline", () => {
         duration: "11:03",
         players: [
           { id: 1, name: "A#1", race: "orc", steps: [] },
-          { id: 2, name: "B#2", race: "undead", steps: [{ time: "0:01", supply: 5, instruction: "Train Peon", icon: "or-peon" }] },
+          // or-grunt, not or-peon - a worker icon's row would be
+          // "not-timed" (F010b), excluded from `summary.total`, which
+          // would defeat the point of this test.
+          { id: 2, name: "B#2", race: "undead", steps: [{ time: "0:01", supply: 5, instruction: "Train Grunt", icon: "or-grunt" }] },
         ],
         meId: 1,
         meStatus: "resolved",
-        plan: { slug: "plan-a", title: "Plan A", race: "orc", steps: [{ time: "0:00", supply: 5, instruction: "Train Peon", icon: "or-peon" }] },
-        comparison: { rows: [], extras: [], summary: { total: 0, onPlan: 0, early: 0, late: 0, missed: 0, firstSlip: null } },
+        plan: { slug: "plan-a", title: "Plan A", race: "orc", steps: [{ time: "0:00", supply: 5, instruction: "Train Grunt", icon: "or-grunt" }] },
+        comparison: {
+          rows: [],
+          extras: [],
+          summary: { total: 0, onPlan: 0, early: 0, late: 0, missed: 0, notTimed: 0, firstSlip: null },
+        },
         seen: false,
       };
 

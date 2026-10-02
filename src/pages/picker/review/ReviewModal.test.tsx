@@ -39,7 +39,9 @@ const SMALL_COMPARISON: ComparisonResultDto = {
   rows: [
     {
       index: 0,
-      plan: { time: "0:00", supply: 5, instruction: "Train Peon", icon: "or-peon" },
+      // or-altar, not or-peon - a worker icon's row would be "not-timed"
+      // (F010b), not "on-plan"; see WORKER_COMPARISON below for that case.
+      plan: { time: "0:00", supply: 5, instruction: "Build Altar of Storms", icon: "or-altar" },
       actual: { time: "0:02", supply: 5 },
       supplyDelta: 0,
       timeDelta: 2,
@@ -63,7 +65,35 @@ const SMALL_COMPARISON: ComparisonResultDto = {
     },
   ],
   extras: [{ icon: "or-grunt", count: 2, firstTime: "2:10", firstSupply: 14, instruction: "Train 2× Grunt" }],
-  summary: { total: 3, onPlan: 1, early: 1, late: 0, missed: 1, firstSlip: { index: 1, supply: 7, time: "0:30" } },
+  summary: { total: 3, onPlan: 1, early: 1, late: 0, missed: 1, notTimed: 0, firstSlip: { index: 1, supply: 7, time: "0:30" } },
+};
+
+// F010b: a worker row ("not-timed"), including one that fell short of its
+// own plan step's "N×" count (`shortBy`) - exercises the "Not timed" chip,
+// the "N of M" actual suffix, and the summary's "(workers not timed)" tail.
+const WORKER_COMPARISON: ComparisonResultDto = {
+  rows: [
+    {
+      index: 0,
+      plan: { time: "0:02", supply: 5, instruction: "Train 2× Peasant", icon: "hu-peasant" },
+      actual: { time: "0:01", supply: 5 },
+      supplyDelta: 0,
+      timeDelta: -1,
+      status: "not-timed",
+      count: 2,
+      shortBy: 1,
+    },
+    {
+      index: 1,
+      plan: { time: "0:30", supply: 7, instruction: "Build Barracks", icon: "hu-barracks" },
+      actual: { time: "0:41", supply: 8 },
+      supplyDelta: 1,
+      timeDelta: 11,
+      status: "late",
+    },
+  ],
+  extras: [],
+  summary: { total: 1, onPlan: 0, early: 0, late: 1, missed: 0, notTimed: 1, firstSlip: { index: 1, supply: 7, time: "0:30" } },
 };
 
 describe("ReviewModal", () => {
@@ -223,6 +253,44 @@ describe("ReviewModal", () => {
     // Extras.
     expect(screen.getByText("Also did")).toBeTruthy();
     expect(screen.getByText("Train 2× Grunt")).toBeTruthy();
+  });
+
+  // F010b: worker rows.
+  it("renders a 'Not timed' chip for a worker row, '–' in its delta cell, '1 of 2' next to its actual, and the summary's worker suffix", () => {
+    render(
+      <ReviewModal
+        review={baseReview({ comparison: WORKER_COMPARISON })}
+        apiBase="https://warcraft-gym.com"
+        inProgress={false}
+        onClose={vi.fn()}
+        onRetry={vi.fn()}
+        onResolve={vi.fn()}
+      />,
+    );
+
+    // Summary line - the worker suffix only appears because notTimed > 0.
+    expect(screen.getByText("0/1 on plan · 0 early · 1 late · 0 missed · first slip at 0:30 (workers not timed)")).toBeTruthy();
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]).getByText("Not timed")).toBeTruthy();
+    expect(within(rows[0]).getByText("–")).toBeTruthy(); // delta cell, en dash
+    expect(within(rows[0]).getByText(/1 of 2/)).toBeTruthy(); // shortBy: found 1 of the requested 2
+    expect(within(rows[1]).getByText("Late")).toBeTruthy(); // not a worker row - judged as usual
+  });
+
+  it("omits the worker suffix from the summary line when every row is timed (notTimed: 0)", () => {
+    render(
+      <ReviewModal
+        review={baseReview({ comparison: SMALL_COMPARISON })}
+        apiBase="https://warcraft-gym.com"
+        inProgress={false}
+        onClose={vi.fn()}
+        onRetry={vi.fn()}
+        onResolve={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/workers not timed/)).toBeNull();
   });
 
   it("collapses 'Also did' behind a toggle when there are more than 6 extras", () => {

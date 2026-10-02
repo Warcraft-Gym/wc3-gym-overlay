@@ -3,10 +3,10 @@
  */
 import { describe, expect, it } from "vitest";
 import type { ComparisonRow, ComparisonSummary } from "./planVsActual";
-import { formatActual, formatComparisonSummary, formatDelta, formatPlanTarget } from "./reviewSummary";
+import { formatActual, formatComparisonSummary, formatDelta, formatPlanTarget, STATUS_CLASS, STATUS_LABEL } from "./reviewSummary";
 
 function summary(overrides: Partial<ComparisonSummary> = {}): ComparisonSummary {
-  return { total: 21, onPlan: 7, early: 5, late: 3, missed: 6, firstSlip: null, ...overrides };
+  return { total: 21, onPlan: 7, early: 5, late: 3, missed: 6, notTimed: 0, firstSlip: null, ...overrides };
 }
 
 describe("formatComparisonSummary", () => {
@@ -31,6 +31,24 @@ describe("formatComparisonSummary", () => {
   it("omits the slip clause entirely when every row is on plan", () => {
     const text = formatComparisonSummary(summary({ total: 3, onPlan: 3, early: 0, late: 0, missed: 0, firstSlip: null }));
     expect(text).toBe("3/3 on plan · 0 early · 0 late · 0 missed");
+  });
+
+  // F010b: worker rows (`notTimed`).
+  it("appends '(workers not timed)' when notTimed > 0", () => {
+    const text = formatComparisonSummary(
+      summary({ total: 24, onPlan: 12, early: 6, late: 4, missed: 2, notTimed: 6, firstSlip: { index: 4, supply: null, time: "0:47" } }),
+    );
+    expect(text).toBe("12/24 on plan · 6 early · 4 late · 2 missed · first slip at 0:47 (workers not timed)");
+  });
+
+  it("omits the worker suffix entirely when notTimed is 0", () => {
+    const text = formatComparisonSummary(summary({ notTimed: 0, firstSlip: { index: 4, supply: null, time: "0:47" } }));
+    expect(text).not.toContain("workers not timed");
+  });
+
+  it("appends the worker suffix even when every judged row is on plan (no firstSlip clause to attach after)", () => {
+    const text = formatComparisonSummary(summary({ total: 3, onPlan: 3, early: 0, late: 0, missed: 0, notTimed: 2, firstSlip: null }));
+    expect(text).toBe("3/3 on plan · 0 early · 0 late · 0 missed (workers not timed)");
   });
 });
 
@@ -68,6 +86,23 @@ describe("formatActual", () => {
   it("renders 'No icon to match' for an unmatched-no-icon row", () => {
     expect(formatActual(row({ status: "unmatched-no-icon", actual: null }))).toBe("No icon to match");
   });
+
+  it("renders the actual time/supply for a not-timed (worker) row, same as any matched row", () => {
+    expect(formatActual(row({ status: "not-timed", plan: { instruction: "Train Peasant", icon: "hu-peasant" } }))).toBe("0:41 · 8 supply");
+  });
+
+  // F010b: shortBy > 0 appends "<found> of <count>" next to the actual.
+  it("appends 'N of M' when the row fell short of its own plan step's count", () => {
+    expect(formatActual(row({ count: 2, shortBy: 1 }))).toBe("0:41 · 8 supply · 1 of 2");
+  });
+
+  it("does not append anything when shortBy is 0/undefined, even with a count set", () => {
+    expect(formatActual(row({ count: 2, shortBy: undefined }))).toBe("0:41 · 8 supply");
+  });
+
+  it("never appends 'N of M' for a missed row - there is no actual to put it next to", () => {
+    expect(formatActual(row({ status: "missed", actual: null, count: 2, shortBy: 2 }))).toBe("Not done");
+  });
 });
 
 describe("formatDelta", () => {
@@ -85,5 +120,21 @@ describe("formatDelta", () => {
 
   it("renders 'Not done' for a missed row", () => {
     expect(formatDelta(row({ status: "missed", actual: null, timeDelta: null, supplyDelta: null }))).toBe("Not done");
+  });
+
+  // F010b: a worker row's delta cell never shows a number, even though
+  // timeDelta/supplyDelta were computed - "–" (en dash), not an em dash.
+  it("renders '–' for a not-timed (worker) row, ignoring any computed delta", () => {
+    expect(formatDelta(row({ status: "not-timed", timeDelta: -8, supplyDelta: 1 }))).toBe("–");
+  });
+});
+
+describe("STATUS_LABEL / STATUS_CLASS - not-timed (F010b)", () => {
+  it("has a 'Not timed' label", () => {
+    expect(STATUS_LABEL["not-timed"]).toBe("Not timed");
+  });
+
+  it("reuses an existing neutral token, not a new colour", () => {
+    expect(STATUS_CLASS["not-timed"]).toBe(STATUS_CLASS["unmatched-no-icon"]);
   });
 });

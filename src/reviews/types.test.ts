@@ -37,11 +37,12 @@ function validReview(overrides: Partial<Review> = {}): Review {
           actual: { time: "0:01", supply: 5 },
           supplyDelta: 0,
           timeDelta: 1,
-          status: "on-plan",
+          status: "not-timed",
+          count: 1,
         },
       ],
       extras: [],
-      summary: { total: 1, onPlan: 1, early: 0, late: 0, missed: 0, firstSlip: null },
+      summary: { total: 0, onPlan: 0, early: 0, late: 0, missed: 0, notTimed: 1, firstSlip: null },
     },
     seen: false,
     ...overrides,
@@ -80,6 +81,31 @@ describe("reviewSchema", () => {
 
   it("rejects an unknown meStatus value", () => {
     expect(reviewSchema.safeParse(validReview({ meStatus: "maybe" as never })).success).toBe(false);
+  });
+
+  // F010b: a review stored before `count`/`shortBy` (row) and `notTimed`
+  // (summary) existed must still parse - `count`/`shortBy` are plain
+  // `.optional()` (absent stays absent), `notTimed` is `.default(0)` (absent
+  // becomes 0).
+  it("accepts a stored review with no count/shortBy/notTimed fields at all (pre-F010b), defaulting notTimed to 0", () => {
+    const old = validReview();
+    const oldComparison = old.comparison as NonNullable<typeof old.comparison>;
+    const oldRow: Record<string, unknown> = { ...oldComparison.rows[0] };
+    delete oldRow.count;
+    const legacy = {
+      ...old,
+      comparison: {
+        ...oldComparison,
+        rows: [oldRow],
+        summary: { total: oldComparison.summary.total, onPlan: oldComparison.summary.onPlan, early: 0, late: 0, missed: 0, firstSlip: null },
+      },
+    };
+    const result = reviewSchema.safeParse(legacy);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.comparison?.rows[0].count).toBeUndefined();
+      expect(result.data.comparison?.summary.notTimed).toBe(0);
+    }
   });
 });
 
