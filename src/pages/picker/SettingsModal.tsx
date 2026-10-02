@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Button } from "../../components/Button";
 import { IconButton } from "../../components/IconButton";
 import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import { host } from "../../host";
-import type { ShortcutRegistrationResult, UpdateInfo } from "../../host/bridge";
+import type { ReplayWatcherStatus, ShortcutRegistrationResult, UpdateInfo } from "../../host/bridge";
 import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
 import { exportAll, importBuilds, parseImport } from "../../lib/buildExchange";
+import { getReplayWatcherStatus, onReplayWatcherStatusChanged } from "../../replayWatcher";
 import { LOCAL_BUILDS, SETTINGS, type Settings } from "../../store/keys";
 import { updateKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
@@ -36,6 +37,29 @@ async function runUpdateCheck(skippedVersion: string | null): Promise<UpdateChec
     console.warn("[wc3gym] update check failed", err);
     return { kind: "failed" };
   }
+}
+
+/** F006: subscribes to the last-replay watcher's status for the line below
+ *  the Replays section — same `useSyncExternalStore` shape as
+ *  `store/useStore.ts`'s `useStoreValue`, but over the host's in-memory
+ *  watcher state rather than a localStorage-backed store key (there's
+ *  nothing to persist or share across windows here). */
+function useReplayWatcherStatus(): ReplayWatcherStatus {
+  return useSyncExternalStore(onReplayWatcherStatusChanged, getReplayWatcherStatus);
+}
+
+/** Renders the Replays section's one-line status — "Watching N folders ·
+ *  last game picked up HH:MM", the last error instead when there is one,
+ *  or a quiet "Auto-import is off" when the user disabled it (`watching`
+ *  is empty and there's no error in that case, so it needs its own branch
+ *  rather than falling out of the other two). */
+function formatReplayWatcherStatus(status: ReplayWatcherStatus, autoImport: boolean): string {
+  if (status.lastError) return status.lastError;
+  if (!autoImport) return "Auto-import is off";
+  const folders = `Watching ${status.watchingFolders.length} folder${status.watchingFolders.length === 1 ? "" : "s"}`;
+  if (status.lastPickedUpAtMs === null) return folders;
+  const time = new Date(status.lastPickedUpAtMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${folders} · last game picked up ${time}`;
 }
 
 /** F004: backs up every private build in one file — `wc3gym-builds.wc3gym.json`. */
@@ -136,11 +160,27 @@ export function SettingsModal({
   const [apiBaseError, setApiBaseError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckState>({ kind: "idle" });
+  const [battleTagInput, setBattleTagInput] = useState(settings.myBattleTag ?? "");
   const localBuildCount = useStoreValue(LOCAL_BUILDS).length;
+  const replayWatcherStatus = useReplayWatcherStatus();
 
   async function handleImportClick() {
     const message = await importPrivateBuilds();
     if (message !== null) setImportStatus(message);
+  }
+
+  async function handleChooseReplayFolder() {
+    const folder = await host.openFolder();
+    if (folder !== null) await updateKey(SETTINGS, (s) => ({ ...s, replayFolder: folder }));
+  }
+
+  async function handleResetReplayFolder() {
+    await updateKey(SETTINGS, (s) => ({ ...s, replayFolder: null }));
+  }
+
+  function handleBattleTagChange(value: string) {
+    setBattleTagInput(value);
+    void updateKey(SETTINGS, (s) => ({ ...s, myBattleTag: value.trim() === "" ? null : value }));
   }
 
   async function handleCheckForUpdates() {
@@ -231,6 +271,56 @@ export function SettingsModal({
               {updateCheck.kind === "failed" && "Couldn't check for updates"}
             </p>
           ) : null}
+        </div>
+
+        <div>
+          <h3 className="kicker mb-2">Replays</h3>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.autoImport}
+              onChange={(e) => void updateKey(SETTINGS, (s) => ({ ...s, autoImport: e.target.checked }))}
+            />
+            Auto-detect a finished game
+          </label>
+
+          <div className="mt-3">
+            <span className="mb-1 block font-mono text-xs uppercase tracking-[0.14em] text-faint">
+              Replay folder
+            </span>
+            <p className="text-xs text-muted">
+              {settings.replayFolder ?? "Auto-detected — searches the usual Warcraft III BattleNet folders"}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button variant="ghost" onClick={() => void handleChooseReplayFolder()}>
+                Choose…
+              </Button>
+              {settings.replayFolder !== null ? (
+                <Button variant="ghost" onClick={() => void handleResetReplayFolder()}>
+                  Reset
+                </Button>
+              ) : null}
+            </div>
+            <p className="mt-1 text-xs text-faint">
+              Pick either the folder that directly contains LastReplay.w3g, or the BattleNet folder itself
+              (the one with a numbered folder per account). A folder outside Downloads, Documents, Desktop, or
+              the default Warcraft III data folder can't actually be read — the status line below will show an
+              error if so.
+            </p>
+          </div>
+
+          <div className="mt-3">
+            <TextField
+              label="My BattleTag"
+              placeholder="Name#1234"
+              value={battleTagInput}
+              onChange={(e) => handleBattleTagChange(e.target.value)}
+            />
+          </div>
+
+          <p data-testid="replay-watcher-status" className="mt-3 text-xs text-muted">
+            {formatReplayWatcherStatus(replayWatcherStatus, settings.autoImport)}
+          </p>
         </div>
 
         <div>

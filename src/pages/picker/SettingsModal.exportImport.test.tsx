@@ -27,6 +27,9 @@ const SETTINGS_VALUE: Settings = {
   },
   autoUpdate: false,
   skippedVersion: null,
+  autoImport: true,
+  replayFolder: null,
+  myBattleTag: null,
 };
 
 function renderSettings() {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SHORTCUTS } from "../config";
-import { iconsCacheSchema, localBuildSchema, settingsSchema } from "./keys";
+import { iconsCacheSchema, lastReplayHandledSchema, localBuildSchema, settingsSchema } from "./keys";
 
 /** F002: shape written by every 0.3.x settings save — no `autoUpdate` or
  *  `skippedVersion` key at all, since neither existed yet. */
@@ -96,5 +96,44 @@ describe("settingsSchema — F002 autoUpdate/skippedVersion migration", () => {
     expect(result.success).toBe(true);
     expect(result.success && result.data.autoUpdate).toBe(false);
     expect(result.success && result.data.skippedVersion).toBe("0.4.1");
+  });
+});
+
+describe("settingsSchema — F006 autoImport/replayFolder/myBattleTag migration", () => {
+  it("defaults autoImport to true and replayFolder/myBattleTag to null for settings missing all three keys", () => {
+    const result = settingsSchema.safeParse(RAW_0_3_X_SETTINGS);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.autoImport).toBe(true);
+    expect(result.success && result.data.replayFolder).toBeNull();
+    expect(result.success && result.data.myBattleTag).toBeNull();
+  });
+
+  it("keeps explicit autoImport/replayFolder/myBattleTag the user already set", () => {
+    const result = settingsSchema.safeParse({
+      ...RAW_0_3_X_SETTINGS,
+      autoImport: false,
+      replayFolder: "/custom/replays",
+      myBattleTag: "Player#1234",
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.autoImport).toBe(false);
+    expect(result.success && result.data.replayFolder).toBe("/custom/replays");
+    expect(result.success && result.data.myBattleTag).toBe("Player#1234");
+  });
+});
+
+describe("lastReplayHandledSchema", () => {
+  it("accepts an empty record", () => {
+    expect(lastReplayHandledSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("accepts a path -> mtime map", () => {
+    const result = lastReplayHandledSchema.safeParse({ "/a/LastReplay.w3g": 1700000000000 });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a non-numeric mtime", () => {
+    const result = lastReplayHandledSchema.safeParse({ "/a/LastReplay.w3g": "not-a-number" });
+    expect(result.success).toBe(false);
   });
 });

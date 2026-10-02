@@ -129,6 +129,19 @@ export type Settings = {
    *  A launch check that finds this exact version stays silent; the
    *  Settings manual check still surfaces it as "(skipped)". */
   skippedVersion: string | null;
+  /** F003: whether the app polls for a new `LastReplay.w3g` at all.
+   *  Defaults to `true`; flipping it off stops every `stat` call, not just
+   *  the follow-up import (see `host/lastReplayWatcher.ts`). */
+  autoImport: boolean;
+  /** F003: overrides the auto-detected BattleNet roots with a single
+   *  user-chosen folder (see `ReplayWatcherOptions`'s doc comment for the
+   *  two shapes accepted), or `null` to use auto-detection. Set via
+   *  Settings' "Choose…"/"Reset" buttons. */
+  replayFolder: string | null;
+  /** F003: the user's own BattleTag (e.g. "Name#1234"), used by F004 to
+   *  pick "you" out of a replay's player list automatically. Just stored
+   *  here for now — F003 does nothing with it besides persist it. */
+  myBattleTag: string | null;
 };
 
 const shortcutMapSchema: z.ZodType<ShortcutMap> = z.object({
@@ -174,6 +187,12 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     // below when the key is missing, which is the whole migration.
     autoUpdate: z.boolean().default(true),
     skippedVersion: z.string().nullable().default(null),
+    // F003: absent in settings written before this feature — same
+    // default-fills-in-the-migration shape as autoUpdate/skippedVersion
+    // above.
+    autoImport: z.boolean().default(true),
+    replayFolder: z.string().nullable().default(null),
+    myBattleTag: z.string().nullable().default(null),
   }),
 );
 
@@ -187,6 +206,9 @@ export const SETTINGS: StoreKey<Settings> = {
     shortcuts: { ...DEFAULT_SHORTCUTS },
     autoUpdate: true,
     skippedVersion: null,
+    autoImport: true,
+    replayFolder: null,
+    myBattleTag: null,
   }),
 };
 
@@ -263,4 +285,33 @@ export const ICONS_CACHE: StoreKey<IconsCache> = {
   name: "wc3gym.iconsCache",
   schema: iconsCacheSchema,
   defaultValue: () => ({ fetchedAt: "", apiBase: DEFAULT_API_BASE, icons: [] }),
+};
+
+// --- wc3gym.lastReplayHandled (F006 — last-replay-watcher) -------------------
+
+/**
+ * The last `LastReplay.w3g` mtime (epoch ms) the watcher has already acted
+ * on, keyed by absolute path — one entry per BattleNet account folder (or
+ * per override path). See `host/lastReplayWatcher.ts`'s doc comment for why
+ * that module reads/writes this key's raw localStorage entry directly
+ * instead of going through `store/state.ts`'s `readKey`/`writeKey` (it
+ * would close a module cycle through `host/index.ts`). Keeping the
+ * `StoreKey` descriptor here, with everyone else's, still gives it one
+ * schema-validated shape and one default, same as every other key — only
+ * the *access path* differs.
+ *
+ * An unbounded path→mtime map in principle, but in practice bounded by the
+ * number of BattleNet account folders that have ever existed on this
+ * machine (a handful at most) plus whatever single `replayFolder` override
+ * the user has set at various points — never cleaned up, but never
+ * meaningfully large either.
+ */
+export type LastReplayHandled = Record<string, number>;
+
+export const lastReplayHandledSchema: z.ZodType<LastReplayHandled> = z.record(z.string(), z.number());
+
+export const LAST_REPLAY_HANDLED: StoreKey<LastReplayHandled> = {
+  name: "wc3gym.lastReplayHandled",
+  schema: lastReplayHandledSchema,
+  defaultValue: () => ({}),
 };

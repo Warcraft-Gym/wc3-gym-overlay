@@ -11,6 +11,7 @@ import { deleteLocalBuild } from "../../lib/localBuilds";
 import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
+import { startReplayWatcher } from "../../replayWatcher";
 import { UPDATE_CHECK_DELAY_MS } from "../../config";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
@@ -141,6 +142,11 @@ export function App() {
     setReplayImport(null);
     setEditor({ mode: "new", sourceBuild: null, initialValues });
   }
+
+  // F006: the picker is the one window that stays alive (hidden, never
+  // closed) for the app's whole lifetime — see `startReplayWatcher`'s doc
+  // comment — so it's the only place this needs to be started.
+  useEffect(() => startReplayWatcher(), []);
 
   useEffect(() => {
     applySelftestShortcutOverride()

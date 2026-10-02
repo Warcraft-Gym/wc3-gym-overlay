@@ -32,6 +32,9 @@ function settingsValue(autoUpdate: boolean): Settings {
     },
     autoUpdate,
     skippedVersion: null,
+    autoImport: true,
+    replayFolder: null,
+    myBattleTag: null,
   };
 }
 

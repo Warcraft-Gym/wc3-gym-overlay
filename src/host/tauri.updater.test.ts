@@ -41,10 +41,15 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   readFile: vi.fn(),
   readTextFile: vi.fn(),
   writeTextFile: vi.fn(),
+  readDir: vi.fn(),
+  stat: vi.fn(),
+  exists: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/path", () => ({
   documentDir: vi.fn(),
+  dataDir: vi.fn(),
+  join: vi.fn(),
 }));
 
 const checkMock = vi.fn();

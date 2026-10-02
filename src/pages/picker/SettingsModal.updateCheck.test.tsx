@@ -34,6 +34,9 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
     },
     autoUpdate: true,
     skippedVersion: null,
+    autoImport: true,
+    replayFolder: null,
+    myBattleTag: null,
     ...overrides,
   };
 }

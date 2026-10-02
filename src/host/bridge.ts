@@ -42,6 +42,43 @@ export type UpdateProgress = {
   contentLength: number | null;
 };
 
+/** F003: a freshly-picked-up `LastReplay.w3g` — handed to `watchLastReplay`'s
+ *  `onReplay` exactly once per genuinely new game (see that method's doc
+ *  comment). `mtimeMs` is the file's own last-modified time (not the time it
+ *  was picked up), used as the de-duplication key across restarts. */
+export type ReplayEvent = {
+  path: string;
+  mtimeMs: number;
+  bytes: Uint8Array;
+};
+
+/** F003: what `watchLastReplay` watches. `autoImport: false` disables
+ *  polling entirely (no `stat` calls at all). `replayFolder` — when set —
+ *  replaces the auto-detected BattleNet roots: either a folder that
+ *  directly contains `LastReplay.w3g`, or one shaped like a BattleNet
+ *  folder itself (account-id subfolders, each with `Replays/LastReplay.w3g`).
+ *  A folder outside the capability-granted fs scope can be picked (the
+ *  native dialog doesn't know about the scope), but every read against it
+ *  then fails — surfaced as `lastError` on the status, not a crash; see
+ *  `host/tauri.ts` / `host/lastReplayWatcher.ts` and docs/overlay.md. */
+export type ReplayWatcherOptions = {
+  autoImport: boolean;
+  replayFolder: string | null;
+};
+
+/** F003: read-only status for the Settings UI's watcher status line.
+ *  `watchingFolders` lists the root folder(s) currently being polled (empty
+ *  when `autoImport` is off, or none of the roots exist yet).
+ *  `lastPickedUpAtMs` is wall-clock time (not the replay's own `mtimeMs`) of
+ *  the last time `onReplay` fired. `lastError` is the most recent poll
+ *  failure's message (missing root, permission denied, unreadable/partial
+ *  file), cleared on the next successful poll. */
+export type ReplayWatcherStatus = {
+  watchingFolders: string[];
+  lastPickedUpAtMs: number | null;
+  lastError: string | null;
+};
+
 export interface Host {
   readonly kind: "tauri" | "browser";
   showWindow(label: string): Promise<void>;
@@ -94,4 +131,24 @@ export interface Host {
   /** F002: true when running the portable exe, which has no updater
    *  wired up — the UI should offer a manual download instead. */
   isPortableBuild(): Promise<boolean>;
+  /** F003: prompts to pick a folder and resolves its path, or `null` if the
+   *  user cancelled. Used by Settings' "Choose…" button for the replay
+   *  folder override. Tauri: the native dialog with `directory: true`.
+   *  Browser: no real folder picker — resolves `?mockFolder=<path>` off the
+   *  URL for tests, `null` otherwise. */
+  openFolder(): Promise<string | null>;
+  /** F003: starts polling for a new `LastReplay.w3g` per `opts` (see
+   *  `ReplayWatcherOptions`), calling `onReplay` at most once per poll tick
+   *  with the *newest* genuinely-new replay found. Returns `stop()`.
+   *  Calling `watchLastReplay` again before `stop()`ing the previous loop
+   *  runs both concurrently — callers that want to react to changed `opts`
+   *  (see `src/lastReplayWatcher.ts`) must `stop()` the old loop first. */
+  watchLastReplay(opts: ReplayWatcherOptions, onReplay: (event: ReplayEvent) => void): () => void;
+  /** F003: the most recently started/updated watch loop's status, for the
+   *  Settings UI's status line. */
+  getReplayWatcherStatus(): ReplayWatcherStatus;
+  /** F003: fires whenever the watch loop's status changes (a poll tick, an
+   *  error, a new `watchLastReplay`/`stop()` call). Returns an unsubscribe
+   *  function. */
+  onReplayWatcherStatusChanged(cb: (status: ReplayWatcherStatus) => void): () => void;
 }

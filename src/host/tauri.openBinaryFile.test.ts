@@ -51,11 +51,16 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   readFile: (...args: unknown[]) => readFileMock(...args),
   readTextFile: vi.fn(),
   writeTextFile: vi.fn(),
+  readDir: vi.fn(),
+  stat: vi.fn(),
+  exists: vi.fn(),
 }));
 
 const documentDirMock = vi.fn();
 vi.mock("@tauri-apps/api/path", () => ({
   documentDir: (...args: unknown[]) => documentDirMock(...args),
+  dataDir: vi.fn(),
+  join: vi.fn(),
 }));
 
 import { createTauriHost } from "./tauri";

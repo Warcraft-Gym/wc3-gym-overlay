@@ -15,13 +15,23 @@ import {
 } from "@tauri-apps/plugin-global-shortcut";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeTextFile, readTextFile, readFile } from "@tauri-apps/plugin-fs";
-import { documentDir } from "@tauri-apps/api/path";
+import {
+  writeTextFile,
+  readTextFile,
+  readFile,
+  readDir,
+  stat as fsStat,
+  exists as fsExists,
+} from "@tauri-apps/plugin-fs";
+import { dataDir, documentDir, join as joinPath } from "@tauri-apps/api/path";
 import { check as checkUpdate, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch as relaunchApp } from "@tauri-apps/plugin-process";
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Host,
+  ReplayEvent,
+  ReplayWatcherOptions,
+  ReplayWatcherStatus,
   ShortcutAction,
   ShortcutMap,
   ShortcutRegistrationResult,
@@ -29,6 +39,8 @@ import type {
   UpdateProgress,
   WindowBounds,
 } from "./bridge";
+import { createLastReplayWatcher, type ReplayFsOps, type ReplayPersistence } from "./lastReplayWatcher";
+import { LAST_REPLAY_HANDLED } from "../store/keys";
 import { WINDOW_OVERLAY, PORTABLE_DOWNLOAD_URL } from "../config";
 
 /** F004 — the only extension a private build's export/import file uses. */
@@ -223,6 +235,77 @@ async function openBinaryFile(
   return { name: basename(path), bytes };
 }
 
+/** F006: native directory-picker dialog for Settings' replay folder
+ *  override — the dialog itself can return a path outside every capability
+ *  scope (it doesn't know about the scope), so a folder picked here can
+ *  still fail every subsequent stat/read; see `ReplayWatcherOptions`'s doc
+ *  comment and docs/overlay.md. */
+async function openFolder(): Promise<string | null> {
+  const path = await open({ multiple: false, directory: true });
+  if (!path || Array.isArray(path)) return null;
+  return path;
+}
+
+/** F006: localStorage-backed persistence for the last-replay watcher,
+ *  reusing `store/keys.ts`'s `LAST_REPLAY_HANDLED` *descriptor* (name +
+ *  zod schema + default) but never `store/state.ts`'s `readKey`/`writeKey`
+ *  — see `lastReplayWatcher.ts`'s doc comment for why. Reads never throw —
+ *  garbage in storage falls back to the key's default, same contract as
+ *  `store/state.ts`'s `readKey`. Writes skip `host.notifyStateChanged()`
+ *  on purpose: this is watcher-internal bookkeeping, not app state another
+ *  window needs to react to. */
+function readLastReplayHandled(): Record<string, number> {
+  const raw = localStorage.getItem(LAST_REPLAY_HANDLED.name);
+  if (raw === null) return LAST_REPLAY_HANDLED.defaultValue();
+  try {
+    const result = LAST_REPLAY_HANDLED.schema.safeParse(JSON.parse(raw));
+    return result.success ? result.data : LAST_REPLAY_HANDLED.defaultValue();
+  } catch {
+    return LAST_REPLAY_HANDLED.defaultValue();
+  }
+}
+
+function writeLastReplayHandled(value: Record<string, number>): void {
+  localStorage.setItem(LAST_REPLAY_HANDLED.name, JSON.stringify(value));
+}
+
+const replayFsOps: ReplayFsOps = {
+  dataDir,
+  documentDir,
+  joinPath: (...parts) => joinPath(...parts),
+  exists: (path) => fsExists(path),
+  readDir: (path) => readDir(path),
+  stat: async (path) => {
+    const info = await fsStat(path);
+    return { size: info.size, mtimeMs: info.mtime ? info.mtime.getTime() : null };
+  },
+  readFile: (path) => readFile(path),
+};
+
+const replayPersistence: ReplayPersistence = {
+  getHandledMtimes: readLastReplayHandled,
+  setHandledMtimes: writeLastReplayHandled,
+};
+
+/** F006: the one-and-only poll engine instance for this webview — see
+ *  `lastReplayWatcher.ts`. `createTauriHost()` is called once per webview
+ *  (see `host/index.ts`), so this module-level singleton is equivalent to
+ *  one per window; only the picker window actually starts it (see
+ *  `src/lastReplayWatcher.ts`'s `startReplayWatcher()`). */
+const lastReplayWatcher = createLastReplayWatcher(replayFsOps, replayPersistence);
+
+function watchLastReplay(opts: ReplayWatcherOptions, onReplay: (event: ReplayEvent) => void): () => void {
+  return lastReplayWatcher.watchLastReplay(opts, onReplay);
+}
+
+function getReplayWatcherStatus(): ReplayWatcherStatus {
+  return lastReplayWatcher.getStatus();
+}
+
+function onReplayWatcherStatusChanged(cb: (status: ReplayWatcherStatus) => void): () => void {
+  return lastReplayWatcher.onStatusChanged(cb);
+}
+
 /** F002: holds the `Update` resource resolved by the last `checkForUpdate()`
  *  call so `installUpdate()` can act on it without the `Host` interface
  *  needing to round-trip the native object through the rest of the app. */
@@ -307,5 +390,9 @@ export function createTauriHost(): Host {
     installUpdate,
     relaunch,
     isPortableBuild,
+    openFolder,
+    watchLastReplay,
+    getReplayWatcherStatus,
+    onReplayWatcherStatusChanged,
   };
 }

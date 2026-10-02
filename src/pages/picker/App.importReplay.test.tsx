@@ -40,6 +40,9 @@ const SETTINGS_VALUE: Settings = {
   },
   autoUpdate: false,
   skippedVersion: null,
+  autoImport: true,
+  replayFolder: null,
+  myBattleTag: null,
 };
 
 describe("App — Import replay", () => {

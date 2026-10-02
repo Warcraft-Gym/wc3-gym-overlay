@@ -267,6 +267,69 @@ any build you care about (see "Backing up, sharing, and submitting a
 private build" above) rather than relying on the replay file still being
 there later.
 
+### Auto-detecting a finished game
+
+Instead of clicking **Import replay** and browsing for the file yourself,
+the app can notice a game has just finished on its own, by watching for
+`LastReplay.w3g` — the copy Warcraft III always overwrites after every
+match, regardless of account — to change:
+
+- **Windows:** `Documents\Warcraft III\BattleNet\<account number>\Replays\LastReplay.w3g`
+- **macOS:** `~/Library/Application Support/Warcraft III/BattleNet/<account number>/Replays/LastReplay.w3g`
+  (no `Blizzard` folder in this path — note this is a different, narrower
+  location than the `~/Library/Application Support/Blizzard` folder the
+  manual **Import replay** dialog above can browse into; see
+  [Capability scope](#capability-scope-for-auto-detection) below for why
+  both exist).
+
+There can be more than one account folder (switching Battle.net accounts on
+the same machine leaves the old one's folder in place) — every account
+folder that exists is watched, and whichever one's `LastReplay.w3g` changed
+most recently wins if more than one changes at once.
+
+This is **Settings → Replays**:
+
+- **Auto-detect a finished game** (on by default) — turns the watcher on or
+  off entirely. Off means no polling at all, not just "don't act on it".
+- **Replay folder** — overrides the auto-detected folders above with one
+  folder you pick yourself (**Choose…**; **Reset** clears it back to
+  auto-detection). Pick either the folder that directly contains
+  `LastReplay.w3g`, or a folder shaped like the BattleNet folder itself
+  (one numbered subfolder per account, each with its own `Replays`
+  folder) — the app tries the first shape, then falls back to the second.
+- **My BattleTag** (e.g. `Name#1234`) — stored for a later feature to pick
+  "you" out of a finished game's player list automatically, the same way
+  **Import replay** asks you to today. Not used by anything yet.
+- A status line underneath reports what's actually happening: how many
+  folders are being watched, when the last game was picked up, or the
+  most recent error.
+
+A file is only ever treated as "finished" once its size and modified time
+have stopped changing for two consecutive checks (five seconds apart) —
+and the very first check after installing (or after picking a folder
+override) records whatever's already sitting there as "already handled"
+rather than treating your last game before this feature existed as a brand
+new one.
+
+#### Capability scope for auto-detection
+
+The watcher can only read inside folders the app's capability file
+explicitly allows (`src-tauri/capabilities/default.json`) — same
+sandboxing as every other file the app touches, described throughout this
+doc. **Choose…** opens the OS's normal folder picker, which can return a
+path outside that allow-list (the picker itself has no idea what the app's
+capabilities are) — picking one results in every subsequent check failing
+with a permission/scope error, surfaced on the status line, not a crash.
+There is no way around this from the frontend: Tauri v2 does not extend a
+capability's filesystem scope at runtime just because a path was chosen
+through its own dialog plugin — the scope is the static allow-list in the
+capability file, full stop (the existing **Import replay** behavior
+documented above — refusing a file picked from outside Downloads,
+Documents, Desktop, or the Blizzard data folder — is the same rule already
+in effect before this feature existed). If you need to watch a folder
+outside the default locations, it has to be one of the paths the
+capability file already allows.
+
 ### What an import can and cannot know (limitations)
 
 This parsing runs on the website (`POST /api/replay-import`), not in the

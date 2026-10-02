@@ -7,6 +7,9 @@
 
 import type {
   Host,
+  ReplayEvent,
+  ReplayWatcherOptions,
+  ReplayWatcherStatus,
   ShortcutAction,
   ShortcutMap,
   ShortcutRegistrationResult,
@@ -357,6 +360,61 @@ async function isPortableBuild(): Promise<boolean> {
   return false;
 }
 
+/** F006: there's no native folder picker in a plain browser tab. For tests
+ *  (F007/F005's Playwright suite driving browser mode), `?mockFolder=<path>`
+ *  on the URL stands in for a real pick — matches the existing
+ *  `?mockUpdate=`/`?failShortcut=` convention above. Resolves `null`
+ *  (cancelled) otherwise. */
+async function openFolder(): Promise<string | null> {
+  return new URLSearchParams(location.search).get("mockFolder");
+}
+
+/** F006: the browser host has no filesystem to watch — `watchLastReplay`
+ *  is a no-op poll loop. `injectLastReplayForTest` (exported below, and
+ *  exposed on `window` for a Playwright test that can't import this
+ *  module directly) lets a test fire a synthetic replay event through the
+ *  exact same path a real pickup would use, matching the existing
+ *  selftest/host-adapter convention (`src/selftest.ts`, this module's own
+ *  `?failShortcut=`/`?mockUpdate=` hooks) of giving QA a way to drive
+ *  behavior that has no real counterpart outside Tauri. */
+let browserReplayListener: ((event: ReplayEvent) => void) | null = null;
+let browserReplayStatus: ReplayWatcherStatus = { watchingFolders: [], lastPickedUpAtMs: null, lastError: null };
+const browserReplayStatusListeners = new Set<(status: ReplayWatcherStatus) => void>();
+
+function setBrowserReplayStatus(next: Partial<ReplayWatcherStatus>): void {
+  browserReplayStatus = { ...browserReplayStatus, ...next };
+  for (const listener of browserReplayStatusListeners) listener(browserReplayStatus);
+}
+
+function watchLastReplay(opts: ReplayWatcherOptions, onReplay: (event: ReplayEvent) => void): () => void {
+  browserReplayListener = opts.autoImport ? onReplay : null;
+  setBrowserReplayStatus({ watchingFolders: [], lastError: null });
+  return () => {
+    browserReplayListener = null;
+  };
+}
+
+function getReplayWatcherStatus(): ReplayWatcherStatus {
+  return browserReplayStatus;
+}
+
+function onReplayWatcherStatusChanged(cb: (status: ReplayWatcherStatus) => void): () => void {
+  browserReplayStatusListeners.add(cb);
+  return () => browserReplayStatusListeners.delete(cb);
+}
+
+/** F006 test hook: fires `event` through whatever `watchLastReplay`
+ *  subscription is currently active, as if a real poll had just picked it
+ *  up. No-op if `watchLastReplay` hasn't been called yet (or `autoImport`
+ *  is off). Also reachable as `window.__wc3gymInjectLastReplay` for a
+ *  Playwright test driving the page directly (`page.evaluate`), since that
+ *  can't import this module's named export. */
+export function injectLastReplayForTest(event: ReplayEvent): void {
+  if (!browserReplayListener) return;
+  setBrowserReplayStatus({ lastPickedUpAtMs: Date.now(), lastError: null });
+  browserReplayListener(event);
+}
+
 export function createBrowserHost(): Host {
   return {
     kind: "browser",
@@ -380,5 +438,13 @@ export function createBrowserHost(): Host {
     installUpdate,
     relaunch,
     isPortableBuild,
+    openFolder,
+    watchLastReplay,
+    getReplayWatcherStatus,
+    onReplayWatcherStatusChanged,
   };
+}
+
+if (typeof window !== "undefined") {
+  (window as unknown as Record<string, unknown>).__wc3gymInjectLastReplay = injectLastReplayForTest;
 }

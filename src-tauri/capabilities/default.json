@@ -61,7 +61,30 @@
         { "path": "$DOWNLOAD/**" },
         { "path": "$DOCUMENT/**" },
         { "path": "$DESKTOP/**" },
-        { "path": "$DATA/Blizzard/**" }
+        { "path": "$DATA/Blizzard/**" },
+        { "path": "$DATA/Warcraft III/**" },
+        { "path": "$DOCUMENT/Warcraft III/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [
+        { "path": "$DATA/Warcraft III/**" },
+        { "path": "$DOCUMENT/Warcraft III/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [
+        { "path": "$DATA/Warcraft III/**" },
+        { "path": "$DOCUMENT/Warcraft III/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$DATA/Warcraft III/**" },
+        { "path": "$DOCUMENT/Warcraft III/**" }
       ]
     }
   ]
