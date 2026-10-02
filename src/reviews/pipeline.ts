@@ -69,6 +69,7 @@ async function storeOkReview(
   source: { path: string; mtimeMs: number },
   plan: ReturnType<typeof getSelectedBuildSnapshot>,
   response: Awaited<ReturnType<typeof requestReplayImport>>,
+  manual: boolean,
 ): Promise<void> {
   const me = pickMe(response.players, { myBattleTag: readKey(SETTINGS).myBattleTag, planRace: plan?.race });
   const mePlayer = me.kind === "resolved" ? response.players.find((p) => p.id === me.player.id) ?? null : null;
@@ -87,6 +88,7 @@ async function storeOkReview(
     plan: reviewPlanFrom(plan),
     comparison,
     seen: false,
+    manual,
   };
   await writeKey(LAST_REVIEW, review);
 }
@@ -95,6 +97,7 @@ async function storeErrorReview(
   source: { path: string; mtimeMs: number },
   message: string,
   plan: ReturnType<typeof getSelectedBuildSnapshot>,
+  manual: boolean,
 ): Promise<void> {
   const review: Review = {
     id: crypto.randomUUID(),
@@ -110,6 +113,7 @@ async function storeErrorReview(
     plan: reviewPlanFrom(plan),
     comparison: null,
     seen: false,
+    manual,
   };
   await writeKey(LAST_REVIEW, review);
 }
@@ -118,10 +122,37 @@ async function storeErrorReview(
 
 let currentImport: AbortController | null = null;
 
-async function importReplay(event: ReplayEvent): Promise<void> {
+// --- F010 (review-ui): "is an import currently in flight" signal ---------
+
+let inProgress = false;
+const inProgressListeners = new Set<(value: boolean) => void>();
+
+function setInProgress(value: boolean): void {
+  if (inProgress === value) return;
+  inProgress = value;
+  for (const listener of inProgressListeners) listener(value);
+}
+
+/** Whether an import triggered by this pipeline (auto-detected or via
+ *  `importReviewBytes`) is currently in flight – the picker's review view
+ *  shows "Reviewing your last game..." while this is true. */
+export function isReviewInProgress(): boolean {
+  return inProgress;
+}
+
+/** Subscribes to changes in `isReviewInProgress()`. Returns an unsubscribe
+ *  function, same shape as `onLastReplay`/`host.onReplayWatcherStatusChanged`. */
+export function onReviewInProgressChanged(cb: (value: boolean) => void): () => void {
+  inProgressListeners.add(cb);
+  return () => inProgressListeners.delete(cb);
+}
+
+async function importReplay(event: ReplayEvent, options: { manual?: boolean } = {}): Promise<void> {
+  const manual = options.manual ?? false;
   currentImport?.abort();
   const controller = new AbortController();
   currentImport = controller;
+  setInProgress(true);
 
   const plan = getSelectedBuildSnapshot();
   const source = { path: event.path, mtimeMs: event.mtimeMs };
@@ -139,12 +170,15 @@ async function importReplay(event: ReplayEvent): Promise<void> {
       },
     );
     if (controller.signal.aborted) return;
-    await storeOkReview(source, plan, response);
+    await storeOkReview(source, plan, response, manual);
   } catch (err) {
     if (isAbortError(err)) return;
-    await storeErrorReview(source, describeImportError(err), plan);
+    await storeErrorReview(source, describeImportError(err), plan, manual);
   } finally {
-    if (currentImport === controller) currentImport = null;
+    if (currentImport === controller) {
+      currentImport = null;
+      setInProgress(false);
+    }
   }
 }
 
@@ -155,6 +189,20 @@ export function startReviewPipeline(): () => void {
   return onLastReplay((event) => {
     void importReplay(event);
   });
+}
+
+/** F010 (review-ui): runs the same pipeline against bytes picked by the
+ *  user through "Review a replay file..." instead of a real filesystem
+ *  pickup – lets the feature be tried without playing a game. There is no
+ *  real filesystem path for a manually-chosen file, so `source.path` is
+ *  just the file's own name and `source.mtimeMs` is `Date.now()` at the
+ *  moment of the call; the stored review is marked `manual: true` so the
+ *  view's Retry action knows to re-open the file dialog instead of calling
+ *  `retryReview()` (which re-reads by path). Subject to the same "newest
+ *  wins" in-flight tracking as a real pickup – picking a file while an
+ *  import is already running aborts it. */
+export async function importReviewBytes(bytes: Uint8Array, fileName: string): Promise<void> {
+  await importReplay({ path: fileName, mtimeMs: Date.now(), bytes }, { manual: true });
 }
 
 // --- retry (an earlier import that failed) --------------------------------
@@ -171,11 +219,16 @@ export async function retryReview(): Promise<void> {
   const plan = getSelectedBuildSnapshot();
   const file = await host.readReplayFile(current.source.path);
   if (!file) {
-    await storeErrorReview(current.source, "The replay file is no longer there.", plan);
+    await storeErrorReview(current.source, "The replay file is no longer there.", plan, current.manual ?? false);
     return;
   }
   if (file.mtimeMs !== current.source.mtimeMs) {
-    await storeErrorReview(current.source, "A newer game replaced this replay before the retry.", plan);
+    await storeErrorReview(
+      current.source,
+      "A newer game replaced this replay before the retry.",
+      plan,
+      current.manual ?? false,
+    );
     return;
   }
 

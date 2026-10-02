@@ -90,6 +90,15 @@ export const reviewSchema = z.object({
   plan: reviewPlanSchema.nullable(),
   comparison: comparisonResultSchema.nullable(),
   seen: z.boolean(),
+  /** F010 (review-ui): true when this review came from "Review a replay
+   *  file..." (`importReviewBytes`, `reviews/pipeline.ts`) rather than a
+   *  real auto-detected pickup. `source.path` is just the chosen file's own
+   *  name in that case, not a real filesystem path, so the review view's
+   *  Retry action re-opens the file dialog instead of calling
+   *  `retryReview()` (there is nothing to re-read by path). Optional so a
+   *  review persisted before this field existed still parses, defaulting to
+   *  `false` (an auto-detected review). */
+  manual: z.boolean().optional(),
 });
 
 export type ComparisonResultDto = z.infer<typeof comparisonResultSchema>;

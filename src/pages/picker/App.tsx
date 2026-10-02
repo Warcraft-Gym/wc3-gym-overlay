@@ -22,6 +22,7 @@ import type { BuildEditorMode } from "./editor/BuildEditorModal";
 import { EmptyState } from "./EmptyState";
 import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
+import { ReviewLauncher } from "./review/ReviewLauncher";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
 import { SETTINGS_DIALOG_ID, SettingsModal } from "./SettingsModal";
 import { UpdateBanner } from "./UpdateBanner";
@@ -150,10 +151,10 @@ export function App() {
   useEffect(() => startReplayWatcher(), []);
 
   // F009: subscribes to the same `onLastReplay` feed to turn every
-  // picked-up replay into a stored review; see
-  // `reviews/pipeline.ts`'s doc comment. No UI reads `LAST_REVIEW` yet
-  // (a later feature builds that), but the pipeline itself must already
-  // be live so a review is there once that UI ships.
+  // picked-up replay into a stored review; see `reviews/pipeline.ts`'s doc
+  // comment. F010: `LAST_REVIEW` is now read by `ReviewLauncher` (rendered
+  // in the header below), which also runs this same pipeline manually for
+  // "Review a replay file...".
   useEffect(() => startReviewPipeline(), []);
 
   useEffect(() => {
@@ -223,6 +224,7 @@ export function App() {
           <Button variant="ghost" onClick={handleImportFromW3Champions}>
             From W3Champions
           </Button>
+          <ReviewLauncher apiBase={settings.apiBase} />
           <Button
             variant="ghost"
             aria-expanded={settingsOpen}
