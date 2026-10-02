@@ -29,3 +29,8 @@ jobs:
       - run: pnpm run lint
 
       - run: pnpm run check:config
+
+      # F002a: regression check for the "silent-skip main guard" bug; see
+      # scripts/check-space-path-guard.mjs. No network, no node_modules
+      # needed; runs on plain node: builtins only.
+      - run: node scripts/check-space-path-guard.mjs

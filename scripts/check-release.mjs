@@ -20,6 +20,8 @@
 
 import { execFileSync } from "node:child_process";
 
+import { isMain } from "./lib/isMain.mjs";
+
 export const REPO = "Warcraft-Gym/wc3-gym-overlay";
 
 // Version-less "stable name" assets the workflow publishes alongside the
@@ -30,6 +32,14 @@ export const REQUIRED_STABLE_ASSETS = [
   "Warcraft-3-Gym-Overlay-Setup.exe",
 ];
 
+// F002a: the main Windows tester plays with the portable exe, not the
+// installer – a beta must carry one too, but under a versioned name so it's
+// never mistaken for (and never collides with) the stable-named portable
+// above. Uploaded only for prerelease tags.
+export function prereleasePortableAssetName(tag) {
+  return `Warcraft-3-Gym-Overlay-Portable-${versionFromTag(tag)}.exe`;
+}
+
 const USAGE = `Usage: node check-release.mjs <tag>
 
 Verifies a tagged overlay GitHub release (e.g. overlay-v0.4.0) shipped a
@@ -38,8 +48,9 @@ and setup assets, and that every referenced asset URL is downloadable.
 
 A tag whose version has a semver prerelease part (e.g.
 overlay-v0.6.0-beta.1) is checked as a pre-release instead: it must not be
-marked Latest, must not carry the stable-named installers, and
-/releases/latest must still resolve to a stable tag.
+marked Latest, must not carry the stable-named installers, must carry a
+versioned portable exe (e.g. Warcraft-3-Gym-Overlay-Portable-0.6.0-beta.1.exe),
+and /releases/latest must still resolve to a stable tag.
 
 Prints "ok - <check>" / "FAIL - <check>" lines and exits 1 if any check
 fails, 0 if every check passes.
@@ -395,6 +406,19 @@ async function runPrereleaseChecks(tag, { ghApi, fetchFn, report }) {
   const latestJsonAsset = assetByName.get("latest.json");
   report("latest.json asset present on the release", Boolean(latestJsonAsset));
 
+  // F002a: the main Windows tester plays with the portable exe, so a beta
+  // must carry one too – under the versioned name, never the stable one
+  // (which would let it collide with / be mistaken for the stable build).
+  const portableAssetName = prereleasePortableAssetName(tag);
+  report(`release asset "${portableAssetName}" exists`, assetByName.has(portableAssetName));
+
+  const strayStableAssets = REQUIRED_STABLE_ASSETS.filter((name) => assetByName.has(name));
+  report(
+    "no stable-named assets present",
+    strayStableAssets.length === 0,
+    `found: ${JSON.stringify(strayStableAssets)}`,
+  );
+
   if (!latestJsonAsset) return;
 
   let manifest;
@@ -453,6 +477,9 @@ async function main() {
   process.exit(failed ? 1 : 0);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// F002a: `isMain` (not a direct `import.meta.url` string comparison) so the
+// guard still works when the checkout path contains a space; see
+// scripts/lib/isMain.mjs.
+if (isMain(import.meta.url)) {
   main();
 }

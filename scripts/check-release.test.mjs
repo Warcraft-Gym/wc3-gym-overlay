@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { isPrereleaseTag, runChecks, versionFromTag } from "./check-release.mjs";
+import {
+  isPrereleaseTag,
+  prereleasePortableAssetName,
+  runChecks,
+  versionFromTag,
+} from "./check-release.mjs";
 
 /** Builds a `fetch`-shaped mock that resolves to `body` as JSON, for the
  *  one latest.json download every path makes. */
@@ -48,9 +53,21 @@ describe("isPrereleaseTag / versionFromTag", () => {
   });
 });
 
+describe("isPrereleaseTag / versionFromTag / prereleasePortableAssetName", () => {
+  it("builds the versioned portable asset name from the tag", () => {
+    expect(prereleasePortableAssetName("overlay-v0.6.0-beta.1")).toBe(
+      "Warcraft-3-Gym-Overlay-Portable-0.6.0-beta.1.exe",
+    );
+  });
+});
+
 describe("runChecks – prerelease tag", () => {
   const tag = "overlay-v0.6.0-beta.1";
-  const assets = [{ name: "latest.json", browser_download_url: "https://example.com/latest.json" }];
+  const portableAssetName = "Warcraft-3-Gym-Overlay-Portable-0.6.0-beta.1.exe";
+  const assets = [
+    { name: "latest.json", browser_download_url: "https://example.com/latest.json" },
+    { name: portableAssetName, browser_download_url: `https://example.com/${portableAssetName}` },
+  ];
 
   function ghApiFor({ releaseOverrides = {}, latestOverrides = {} } = {}) {
     return (path) => {
@@ -134,6 +151,28 @@ describe("runChecks – prerelease tag", () => {
       ghApi: () => {
         throw new Error("404");
       },
+      fetchFn: jsonFetch(makeLatestJson()),
+      log: () => {},
+    });
+    expect(failed).toBe(true);
+  });
+
+  it("fails when the versioned portable exe asset is missing", async () => {
+    const failed = await runChecks(tag, {
+      ghApi: ghApiFor({ releaseOverrides: { assets: assets.filter((a) => a.name !== portableAssetName) } }),
+      fetchFn: jsonFetch(makeLatestJson()),
+      log: () => {},
+    });
+    expect(failed).toBe(true);
+  });
+
+  it("fails when a stable-named asset is present on a prerelease", async () => {
+    const strayStableAsset = {
+      name: "Warcraft-3-Gym-Overlay-Portable.exe",
+      browser_download_url: "https://example.com/Warcraft-3-Gym-Overlay-Portable.exe",
+    };
+    const failed = await runChecks(tag, {
+      ghApi: ghApiFor({ releaseOverrides: { assets: [...assets, strayStableAsset] } }),
       fetchFn: jsonFetch(makeLatestJson()),
       log: () => {},
     });

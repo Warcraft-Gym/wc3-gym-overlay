@@ -94,6 +94,21 @@ jobs:
           Copy-Item "src-tauri/target/release/wc3gym-overlay.exe" "Warcraft-3-Gym-Overlay-Portable.exe"
           gh release upload "${{ github.ref_name }}" "Warcraft-3-Gym-Overlay-Setup.exe" "Warcraft-3-Gym-Overlay-Portable.exe" --clobber
 
+      # F002a: the main tester plays on Windows with the portable exe, so a
+      # beta must carry one too, under a versioned name (never the
+      # stable one above, which this path never uploads) so it can't be
+      # mistaken for the stable build.
+      - name: Publish versioned portable Windows exe (prerelease tag push)
+        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/overlay-v') && steps.channel.outputs.is_prerelease == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^overlay-v', ''
+          $name = "Warcraft-3-Gym-Overlay-Portable-$version.exe"
+          Copy-Item "src-tauri/target/release/wc3gym-overlay.exe" $name
+          gh release upload "${{ github.ref_name }}" $name --clobber
+
       - name: Publish stable-name macOS asset (tag push)
         if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/overlay-v') && steps.channel.outputs.is_prerelease != 'true'
         env:

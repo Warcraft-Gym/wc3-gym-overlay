@@ -398,12 +398,17 @@ What testers get: the release is marked **Pre-release** on GitHub and is
 never marked **Latest**, and it does not carry the stable-named installers
 (`Warcraft-3-Gym-Overlay-Setup.exe`, `-Portable.exe`, `.dmg`). Testers who
 want it have to open the release page by hand and download the versioned
-asset for their platform (e.g. `..._0.6.0-beta.1_x64-setup.exe`), same as
-browsing any other GitHub release. The in-app updater, the
-`/releases/latest/download/latest.json` endpoint, and the website's
-`/tools/overlay` page all resolve `/releases/latest`, which GitHub never
-sets to a prerelease, so stable installs and the website keep ignoring a
-beta tag entirely until a stable tag ships.
+asset for their platform, same as browsing any other GitHub release. On
+Windows, that's either the versioned setup (e.g.
+`..._0.6.0-beta.1_x64-setup.exe`) or the versioned portable exe (e.g.
+`Warcraft-3-Gym-Overlay-Portable-0.6.0-beta.1.exe`); the portable is
+uploaded under this versioned name for every prerelease specifically so the
+Windows tester can keep using the portable build to play. On macOS, it's the
+versioned dmg (e.g. `Warcraft.3.Gym.Overlay_0.6.0-beta.1_universal.dmg`). The
+in-app updater, the `/releases/latest/download/latest.json` endpoint, and the
+website's `/tools/overlay` page all resolve `/releases/latest`, which GitHub
+never sets to a prerelease, so stable installs and the website keep ignoring
+a beta tag entirely until a stable tag ships.
 
 ## Troubleshooting
 

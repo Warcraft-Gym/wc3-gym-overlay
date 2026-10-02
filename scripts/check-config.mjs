@@ -9,6 +9,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isMain } from "./lib/isMain.mjs";
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const CONF_PATH = join(ROOT, "src-tauri/tauri.conf.json");
 const PKG_PATH = join(ROOT, "package.json");
@@ -325,6 +327,10 @@ function main() {
 // F002: guarded so check-config.test.mjs can import `isValidOverlayVersion`
 // without main() running against the real filesystem and calling
 // process.exit() mid test run.
-if (import.meta.url === `file://${process.argv[1]}`) {
+//
+// F002a: `isMain` (not a direct `import.meta.url` string comparison) so the
+// guard still works when the checkout path contains a space; see
+// scripts/lib/isMain.mjs.
+if (isMain(import.meta.url)) {
   main();
 }
