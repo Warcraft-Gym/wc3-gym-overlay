@@ -34,6 +34,8 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
     },
     autoUpdate: true,
     skippedVersion: null,
+    myBattleTag: null,
+    opponentCard: true,
     ...overrides,
   };
 }

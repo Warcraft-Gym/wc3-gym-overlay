@@ -41,3 +41,10 @@ export const PORTABLE_DOWNLOAD_URL =
 /** F002: linked from the banner when an install fails, so the user has a
  *  manual fallback without needing to know a GitHub URL by heart. */
 export const RELEASES_PAGE_URL = "https://github.com/Warcraft-Gym/wc3-gym-overlay/releases";
+
+/** Public W3Champions website backend (unofficial, no auth). Used to detect
+ *  the player's live 1v1 and scout the opponent. */
+export const W3C_API_BASE = "https://website-backend.w3champions.com/api";
+/** W3Champions gateway 20 is the (only) live one. */
+export const W3C_GATEWAY = 20;
+export const W3C_GAME_MODE_1V1 = 1;

@@ -12,6 +12,7 @@ import { updateKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
 import { APP_VERSION } from "../../version";
 import { ShortcutEditor } from "./ShortcutEditor";
+import { W3ChampionsSettings } from "./W3ChampionsSettings";
 
 /** F002: Settings' own "Check for updates" state — independent of the
  *  banner's `useUpdateFlow` (see that module's doc comment): this always
@@ -192,6 +193,8 @@ export function SettingsModal({
           value={settings.scale}
           onChange={(v) => void updateKey(SETTINGS, (s) => ({ ...s, scale: v }))}
         />
+
+        <W3ChampionsSettings settings={settings} />
 
         <div>
           <h3 className="kicker mb-2">Shortcuts</h3>

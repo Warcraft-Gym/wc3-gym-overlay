@@ -4,6 +4,7 @@ import { useSelectedBuild } from "../../data/useSelectedBuild";
 import { SETTINGS } from "../../store/keys";
 import { useStoreValue } from "../../store/useStore";
 import { NoBuildSelected } from "./NoBuildSelected";
+import { OpponentCard } from "./OpponentCard";
 import { PanelHeader } from "./PanelHeader";
 import { StepList } from "./StepList";
 
@@ -31,6 +32,7 @@ export function OverlayPanel() {
         compact={compact}
         onToggleCompact={() => setCompact((current) => !current)}
       />
+      <OpponentCard />
       {build ? <StepList build={build} clock={clock} compact={compact} /> : <NoBuildSelected />}
     </div>
   );

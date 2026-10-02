@@ -11,6 +11,7 @@ import { deleteLocalBuild } from "../../lib/localBuilds";
 import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
+import { startOpponentWatcher } from "../../opponentWatcher";
 import { UPDATE_CHECK_DELAY_MS } from "../../config";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
@@ -141,6 +142,10 @@ export function App() {
     setReplayImport(null);
     setEditor({ mode: "new", sourceBuild: null, initialValues });
   }
+
+  // The opponent card's watcher lives here: the picker window stays alive
+  // while hidden, and the overlay window just reads the store.
+  useEffect(() => startOpponentWatcher(), []);
 
   useEffect(() => {
     applySelftestShortcutOverride()

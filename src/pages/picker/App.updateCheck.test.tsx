@@ -32,6 +32,8 @@ function settingsValue(autoUpdate: boolean): Settings {
     },
     autoUpdate,
     skippedVersion: null,
+    myBattleTag: null,
+    opponentCard: true,
   };
 }
 

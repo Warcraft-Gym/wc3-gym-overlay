@@ -27,6 +27,8 @@ const SETTINGS_VALUE: Settings = {
   },
   autoUpdate: false,
   skippedVersion: null,
+  myBattleTag: null,
+  opponentCard: true,
 };
 
 function renderSettings() {

@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { opponentCardSchema } from "../w3c/opponentCard";
 import {
   apiBuildListItemSchema,
   apiBuildStepSchema,
@@ -129,6 +130,11 @@ export type Settings = {
    *  A launch check that finds this exact version stays silent; the
    *  Settings manual check still surfaces it as "(skipped)". */
   skippedVersion: string | null;
+  /** The player's W3Champions BattleTag ("Name#1234"), or `null` until set.
+   *  Nothing polls W3Champions while this is empty. */
+  myBattleTag: string | null;
+  /** Show the opponent card when a W3Champions 1v1 starts. */
+  opponentCard: boolean;
 };
 
 const shortcutMapSchema: z.ZodType<ShortcutMap> = z.object({
@@ -174,6 +180,9 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     // below when the key is missing, which is the whole migration.
     autoUpdate: z.boolean().default(true),
     skippedVersion: z.string().nullable().default(null),
+    // Opponent card: absent in settings written by 0.5.x.
+    myBattleTag: z.string().nullable().default(null),
+    opponentCard: z.boolean().default(true),
   }),
 );
 
@@ -187,6 +196,8 @@ export const SETTINGS: StoreKey<Settings> = {
     shortcuts: { ...DEFAULT_SHORTCUTS },
     autoUpdate: true,
     skippedVersion: null,
+    myBattleTag: null,
+    opponentCard: true,
   }),
 };
 
@@ -263,4 +274,28 @@ export const ICONS_CACHE: StoreKey<IconsCache> = {
   name: "wc3gym.iconsCache",
   schema: iconsCacheSchema,
   defaultValue: () => ({ fetchedAt: "", apiBase: DEFAULT_API_BASE, icons: [] }),
+};
+
+// --- wc3gym.opponent --------------------------------------------------------
+
+/**
+ * The opponent card for the player's current (or last) W3Champions 1v1,
+ * written by the picker window's watcher (`opponentWatcher.ts`) and read by
+ * the in-game overlay. `live` is false once the match has ended; the card
+ * stays so the picker can still show who you just played.
+ */
+export const opponentStateSchema = z.object({
+  status: z.enum(["idle", "loading", "ok", "error"]),
+  matchId: z.string().nullable(),
+  live: z.boolean(),
+  error: z.string().nullable(),
+  card: opponentCardSchema.nullable(),
+  updatedAt: z.string().nullable(),
+});
+export type OpponentState = z.infer<typeof opponentStateSchema>;
+
+export const OPPONENT: StoreKey<OpponentState> = {
+  name: "wc3gym.opponent",
+  schema: opponentStateSchema,
+  defaultValue: () => ({ status: "idle", matchId: null, live: false, error: null, card: null, updatedAt: null }),
 };

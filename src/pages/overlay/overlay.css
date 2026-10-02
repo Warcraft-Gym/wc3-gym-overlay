@@ -237,3 +237,136 @@
   font-size: 13px;
   color: var(--wg-text-muted);
 }
+
+/* --- Opponent card -----------------------------------------------------------
+   Sits between the header and the steps when a W3Champions 1v1 starts. Same
+   obsidian surface, gold only for the kicker, wins and losses in the site's
+   win/loss tokens. Collapses to its one-line header after a minute. */
+
+.opponent-card {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--wg-line);
+  background: var(--wg-surface-2);
+  font-size: 12px;
+}
+
+.opponent-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+}
+
+.opponent-card__toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--wg-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.opponent-card__close {
+  border: 0;
+  background: none;
+  padding: 0 0.2rem;
+  color: var(--wg-text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.opponent-card__toggle:focus-visible,
+.opponent-card__close:focus-visible {
+  outline: 2px solid var(--wg-gold);
+  outline-offset: 2px;
+}
+
+.opponent-card__kicker {
+  font-family: var(--wg-font-display);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wg-gold);
+}
+
+.opponent-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 0.65rem 0.55rem;
+}
+
+.opponent-card__meta,
+.opponent-card__faint,
+.opponent-card__note {
+  color: var(--wg-text-muted);
+}
+
+.opponent-card__note {
+  font-style: italic;
+}
+
+.opponent-card__form {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  font-family: var(--wg-font-mono);
+  font-weight: 700;
+}
+
+.opponent-card__w {
+  color: var(--wg-win);
+}
+
+.opponent-card__l {
+  color: var(--wg-loss);
+}
+
+.opponent-card__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.6rem;
+  margin: 0;
+}
+
+.opponent-card__stats dt {
+  color: var(--wg-text-muted);
+}
+
+.opponent-card__stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.opponent-card__openers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.opponent-card__opener {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.opponent-card__heroes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.opponent-card__hero {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
