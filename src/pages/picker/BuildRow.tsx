@@ -10,9 +10,9 @@ import { exportBuild, slugifyForFilename } from "../../lib/buildExchange";
 import { isLocalBuild, type AnyBuild } from "../../data/useAllBuilds";
 
 const DIFFICULTY_RAIL: Record<Difficulty, string> = {
-  beginner: "before:bg-win",
-  intermediate: "before:bg-arcane",
-  advanced: "before:bg-gold",
+  beginner: "before:bg-difficulty-beginner",
+  intermediate: "before:bg-difficulty-intermediate",
+  advanced: "before:bg-difficulty-advanced",
 };
 
 const RACE_LETTER: Record<string, string> = {
