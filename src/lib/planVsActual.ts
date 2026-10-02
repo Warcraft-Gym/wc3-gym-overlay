@@ -20,6 +20,12 @@
  * rather than its own file because both are tiny, both are pure, and both
  * only make sense together (there is no review without a build comparison
  * *and* knowing who you are in it).
+ *
+ * F010a: an actual step can have no `icon` at all (an item purchase the
+ * icon catalogue doesn't cover, see `replayImportStepSchema`'s doc
+ * comment) – it never has anything to match by icon, so every such
+ * occurrence always ends up in `extras`, grouped by `instruction` instead
+ * of icon (see `compareBuild` below).
  */
 
 import type { ApiBuildStep } from "../api/schema";
@@ -55,7 +61,12 @@ export type ComparisonRow = {
 };
 
 export type ExtraGroup = {
-  icon: string;
+  /** Absent for an actual occurrence whose wire step had no `icon` at all
+   *  (an item purchase not in the icon catalogue, under `includeItems` –
+   *  see `expandActualSteps`) – never matched to a plan step, grouped by
+   *  `instruction` instead so distinct untracked items don't collapse into
+   *  one "Also did" row. */
+  icon?: string;
   count: number;
   firstTime: string;
   firstSupply: number;
@@ -109,7 +120,12 @@ export function parseStepCount(instruction: string): number {
 }
 
 type ExpandedActual = {
-  icon: string;
+  /** Absent for an item step the icon catalogue doesn't cover (see
+   *  `replayImportStepSchema`'s doc comment, `api/replayImport.ts`) – such
+   *  an occurrence can never be looked up by a plan step's icon (always a
+   *  real string when matching is attempted, see `compareBuild`'s `!plan.icon`
+   *  guard), so it always ends up in `extras` below. */
+  icon?: string;
   time: string;
   supply: number;
   instruction: string;
@@ -133,10 +149,15 @@ export function expandActualSteps(steps: ReplayImportStep[]): ExpandedActual[] {
 
 /** Groups expanded actual occurrences by icon, preserving the chronological
  *  order within each icon's bucket – what `compareBuild` looks up the k-th
- *  occurrence from. */
+ *  occurrence from. Occurrences with no icon at all are dropped here (they
+ *  can never be the k-th occurrence of a plan step's icon – a plan step
+ *  only ever looks itself up by a real icon string, see `compareBuild`);
+ *  they still flow into `extras` via the full (unfiltered) occurrence list
+ *  there. */
 function groupByIcon(expanded: ExpandedActual[]): Map<string, ExpandedActual[]> {
   const groups = new Map<string, ExpandedActual[]>();
   for (const occurrence of expanded) {
+    if (!occurrence.icon) continue;
     const bucket = groups.get(occurrence.icon);
     if (bucket) bucket.push(occurrence);
     else groups.set(occurrence.icon, [occurrence]);
@@ -201,12 +222,18 @@ export function compareBuild(planSteps: ApiBuildStep[], actualSteps: ReplayImpor
   // Extras: actual occurrences whose icon never appears anywhere in the
   // plan at all (an icon that *is* in the plan, but appeared more times in
   // the actual log than the plan asked for, is simply left unmatched above
-  // – not surfaced as an extra; see the module doc comment).
+  // – not surfaced as an extra; see the module doc comment), plus every
+  // occurrence with no icon at all (never matchable – see `groupByIcon`).
+  // Grouped by icon when there is one, else by `instruction` – an icon-less
+  // occurrence is never deduped against another icon-less occurrence of a
+  // *different* item (e.g. "Buy Boots of Speed" vs "Buy Rod of
+  // Necromancy") just because neither has an icon.
   const extras: ExtraGroup[] = [];
-  const extraByIcon = new Map<string, ExtraGroup>();
+  const extraByKey = new Map<string, ExtraGroup>();
   for (const occurrence of expandActualSteps(actualSteps)) {
-    if (matchedIcons.has(occurrence.icon)) continue;
-    const existing = extraByIcon.get(occurrence.icon);
+    if (occurrence.icon && matchedIcons.has(occurrence.icon)) continue;
+    const key = occurrence.icon ?? occurrence.instruction;
+    const existing = extraByKey.get(key);
     if (existing) {
       existing.count += 1;
       continue;
@@ -218,7 +245,7 @@ export function compareBuild(planSteps: ApiBuildStep[], actualSteps: ReplayImpor
       firstSupply: occurrence.supply,
       instruction: occurrence.instruction,
     };
-    extraByIcon.set(occurrence.icon, group);
+    extraByKey.set(key, group);
     extras.push(group);
   }
 

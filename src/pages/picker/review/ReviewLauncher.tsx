@@ -40,6 +40,20 @@ export function ReviewLauncher({ apiBase }: { apiBase: string }) {
   // bootstrap effects in `App.tsx`.
   useEffect(() => installDevInjectReplay(), []);
 
+  // F010a - follow-up of F010: a new unseen review can land in
+  // `LAST_REVIEW` while the "Last game" view is already open (e.g. a
+  // second game finishes before this one is closed) - `handleOpenLastGame`
+  // below only clears `seen` at the moment the view is *opened*, so
+  // without this, the dot would show next to a view whose (new) content is
+  // already on screen. Re-runs whenever `open` or `review` changes, so it
+  // also covers the review flipping from unseen to seen right after open
+  // (a no-op the second time, since `review.seen` is then already `true`).
+  useEffect(() => {
+    if (open && review && review.seen === false) {
+      void markReviewSeen();
+    }
+  }, [open, review]);
+
   function handleOpenLastGame(): void {
     setOpen(true);
     void markReviewSeen();

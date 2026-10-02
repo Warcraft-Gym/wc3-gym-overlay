@@ -11,7 +11,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { host } from "../../../host";
 import { LAST_REVIEW } from "../../../store/keys";
-import { writeKey } from "../../../store/state";
+import { readKey, writeKey } from "../../../store/state";
 import type { Review } from "../../../reviews/types";
 
 const importReviewBytesMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
@@ -84,6 +84,25 @@ describe("ReviewLauncher", () => {
 
     await waitFor(() => expect(screen.queryByText("Unseen review")).toBeNull());
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Last game" })).toBeTruthy());
+  });
+
+  // F010a – follow-up of F010: a review landing *while the view is already
+  // open* (e.g. a second game finishes before the first review is closed)
+  // used to leave `seen: false` forever – nothing re-ran `markReviewSeen()`
+  // until the view was closed and reopened, so the dot showed next to a
+  // view whose (new) content was already on screen.
+  it("marks a new review seen as soon as it lands while the view is already open", async () => {
+    await writeKey(LAST_REVIEW, okReview({ id: "r1", seen: false }));
+    render(<ReviewLauncher apiBase="https://warcraft-gym.com" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Last game/ }));
+    await waitFor(() => expect(screen.queryByText("Unseen review")).toBeNull());
+
+    await writeKey(LAST_REVIEW, okReview({ id: "r2", seen: false }));
+    expect(readKey(LAST_REVIEW)?.seen).toBe(false);
+
+    await waitFor(() => expect(readKey(LAST_REVIEW)?.seen).toBe(true));
+    await waitFor(() => expect(screen.queryByText("Unseen review")).toBeNull());
   });
 
   it("'Review a replay file...' opens the dialog and runs the pipeline against the picked bytes", async () => {

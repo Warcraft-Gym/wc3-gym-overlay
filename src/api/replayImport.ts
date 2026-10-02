@@ -30,6 +30,23 @@
  * `replayBuildToFormInput` joins it into the editor's comma-separated
  * string with the same convention `fromBuild` uses
  * (`src/lib/buildEditorSchema.ts`).
+ *
+ * F010a – follow-up of F010 (review-ui): a review always sends
+ * `includeItems=true` (see `reviews/pipeline.ts`'s `REVIEW_INCLUDE_ITEMS`),
+ * and under that option production omits `icon` entirely on an item step
+ * whose item isn't in the icon catalogue (e.g. "Buy Circlet of Nobility",
+ * "Buy Boots of Speed") rather than sending an empty string. `icon` was
+ * `z.string()` (required), so `safeParse` rejected the *whole* response –
+ * every review of a game with an untracked item purchase failed with "The
+ * server sent back something that wasn't a valid reply." Re-verified
+ * field-by-field against a freshly captured response with every option on
+ * (`src/api/__fixtures__/replay-import.production.all-options.json`); no
+ * other field needed a change (`patch`/`authorDiscord`/`sourceUrl` are
+ * already-tolerated empty strings, not absent fields, and there's no
+ * `won` field at all on the wire). `icon` is now `z.string().optional()` –
+ * every consumer (`replayBuildToFormInput` below, `lib/planVsActual.ts`,
+ * `reviews/types.ts`, `ReviewModal.tsx`) treats a missing icon as "can't be
+ * matched/rendered with a real icon", never as a parse failure.
  */
 
 import { z } from "zod";
@@ -42,7 +59,9 @@ export const replayImportStepSchema = z.object({
   time: z.string(),
   supply: z.number(),
   instruction: z.string(),
-  icon: z.string(),
+  // F010a: absent (not an empty string) for an item step whose item isn't
+  // in the icon catalogue – see this file's doc comment.
+  icon: z.string().optional(),
   importNote: z.string().optional(),
 });
 
@@ -276,7 +295,11 @@ export function replayBuildToFormInput(build: ReplayImportBuild): EditorFormInpu
         time: step.time,
         supply: String(step.supply),
         instruction: step.instruction,
-        icon: step.icon,
+        // F010a: the editor's own `icon` is a required (possibly-empty)
+        // string – `""` is the form's own "no icon chosen yet" value (see
+        // `buildEditorSchema.ts`'s `isKnownIcon`/`icon` refine), so a
+        // missing wire `icon` maps onto exactly that, not a parse failure.
+        icon: step.icon ?? "",
         importNote: step.importNote,
       }),
     ),

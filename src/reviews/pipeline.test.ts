@@ -16,6 +16,14 @@ import { BUILDS_CACHE, LAST_REVIEW, SELECTED_BUILD_SLUG, SETTINGS, type Settings
 import { readKey, writeKey } from "../store/state";
 import { markReviewSeen, resolveReview, retryReview, startReviewPipeline } from "./pipeline";
 import type { Review } from "./types";
+// F010a – follow-up of F010: the real "every option on" production
+// response (see `api/replayImport.test.ts`'s doc comment on this same
+// fixture) – this review pipeline always sends exactly these options (see
+// `REVIEW_CUTOFF_SECONDS`/`REVIEW_INCLUDE_UPGRADES`/`REVIEW_INCLUDE_ITEMS`
+// above), so this is the real shape a production review import receives,
+// including the two icon-less item-purchase steps that used to make
+// `storeOkReview` below unreachable (the whole response failed `safeParse`).
+import ALL_OPTIONS_FIXTURE from "../api/__fixtures__/replay-import.production.all-options.json";
 
 function settings(overrides: Partial<Settings> = {}): Settings {
   return {
@@ -254,6 +262,61 @@ describe("review pipeline", () => {
     const review = readKey(LAST_REVIEW);
     expect(review?.source.path).toBe("/x/game2.w3g");
     expect(review?.map).toBe("game2-map");
+    stop();
+  });
+
+  // F010a – follow-up of F010: `App.tsx` starts this pipeline from a plain
+  // `useEffect(() => startReviewPipeline(), [])`, which React's
+  // `<StrictMode>` (`pages/picker/main.tsx`) mounts twice in dev: mount,
+  // run the effect's cleanup (the first subscription's unsubscribe),
+  // remount, run the effect again (a second subscription). `onLastReplay`'s
+  // `Set`-based subscribe/unsubscribe (`replayWatcher.ts`) already makes
+  // this safe – only the second subscription is still registered by the
+  // time a real replay fires – this test is a regression guard confirming
+  // that stays true: exactly one request per replay, never two.
+  it("StrictMode's mount/cleanup/remount of startReviewPipeline() still makes exactly one request per replay", async () => {
+    await selectBuild(fakeBuild());
+    const { calls, pending } = installFetchMock();
+
+    const strictModeFirstStop = startReviewPipeline();
+    strictModeFirstStop();
+    const stop = startReviewPipeline();
+
+    fireReplay("/x/LastReplay.w3g", 1000);
+    await flush();
+
+    expect(calls).toHaveLength(1);
+    expect(pending).toHaveLength(1);
+    pending[0].resolve(okResponse(replayResponse()));
+    await flush();
+
+    expect(readKey(LAST_REVIEW)?.status).toBe("ok");
+    stop();
+  });
+
+  // F010a – follow-up of F010: end to end against the real "every option
+  // on" production response, whose two item-purchase steps have no `icon`
+  // at all (see `ALL_OPTIONS_FIXTURE`'s import comment above). Pre-fix,
+  // `storeOkReview` was unreachable for this response – the whole body
+  // failed `replayImportResponseSchema.safeParse`, so this test would have
+  // stored `status: "error"` with the "wasn't a valid reply" message.
+  it("produces an ok review end to end for the real response with icon-less item-purchase steps", async () => {
+    const { pending } = installFetchMock();
+    const stop = startReviewPipeline();
+
+    fireReplay("/x/LastReplay.w3g", 1000);
+    await flush();
+    pending[0].resolve(okResponse(ALL_OPTIONS_FIXTURE));
+    await flush();
+
+    const review = readKey(LAST_REVIEW);
+    expect(review?.status).toBe("ok");
+    expect(review?.map).toBe("Last Refuge");
+    expect(review?.players.map((p) => p.name)).toEqual(["Dretwiak#2963", "SoulKeeper#1844"]);
+    const dretwiak = review?.players.find((p) => p.name === "Dretwiak#2963");
+    expect(dretwiak?.steps.some((s) => s.instruction === "Buy Circlet of Nobility" && s.icon === undefined)).toBe(
+      true,
+    );
     stop();
   });
 

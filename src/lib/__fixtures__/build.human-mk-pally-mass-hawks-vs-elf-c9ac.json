@@ -1,0 +1,446 @@
+{
+  "author": "randombadgamer",
+  "authorDiscord": "randombadgamer",
+  "description": [
+    {
+      "_key": "9963023e-7a6",
+      "_type": "block",
+      "children": [
+        {
+          "_key": "c01914c4-930",
+          "_type": "span",
+          "marks": [],
+          "text": "This style is usually better to instant expo instead of doing a lvl 3 creep route into an expo like you would do with archmage.  After starting expo, use footies to scout opponent. Play defense until towers are up. You can look to be aggressive vs wisp + buildings that are not complete, but try to avoid all-in large fights until tier 2.  He will likely push you at tier 2 after grabbing naga,panda, or tinker (if he went dh), or he will tier 2 push with hunts and ancient protectors if he went potm or kotg. Use towers, shop, and footies with defend to  hold this push while you wait for hawk production. (3 aviaries)."
+        }
+      ],
+      "markDefs": [],
+      "style": "normal"
+    }
+  ],
+  "difficulty": "intermediate",
+  "featured": false,
+  "guide": null,
+  "maintainer": null,
+  "patch": null,
+  "publishedAt": "2026-09-28T13:28:59.068Z",
+  "race": "human",
+  "slug": "human-mk-pally-mass-hawks-vs-elf-c9ac",
+  "sourceUrl": "https://w3champions.com/match/6ab8c3741c8e357435630701",
+  "steps": [
+    {
+      "_key": "a365511b-6d1",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train 2\u00d7 Peasant",
+      "supply": 5,
+      "time": "0:02",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "c325fc9f-5b0",
+      "_type": "step",
+      "icon": "hu-altar",
+      "instruction": "Build Altar of Kings",
+      "supply": 7,
+      "time": "0:07",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-altar.webp"
+    },
+    {
+      "_key": "33eefe39-944",
+      "_type": "step",
+      "icon": "hu-farm",
+      "instruction": "Build Farm",
+      "supply": 7,
+      "time": "0:18",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-farm.webp"
+    },
+    {
+      "_key": "b907877f-d84",
+      "_type": "step",
+      "icon": "hu-barracks",
+      "instruction": "Build Barracks",
+      "supply": 7,
+      "time": "0:20",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-barracks.webp"
+    },
+    {
+      "_key": "1ec43ada-6b0",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train Peasant",
+      "supply": 7,
+      "time": "0:22",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "5fe46200-0cf",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train 2\u00d7 Peasant",
+      "supply": 8,
+      "time": "0:40",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "4b6c7d1b-04a",
+      "_type": "step",
+      "icon": "hu-farm",
+      "instruction": "Build Farm",
+      "supply": 10,
+      "time": "0:58",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-farm.webp"
+    },
+    {
+      "_key": "fd03ef23-99f",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train Peasant",
+      "supply": 10,
+      "time": "1:06",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "7bbf6bdd-2bd",
+      "_type": "step",
+      "icon": "hu-mountain-king",
+      "instruction": "Hero: Mountain King",
+      "supply": 11,
+      "time": "1:08",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-mountain-king.webp"
+    },
+    {
+      "_key": "dc9c5db6-0cb",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 16,
+      "time": "1:21",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "0583d4e0-751",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train Peasant",
+      "supply": 18,
+      "time": "1:25",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "5b993235-d0d",
+      "_type": "step",
+      "icon": "hu-farm",
+      "instruction": "Build Farm",
+      "supply": 19,
+      "time": "1:38",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-farm.webp"
+    },
+    {
+      "_key": "aaae8d2b-f5d",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 19,
+      "time": "1:40",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "78248960-e03",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train Peasant",
+      "supply": 21,
+      "time": "1:47",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "56479104-bd2",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 22,
+      "time": "2:01",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "3eb355f5-c1d",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 24,
+      "time": "2:19",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "07e0c7fe-ad5",
+      "_type": "step",
+      "icon": "hu-town-hall",
+      "instruction": "Build Town Hall",
+      "supply": 26,
+      "time": "2:59",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-town-hall.webp"
+    },
+    {
+      "_key": "eb6dc23d-9a7",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train 2\u00d7 Peasant",
+      "supply": 26,
+      "time": "3:04",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "d0cdfb5b-067",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train 2\u00d7 Peasant",
+      "supply": 28,
+      "time": "3:24",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "a385c2d0-6e9",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 30,
+      "time": "4:11",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "747d051b-917",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train Peasant",
+      "supply": 32,
+      "time": "4:12",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "a9ba2aea-7f9",
+      "_type": "step",
+      "icon": "hu-arcane-vault",
+      "instruction": "Build Arcane Vault",
+      "supply": 33,
+      "time": "4:37",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-arcane-vault.webp"
+    },
+    {
+      "_key": "91a226fb-35c",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train 2\u00d7 Peasant",
+      "supply": 33,
+      "time": "4:37",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "561f7888-40d",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 35,
+      "time": "4:48",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "c6c764f8-d16",
+      "_type": "step",
+      "icon": "hu-keep",
+      "instruction": "Build Keep",
+      "supply": 37,
+      "time": "4:49",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-keep.webp"
+    },
+    {
+      "_key": "c6eb410b-605",
+      "_type": "step",
+      "icon": "hu-lumber-mill",
+      "instruction": "Build Lumber Mill",
+      "supply": 37,
+      "time": "4:50",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-lumber-mill.webp"
+    },
+    {
+      "_key": "4466adfd-008",
+      "_type": "step",
+      "icon": "hu-scout-tower",
+      "instruction": "Build Scout Tower",
+      "supply": 37,
+      "time": "4:52",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-scout-tower.webp"
+    },
+    {
+      "_key": "8ff89817-78a",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train 2\u00d7 Peasant",
+      "supply": 37,
+      "time": "4:54",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "3e5dfb4f-41d",
+      "_type": "step",
+      "icon": "hu-scout-tower",
+      "instruction": "Build Scout Tower",
+      "supply": 39,
+      "time": "5:02",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-scout-tower.webp"
+    },
+    {
+      "_key": "8abb4399-cfb",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 39,
+      "time": "5:17",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "f8570b1d-546",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 41,
+      "time": "5:42",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "50969bf4-7a8",
+      "_type": "step",
+      "icon": "hu-guard-tower",
+      "instruction": "Build Guard Tower",
+      "supply": 43,
+      "time": "5:53",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-guard-tower.webp"
+    },
+    {
+      "_key": "96c32ed8-551",
+      "_type": "step",
+      "icon": "hu-guard-tower",
+      "instruction": "Build Guard Tower",
+      "supply": 43,
+      "time": "6:10",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-guard-tower.webp"
+    },
+    {
+      "_key": "09b78485-7fb",
+      "_type": "step",
+      "icon": "nt-upgrade",
+      "instruction": "Research Lumber Harvesting",
+      "supply": 43,
+      "time": "6:11",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/nt-upgrade.webp"
+    },
+    {
+      "_key": "88ec97f0-ef4",
+      "_type": "step",
+      "icon": "hu-footman",
+      "instruction": "Train Footman",
+      "supply": 43,
+      "time": "6:22",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-footman.webp"
+    },
+    {
+      "_key": "ed2cccd9-9af",
+      "_type": "step",
+      "icon": "hu-blacksmith",
+      "instruction": "Build Blacksmith",
+      "supply": 45,
+      "time": "6:39",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-blacksmith.webp"
+    },
+    {
+      "_key": "bbc71cc8-dcf",
+      "_type": "step",
+      "icon": "hu-farm",
+      "instruction": "Build Farm",
+      "supply": 45,
+      "time": "6:42",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-farm.webp"
+    },
+    {
+      "_key": "e38dc33a-250",
+      "_type": "step",
+      "icon": "hu-blacksmith",
+      "instruction": "Build Blacksmith",
+      "supply": 45,
+      "time": "6:45",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-blacksmith.webp"
+    },
+    {
+      "_key": "be2c1e79-df9",
+      "_type": "step",
+      "icon": "hu-scout-tower",
+      "instruction": "Build Scout Tower",
+      "supply": 45,
+      "time": "7:03",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-scout-tower.webp"
+    },
+    {
+      "_key": "438e632c-421",
+      "_type": "step",
+      "icon": "hu-paladin",
+      "instruction": "Hero: Paladin",
+      "supply": 45,
+      "time": "7:14",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-paladin.webp"
+    },
+    {
+      "_key": "32c2206b-906",
+      "_type": "step",
+      "icon": "hu-aviary",
+      "instruction": "Build Gryphon Aviary",
+      "supply": 50,
+      "time": "7:18",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-aviary.webp"
+    },
+    {
+      "_key": "061683bd-e8b",
+      "_type": "step",
+      "icon": "nt-upgrade",
+      "instruction": "Research Lumber Harvesting",
+      "supply": 50,
+      "time": "7:37",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/nt-upgrade.webp"
+    },
+    {
+      "_key": "bdf075c5-93f",
+      "_type": "step",
+      "icon": "hu-peasant",
+      "instruction": "Train 2\u00d7 Peasant",
+      "supply": 50,
+      "time": "7:39",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-peasant.webp"
+    },
+    {
+      "_key": "d85136b4-215",
+      "_type": "step",
+      "icon": "hu-scout-tower",
+      "instruction": "Build Scout Tower",
+      "supply": 52,
+      "time": "7:42",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-scout-tower.webp"
+    },
+    {
+      "_key": "ac846531-b63",
+      "_type": "step",
+      "icon": "hu-guard-tower",
+      "instruction": "Build Guard Tower",
+      "supply": 52,
+      "time": "7:51",
+      "iconUrl": "https://warcraft-gym.com/wc3-icons/hu-guard-tower.webp"
+    }
+  ],
+  "summary": "This is a good tactic vs elf. It relies on fast expo. Works great vs huntress rushes. Play defense around your bases until tier 2 and can pump hawks. Needs a couple towers at each base to defend rush.",
+  "tags": [
+    "replay"
+  ],
+  "title": "Human  MK +pally mass hawks vs elf",
+  "updatedAt": "2026-09-29T03:06:19Z",
+  "videoUrl": null,
+  "vsRaces": [
+    "nightelf"
+  ]
+}

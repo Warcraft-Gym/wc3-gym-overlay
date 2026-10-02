@@ -27,7 +27,10 @@ const comparisonRowSchema = z.object({
 });
 
 const extraGroupSchema = z.object({
-  icon: z.string(),
+  // F010a: absent for an actual occurrence whose wire step had no `icon`
+  // at all (an untracked item purchase) – see `lib/planVsActual.ts`'s
+  // `ExtraGroup`.
+  icon: z.string().optional(),
   count: z.number(),
   firstTime: z.string(),
   firstSupply: z.number(),

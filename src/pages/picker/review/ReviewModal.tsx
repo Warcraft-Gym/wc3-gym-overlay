@@ -25,8 +25,8 @@ function isKnownRace(race: string): race is Race {
   return race in RACE_LABEL;
 }
 
-function iconUrlFor(apiBase: string, icon: string): string {
-  return `${apiBase}/wc3-icons/${icon}.webp`;
+function iconUrlFor(apiBase: string, icon: string | undefined): string | undefined {
+  return icon ? `${apiBase}/wc3-icons/${icon}.webp` : undefined;
 }
 
 function playerRaceLabel(player: ReviewPlayer): { race: Race; label: string } {
@@ -87,7 +87,10 @@ function ExtrasSection({ extras, apiBase }: { extras: ExtraGroup[]; apiBase: str
       <h3 className="kicker mb-2">Also did</h3>
       <ul className="flex flex-col gap-1.5">
         {visible.map((extra) => (
-          <li key={extra.icon} className="flex items-center gap-2 text-sm">
+          // F010a: an icon-less extra is grouped (and keyed) by
+          // `instruction` upstream (`compareBuild`), same fallback as the
+          // de-dup key there – see `planVsActual.ts`.
+          <li key={extra.icon ?? extra.instruction} className="flex items-center gap-2 text-sm">
             <GameIcon iconUrl={iconUrlFor(apiBase, extra.icon)} icon={extra.icon} size={20} />
             <span className="flex-1 text-fg">{extra.instruction}</span>
             <span className="tnum text-xs text-muted">

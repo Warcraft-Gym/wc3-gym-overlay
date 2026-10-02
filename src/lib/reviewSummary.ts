@@ -73,11 +73,20 @@ export const STATUS_LABEL: Record<ComparisonStatus, string> = {
  * Status -> design token classes for the chip. Reuses existing tokens only
  * (no new colour values), picked for a distinct, already-meaningful hue per
  * status:
- *  - on-plan: `win` (the same blue the rest of the app already uses for a
- *    good result) - hitting the plan is a small win.
+ *  - on-plan: `difficulty-beginner` (green, #68c040) - F010a (follow-up of
+ *    F010): this used to be `win` (#4F95D8, a medium blue), which sits far
+ *    too close to `early`'s `arcane` (also a medium blue, oklch 70% 0.14
+ *    245 - roughly the same lightness/chroma as `win`, ~20deg apart in
+ *    hue) to read as a different status at a glance, especially for anyone
+ *    with a blue/blue confusion. `difficulty-beginner` is the app's only
+ *    other "this is good" token and is a clearly different hue (green)
+ *    from `early` (blue), `late` (amber) and `missed` (red) - hitting the
+ *    plan is a small win, same as a beginner-friendly build being an easy
+ *    one.
  *  - early: `arcane` (the secondary Lordaeron-blue accent, otherwise
  *    unused outside decoration) - a deviation, but not a bad one; a
- *    distinct hue from `win` and `loss` keeps it from reading as either.
+ *    distinct hue from `on-plan` (now green, was the too-similar `win`)
+ *    and `loss` keeps it from reading as either.
  *  - late: `difficulty-intermediate` (amber) - the same "pay attention"
  *    amber the difficulty scale already uses for its middle step; a build
  *    running behind is a caution, not yet a failure.
@@ -85,9 +94,12 @@ export const STATUS_LABEL: Record<ComparisonStatus, string> = {
  *    the same semantic the rest of the app uses for "this went badly".
  *  - unmatched-no-icon: `faint`/`line` (neutral) - not a deviation at all,
  *    just a plan step this build can't even compare (no icon to match).
+ *
+ * Text labels (`STATUS_LABEL` above) are unchanged - colour is never the
+ * only signal.
  */
 export const STATUS_CLASS: Record<ComparisonStatus, string> = {
-  "on-plan": "border-win/50 bg-win/10 text-win",
+  "on-plan": "border-difficulty-beginner/50 bg-difficulty-beginner/10 text-difficulty-beginner",
   early: "border-arcane/50 bg-arcane/10 text-arcane",
   late: "border-difficulty-intermediate/50 bg-difficulty-intermediate/10 text-difficulty-intermediate",
   missed: "border-loss/50 bg-loss/10 text-loss",

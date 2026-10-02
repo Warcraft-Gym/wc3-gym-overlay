@@ -4,13 +4,20 @@
  * replay fixture (`src/api/__fixtures__/replay-import.production.json`,
  * already committed by an earlier feature) – see docstrings below for how
  * each row's status was worked out.
+ *
+ * F010a – follow-up of F010: a third real pair below
+ * (`human-mk-pally-mass-hawks-vs-elf-c9ac` vs `ALL_OPTIONS_FIXTURE`) checks
+ * the icon-optional fix against real production data where an actual step
+ * genuinely has no `icon`.
  */
 import { describe, expect, it } from "vitest";
 import type { ApiBuildStep } from "../api/schema";
 import type { ReplayImportStep } from "../api/replayImport";
 import PRODUCTION_FIXTURE from "../api/__fixtures__/replay-import.production.json";
+import ALL_OPTIONS_FIXTURE from "../api/__fixtures__/replay-import.production.all-options.json";
 import BM_MI_BUILD from "./__fixtures__/build.bm-mi-1-grunt-into-hhs-2-burrow-tech-622e.json";
 import FARSEER_BUILD from "./__fixtures__/build.farseer-headhunter-2-burrow-tech.json";
+import HUMAN_BUILD from "./__fixtures__/build.human-mk-pally-mass-hawks-vs-elf-c9ac.json";
 import {
   ON_PLAN_SUPPLY_TOLERANCE,
   ON_PLAN_TIME_TOLERANCE_SECONDS,
@@ -398,3 +405,120 @@ describe("compareBuild – real pair: farseer-headhunter-2-burrow-tech", () => {
     ]);
   });
 });
+
+// --- real pair (F010a): human-mk-pally-mass-hawks-vs-elf-c9ac vs the real
+// "every option on" replay fixture ------------------------------------------
+
+/**
+ * F010a – follow-up of F010: hand-checked against a *second* real pair,
+ * captured specifically to exercise the icon-optional fix under real
+ * production data: `HUMAN_BUILD` (`human-mk-pally-mass-hawks-vs-elf-c9ac`,
+ * 45 timed steps, fetched live from `/api/builds/...`) as the plan;
+ * `ALL_OPTIONS_FIXTURE`'s human player (`Dretwiak#2963`, 60 actual steps,
+ * captured live from `/api/replay-import` with `cutoffSeconds=900`,
+ * `includeUpgrades=true`, `includeItems=true` – the exact options a review
+ * sends) as "actual". Two of Dretwiak's actual steps have no `icon` at all
+ * ("Buy Circlet of Nobility", "Buy Boots of Speed" – items the icon
+ * catalogue doesn't cover); every row below was worked out from the two
+ * fixtures' raw step lists (each row's comment is "plan time/supply vs
+ * actual time/supply", or "plan time/supply – never done" for a miss).
+ */
+describe("compareBuild – real pair (F010a): human-mk-pally-mass-hawks-vs-elf-c9ac", () => {
+  const planSteps = HUMAN_BUILD.steps as unknown as ApiBuildStep[];
+  const actualSteps = ALL_OPTIONS_FIXTURE.players[0].build.steps as unknown as ReplayImportStep[];
+
+  it("matches Dretwiak#2963 (human) as the all-options fixture's player 0", () => {
+    expect(ALL_OPTIONS_FIXTURE.players[0].name).toBe("Dretwiak#2963");
+    expect(ALL_OPTIONS_FIXTURE.players[0].race).toBe("human");
+    expect(planSteps).toHaveLength(45);
+    expect(actualSteps).toHaveLength(60);
+  });
+
+  it("has two icon-less actual steps (untracked item purchases) – the F010a repro", () => {
+    const iconLess = actualSteps.filter((s) => s.icon === undefined);
+    expect(iconLess.map((s) => s.instruction)).toEqual(["Buy Circlet of Nobility", "Buy Boots of Speed"]);
+  });
+
+  it("produces the hand-checked row-by-row result", () => {
+    const { rows } = compareBuild(planSteps, actualSteps);
+    expect(rows.map(simplify)).toEqual([
+      { icon: "hu-peasant", status: "on-plan", supplyDelta: 0, timeDelta: -1 }, // 0:02/5 vs 0:01/5
+      { icon: "hu-altar", status: "late", supplyDelta: 4, timeDelta: 40 }, // 0:07/7 vs 0:47/11
+      { icon: "hu-farm", status: "late", supplyDelta: 4, timeDelta: 14 }, // 0:18/7 vs 0:32/11
+      { icon: "hu-barracks", status: "late", supplyDelta: 16, timeDelta: 207 }, // 0:20/7 vs 3:47/23
+      { icon: "hu-peasant", status: "early", supplyDelta: -2, timeDelta: -21 }, // 0:22/7 vs 0:01/5 (2nd hu-peasant match)
+      { icon: "hu-peasant", status: "early", supplyDelta: -3, timeDelta: -39 }, // 0:40/8 vs 0:01/5 (3rd hu-peasant match – 2x step)
+      { icon: "hu-farm", status: "late", supplyDelta: 4, timeDelta: 18 }, // 0:58/10 vs 1:16/14
+      { icon: "hu-peasant", status: "early", supplyDelta: -5, timeDelta: -65 }, // 1:06/10 vs 0:01/5
+      // This player's hero is a Paladin – "Hero: Mountain King" has nothing
+      // in the actual log to match at all.
+      { icon: "hu-mountain-king", status: "missed", supplyDelta: null, timeDelta: null }, // plan 1:08/11 – never done
+      { icon: "hu-footman", status: "late", supplyDelta: 32, timeDelta: 556 }, // 1:21/16 vs 10:37/48
+      { icon: "hu-peasant", status: "early", supplyDelta: -13, timeDelta: -84 }, // 1:25/18 vs 0:01/5
+      { icon: "hu-farm", status: "late", supplyDelta: 3, timeDelta: 55 }, // 1:38/19 vs 2:33/22
+      { icon: "hu-footman", status: "late", supplyDelta: 29, timeDelta: 537 }, // 1:40/19 vs 10:37/48
+      { icon: "hu-peasant", status: "early", supplyDelta: -11, timeDelta: -91 }, // 1:47/21 vs 0:16/10
+      { icon: "hu-footman", status: "missed", supplyDelta: null, timeDelta: null }, // plan 2:01/22 – never done
+      { icon: "hu-footman", status: "missed", supplyDelta: null, timeDelta: null }, // plan 2:19/24 – never done
+      { icon: "hu-town-hall", status: "late", supplyDelta: 5, timeDelta: 233 }, // 2:59/26 vs 6:52/31
+      { icon: "hu-peasant", status: "early", supplyDelta: -15, timeDelta: -129 }, // 3:04/26 vs 0:55/11
+      { icon: "hu-peasant", status: "early", supplyDelta: -17, timeDelta: -149 }, // 3:24/28 vs 0:55/11
+      { icon: "hu-footman", status: "missed", supplyDelta: null, timeDelta: null }, // plan 4:11/30 – never done
+      { icon: "hu-peasant", status: "early", supplyDelta: -21, timeDelta: -197 }, // 4:12/32 vs 0:55/11
+      { icon: "hu-arcane-vault", status: "missed", supplyDelta: null, timeDelta: null }, // plan 4:37/33 – never done
+      { icon: "hu-peasant", status: "early", supplyDelta: -19, timeDelta: -196 }, // 4:37/33 vs 1:21/14
+      { icon: "hu-footman", status: "missed", supplyDelta: null, timeDelta: null }, // plan 4:48/35 – never done
+      { icon: "hu-keep", status: "early", supplyDelta: -14, timeDelta: -86 }, // 4:49/37 vs 3:23/23
+      { icon: "hu-lumber-mill", status: "early", supplyDelta: -21, timeDelta: -189 }, // 4:50/37 vs 1:41/16
+      { icon: "hu-scout-tower", status: "early", supplyDelta: -26, timeDelta: -243 }, // 4:52/37 vs 0:49/11
+      { icon: "hu-peasant", status: "early", supplyDelta: -22, timeDelta: -198 }, // 4:54/37 vs 1:36/15
+      { icon: "hu-scout-tower", status: "early", supplyDelta: -24, timeDelta: -209 }, // 5:02/39 vs 1:33/15 (2nd hu-scout-tower match)
+      { icon: "hu-footman", status: "missed", supplyDelta: null, timeDelta: null }, // plan 5:17/39 – never done
+      { icon: "hu-footman", status: "missed", supplyDelta: null, timeDelta: null }, // plan 5:42/41 – never done
+      { icon: "hu-guard-tower", status: "late", supplyDelta: -12, timeDelta: 44 }, // 5:53/43 vs 6:37/31
+      { icon: "hu-guard-tower", status: "late", supplyDelta: -9, timeDelta: 155 }, // 6:10/43 vs 8:45/34 (2nd hu-guard-tower match)
+      { icon: "nt-upgrade", status: "early", supplyDelta: -20, timeDelta: -128 }, // 6:11/43 vs 4:03/23
+      { icon: "hu-footman", status: "missed", supplyDelta: null, timeDelta: null }, // plan 6:22/43 – never done
+      { icon: "hu-blacksmith", status: "early", supplyDelta: -22, timeDelta: -157 }, // 6:39/45 vs 4:02/23
+      { icon: "hu-farm", status: "early", supplyDelta: -22, timeDelta: -196 }, // 6:42/45 vs 3:26/23 (3rd hu-farm match)
+      { icon: "hu-blacksmith", status: "missed", supplyDelta: null, timeDelta: null }, // plan 6:45/45 – never done
+      { icon: "hu-scout-tower", status: "early", supplyDelta: -17, timeDelta: -48 }, // 7:03/45 vs 6:15/28 (3rd hu-scout-tower match)
+      // This player's hero is a Forsaken Paladin (shows up as the
+      // "hu-forsaken-paladin" extra below), not the plan's Paladin.
+      { icon: "hu-paladin", status: "missed", supplyDelta: null, timeDelta: null }, // plan 7:14/45 – never done
+      { icon: "hu-aviary", status: "missed", supplyDelta: null, timeDelta: null }, // plan 7:18/50 – never done
+      { icon: "nt-upgrade", status: "missed", supplyDelta: null, timeDelta: null }, // plan 7:37/50 – never done (only one nt-upgrade order in the actual log)
+      { icon: "hu-peasant", status: "early", supplyDelta: -34, timeDelta: -350 }, // 7:39/50 vs 1:49/16
+      { icon: "hu-scout-tower", status: "early", supplyDelta: -21, timeDelta: -79 }, // 7:42/52 vs 6:23/31 (4th hu-scout-tower match)
+      { icon: "hu-guard-tower", status: "late", supplyDelta: -12, timeDelta: 110 }, // 7:51/52 vs 9:41/40 (3rd hu-guard-tower match)
+    ]);
+  });
+
+  it("totals 1 on-plan, 20 early, 11 late, 13 missed, first slip at the 2nd row (Build Altar of Kings)", () => {
+    const { summary } = compareBuild(planSteps, actualSteps);
+    expect(summary).toEqual({
+      total: 45,
+      onPlan: 1,
+      early: 20,
+      late: 11,
+      missed: 13,
+      firstSlip: { index: 1, supply: 7, time: "0:07" },
+    });
+  });
+
+  it("collects the actual icons/instructions this build's plan never mentions, including the two icon-less item purchases as distinct extras", () => {
+    const { extras } = compareBuild(planSteps, actualSteps);
+    expect(extras).toEqual([
+      { icon: "hu-arcane-tower", count: 6, firstTime: "1:14", firstSupply: 14, instruction: "Build Arcane Tower" },
+      { icon: "nt-dark-ranger", count: 1, firstTime: "2:15", firstSupply: 17, instruction: "Hero: Dark Ranger" },
+      // F010a: these two have no `icon` at all (an untracked item
+      // purchase) – grouped/keyed by `instruction` instead, so they don't
+      // collapse into a single "Also did" row despite both lacking an icon.
+      { count: 1, firstTime: "2:23", firstSupply: 22, instruction: "Buy Circlet of Nobility" },
+      { count: 1, firstTime: "5:44", firstSupply: 23, instruction: "Buy Boots of Speed" },
+      { icon: "hu-forsaken-paladin", count: 1, firstTime: "5:49", firstSupply: 23, instruction: "Hero: Forsaken Paladin" },
+      { icon: "hu-rifleman", count: 5, firstTime: "6:21", firstSupply: 28, instruction: "Train Rifleman" },
+    ]);
+  });
+});
+

@@ -10,6 +10,7 @@ import {
   ReplayImportError,
   replayBuildToFormInput,
   replayImportResponseSchema,
+  replayImportStepSchema,
   requestReplayImport,
   type ReplayImportBuild,
 } from "./replayImport";
@@ -19,6 +20,17 @@ import {
 // response, not a hand-written mock that can (and did) encode the same
 // mistake as the code under test — see the F004c spec.
 import PRODUCTION_FIXTURE from "./__fixtures__/replay-import.production.json";
+// F010a – follow-up of F010 (review-ui): captured live from production on
+// the fixture replay used site-wide (`last_refuge.w3g`, Dretwiak#2963
+// (human) vs SoulKeeper#1844 (undead)), with exactly the options a review
+// sends (`cutoffSeconds=900`, `includeUpgrades=true`, `includeItems=true`
+// – see `reviews/pipeline.ts`'s `REVIEW_*` constants). Two of Dretwiak's
+// steps are item purchases the icon catalogue doesn't cover ("Buy Circlet
+// of Nobility", "Buy Boots of Speed") and arrive with no `icon` field at
+// all – the real bug this feature fixes (every such review was rejected
+// with "The server sent back something that wasn't a valid reply.").
+import ALL_OPTIONS_FIXTURE from "./__fixtures__/replay-import.production.all-options.json";
+import { z } from "zod";
 
 const VALID_RESPONSE = {
   map: "Northern Isles",
@@ -363,4 +375,45 @@ it("ReplayImportError carries kind/status/cause", () => {
   expect(err.kind).toBe("http");
   expect(err.status).toBe(502);
   expect(err.cause).toBe("x");
+});
+
+describe("replayImportResponseSchema – real production response with every option on (F010a)", () => {
+  // The old schema (`icon: z.string()`, required) rejected this exact
+  // response – reconstructed inline (not imported) so this test keeps
+  // demonstrating the pre-fix bug even after `replayImportStepSchema`
+  // itself is fixed for good. Picked an actual item step straight off the
+  // fixture (no `icon` field at all) rather than a hand-written mock.
+  it("the pre-fix schema (icon required) rejects an item step the icon catalogue doesn't cover", () => {
+    const oldStepSchema = z.object({
+      time: z.string(),
+      supply: z.number(),
+      instruction: z.string(),
+      icon: z.string(),
+      importNote: z.string().optional(),
+    });
+    const itemStepWithNoIcon = ALL_OPTIONS_FIXTURE.players[0].build.steps.find(
+      (step: { icon?: string }) => step.icon === undefined,
+    );
+    expect(itemStepWithNoIcon).toBeDefined();
+    expect(oldStepSchema.safeParse(itemStepWithNoIcon).success).toBe(false);
+    // The current (fixed) schema accepts the exact same step.
+    expect(replayImportStepSchema.safeParse(itemStepWithNoIcon).success).toBe(true);
+  });
+
+  it("parses the full fixture with replayImportResponseSchema", () => {
+    const result = replayImportResponseSchema.safeParse(ALL_OPTIONS_FIXTURE);
+    expect(result.success).toBe(true);
+  });
+
+  it("replayBuildToFormInput accepts the fixture's icon-less steps, mapping the missing icon to ''", () => {
+    const parsed = replayImportResponseSchema.parse(ALL_OPTIONS_FIXTURE);
+    const dretwiak = replayBuildToFormInput(parsed.players[0].build);
+    const circlet = dretwiak.steps.find((s) => s.instruction === "Buy Circlet of Nobility");
+    const boots = dretwiak.steps.find((s) => s.instruction === "Buy Boots of Speed");
+    expect(circlet?.icon).toBe("");
+    expect(boots?.icon).toBe("");
+    // Every other step kept its real icon – only the two untracked item
+    // purchases are affected.
+    expect(dretwiak.steps.filter((s) => s.icon === "")).toHaveLength(2);
+  });
 });
