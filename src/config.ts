@@ -68,3 +68,13 @@ export const W3C_GAME_MODE_1V1 = 1;
  * about the army is shown.
  */
 export const OPPONENT_ARMY_ENABLED = false;
+
+/**
+ * The W3Champions scouting features: the opponent card (its window, the
+ * Opponent button and shortcut, the live-game watcher) and the Profile tab,
+ * plus their settings. Off until the Gym admins approve them (decided
+ * 2026-10-03); while off nothing is shown and no W3Champions request is
+ * made for them. Importing a build from a W3Champions match link is not
+ * part of this and stays on.
+ */
+export const W3C_SCOUTING_ENABLED = false;

@@ -6,6 +6,8 @@ import { cn } from "../../lib/cn";
  *  the app always reopens on Builds or Profile. */
 export type PickerSection = "builds" | "profile" | "settings";
 
+export const ALL_SECTIONS: readonly PickerSection[] = ["builds", "profile", "settings"];
+
 const TABS: { id: PickerSection; label: string; icon: LucideIcon }[] = [
   { id: "builds", label: "Builds", icon: BookOpen },
   { id: "profile", label: "Profile", icon: UserRound },
@@ -17,17 +19,27 @@ export const panelId = (tab: PickerSection) => `picker-panel-${tab}`;
 
 /** Builds | Profile | Settings, inside the header. Arrow keys move between
  *  tabs. The active tab's underline sits on the header's bottom border. */
-export function PickerTabs({ active, onChange }: { active: PickerSection; onChange: (tab: PickerSection) => void }) {
+export function PickerTabs({
+  active,
+  onChange,
+  sections = ALL_SECTIONS,
+}: {
+  active: PickerSection;
+  onChange: (tab: PickerSection) => void;
+  /** The tabs this build offers (Profile only with the scouting features). */
+  sections?: readonly PickerSection[];
+}) {
+  const tabs = TABS.filter((t) => sections.includes(t.id));
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-    const index = TABS.findIndex((t) => t.id === active);
-    const next = TABS[(index + (event.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+    const index = tabs.findIndex((t) => t.id === active);
+    const next = tabs[(index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
     onChange(next.id);
     document.getElementById(tabId(next.id))?.focus();
   }
   return (
     <div role="tablist" aria-label="Picker sections" onKeyDown={onKeyDown} className="flex h-full items-stretch gap-1">
-      {TABS.map(({ id, label, icon: Icon }) => {
+      {tabs.map(({ id, label, icon: Icon }) => {
         const selected = id === active;
         return (
           <button

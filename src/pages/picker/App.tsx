@@ -11,7 +11,7 @@ import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
 import { startOpponentWatcher } from "../../opponentWatcher";
-import { UPDATE_CHECK_DELAY_MS, WINDOW_OPPONENT } from "../../config";
+import { UPDATE_CHECK_DELAY_MS, W3C_SCOUTING_ENABLED, WINDOW_OPPONENT } from "../../config";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { readKey, writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
@@ -22,7 +22,7 @@ import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
 import { PickerHeader } from "./PickerHeader";
 import { BuildsToolbar } from "./BuildsToolbar";
-import { panelId, tabId, type PickerSection } from "./PickerTabs";
+import { ALL_SECTIONS, panelId, tabId, type PickerSection } from "./PickerTabs";
 import { ProfileTab } from "./profile/ProfileTab";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
 import { SettingsPanel } from "./SettingsPanel";
@@ -113,7 +113,11 @@ export function App() {
 
   const [registrations, setRegistrations] = useState<ShortcutRegistrationResult[]>([]);
   // Settings is a tab but never remembered (see PickerTabs).
-  const [section, setSection] = useState<PickerSection>(() => settings.pickerTab ?? "builds");
+  const sections: readonly PickerSection[] = W3C_SCOUTING_ENABLED ? ALL_SECTIONS : ALL_SECTIONS.filter((s) => s !== "profile");
+  const [section, setSection] = useState<PickerSection>(() => {
+    const remembered = settings.pickerTab ?? "builds";
+    return sections.includes(remembered) ? remembered : "builds";
+  });
   const [filters, setFilters] = useState<Filters>(() => parseHashFilters(location.hash));
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [replayImport, setReplayImport] = useState<ReplayImportSource | null>(null);
@@ -149,7 +153,7 @@ export function App() {
 
   // The opponent card's watcher lives here: the picker window stays alive
   // while hidden, and the overlay window just reads the store.
-  useEffect(() => startOpponentWatcher(), []);
+  useEffect(() => (W3C_SCOUTING_ENABLED ? startOpponentWatcher() : undefined), []);
 
   useEffect(() => {
     applySelftestShortcutOverride()
@@ -209,8 +213,9 @@ export function App() {
       <PickerHeader
         tab={section}
         onTab={selectTab}
-        opponentShortcut={settings.shortcuts.toggle_opponent}
-        onToggleOpponent={() => void host.toggleWindow(WINDOW_OPPONENT)}
+        sections={sections}
+        opponentShortcut={W3C_SCOUTING_ENABLED ? settings.shortcuts.toggle_opponent : undefined}
+        onToggleOpponent={W3C_SCOUTING_ENABLED ? () => void host.toggleWindow(WINDOW_OPPONENT) : undefined}
         actions={
           section === "builds" ? (
             <BuildsToolbar
@@ -223,7 +228,7 @@ export function App() {
       />
 
       <main className="mx-auto max-w-6xl px-6 py-6">
-        {section === "profile" ? (
+        {section === "profile" && W3C_SCOUTING_ENABLED ? (
           <div role="tabpanel" id={panelId("profile")} aria-labelledby={tabId("profile")}>
             <ProfileTab onOpenSettings={() => selectTab("settings")} />
           </div>
