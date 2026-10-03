@@ -27,6 +27,7 @@ const SETTINGS_VALUE: Settings = {
     step_prev: "CommandOrControl+Shift+[",
   },
   autoUpdate: false,
+  shortcutsEnabled: true,
   skippedVersion: null,
   myBattleTag: null,
   opponentCard: true,

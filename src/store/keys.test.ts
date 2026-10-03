@@ -87,6 +87,11 @@ describe("settingsSchema — F002 autoUpdate/skippedVersion migration", () => {
     expect(result.success && result.data.skippedVersion).toBeNull();
   });
 
+  it("defaults shortcutsEnabled to true for settings missing the key", () => {
+    const result = settingsSchema.safeParse(RAW_0_3_X_SETTINGS);
+    expect(result.success && result.data.shortcutsEnabled).toBe(true);
+  });
+
   it("keeps an explicit autoUpdate/skippedVersion the user already set", () => {
     const result = settingsSchema.safeParse({
       ...RAW_0_3_X_SETTINGS,

@@ -122,6 +122,8 @@ export type Settings = {
   opacity: number;
   scale: number;
   shortcuts: ShortcutMap;
+  /** Off registers no global shortcut, so every combo stays with other apps. */
+  shortcutsEnabled: boolean;
   overlayBounds?: OverlayBounds;
   /** F002: whether the picker checks for an update a few seconds after
    *  launch. Defaults to `true` so the schema default (below) opts
@@ -214,6 +216,7 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     opacity: z.number(),
     scale: z.number(),
     shortcuts: shortcutMapSchema,
+    shortcutsEnabled: z.boolean().default(true), // absent up to 0.6.0
     overlayBounds: overlayBoundsSchema.optional(),
     // F002: absent in settings written by 0.3.x — zod fills in the default
     // below when the key is missing, which is the whole migration.
@@ -237,6 +240,7 @@ export const SETTINGS: StoreKey<Settings> = {
     opacity: 1,
     scale: 1,
     shortcuts: { ...DEFAULT_SHORTCUTS },
+    shortcutsEnabled: true,
     autoUpdate: true,
     skippedVersion: null,
     myBattleTag: null,

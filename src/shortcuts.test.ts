@@ -12,8 +12,8 @@ import { host } from "./host";
 import { createLocalBuild } from "./lib/localBuilds";
 import { writeLocalBuilds } from "./data/localBuildsStore";
 import { applyShortcuts } from "./shortcuts";
-import { SELECTED_BUILD_SLUG, TIMER } from "./store/keys";
-import { readKey, writeKey } from "./store/state";
+import { SELECTED_BUILD_SLUG, SETTINGS, TIMER } from "./store/keys";
+import { readKey, updateKey, writeKey } from "./store/state";
 
 function pressStepNext(): void {
   window.dispatchEvent(
@@ -66,5 +66,32 @@ describe("step_next/step_prev shortcuts on a private build", () => {
 
     pressStepPrev();
     expect(readKey(TIMER).baseElapsedMs).toBe(0);
+  });
+});
+
+describe("the Enable shortcuts setting", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    await writeKey(TIMER, { startedAtMs: null, baseElapsedMs: 0, engaged: false });
+  });
+
+  afterEach(async () => {
+    await host.unregisterAllShortcuts();
+  });
+
+  function pressPlayPause(): void {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "P", code: "KeyP", ctrlKey: true, shiftKey: true }));
+  }
+
+  it("drops a live registration when turned off", async () => {
+    await applyShortcuts();
+    pressPlayPause();
+    expect(readKey(TIMER).startedAtMs).not.toBeNull();
+
+    await writeKey(TIMER, { startedAtMs: null, baseElapsedMs: 0, engaged: false });
+    await updateKey(SETTINGS, (s) => ({ ...s, shortcutsEnabled: false }));
+    expect(await applyShortcuts()).toEqual([]);
+    pressPlayPause();
+    expect(readKey(TIMER).startedAtMs).toBeNull();
   });
 });

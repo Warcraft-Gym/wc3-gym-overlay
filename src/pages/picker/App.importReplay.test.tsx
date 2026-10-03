@@ -39,6 +39,7 @@ const SETTINGS_VALUE: Settings = {
     step_next: "CommandOrControl+Shift+]",
     step_prev: "CommandOrControl+Shift+[",
   },
+  shortcutsEnabled: true,
   autoUpdate: false,
   skippedVersion: null,
   myBattleTag: null,

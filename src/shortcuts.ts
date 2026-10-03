@@ -45,6 +45,7 @@ async function dispatch(action: ShortcutAction): Promise<void> {
 export async function applyShortcuts(): Promise<ShortcutRegistrationResult[]> {
   const settings = readKey(SETTINGS);
   await host.unregisterAllShortcuts();
+  if (!settings.shortcutsEnabled) return [];
   return host.registerShortcuts(settings.shortcuts, (action) => {
     void dispatch(action);
   });

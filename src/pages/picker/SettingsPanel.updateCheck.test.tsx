@@ -34,6 +34,7 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
       step_prev: "CommandOrControl+Shift+[",
     },
     autoUpdate: true,
+    shortcutsEnabled: true,
     skippedVersion: null,
     myBattleTag: null,
     opponentCard: true,

@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Modal } from "../../components/Modal";
 import { DEFAULT_SHORTCUTS } from "../../config";
 import type { ShortcutRegistrationResult } from "../../host/bridge";
+import { SETTINGS } from "../../store/keys";
+import { readKey } from "../../store/state";
 import { ShortcutEditor } from "./ShortcutEditor";
 
 const applyShortcutsMock = vi.fn<() => Promise<ShortcutRegistrationResult[]>>();
@@ -113,6 +115,24 @@ describe("ShortcutEditor", () => {
 
     expect(closed).toBe(false);
     expect(screen.getAllByRole("button", { name: "Change" }).length).toBeGreaterThan(0);
+  });
+
+  it("Enable shortcuts off saves the setting and re-applies", async () => {
+    applyShortcutsMock.mockResolvedValueOnce([]);
+    let latest = registered();
+    render(
+      <ShortcutEditor
+        shortcuts={DEFAULT_SHORTCUTS}
+        registrations={latest}
+        onRegistrations={(next) => (latest = next)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Enable shortcuts" }));
+
+    await vi.waitFor(() => expect(latest).toEqual([]));
+    expect(readKey(SETTINGS).shortcutsEnabled).toBe(false);
+    expect(applyShortcutsMock).toHaveBeenCalledTimes(1);
   });
 
   it("shows the refusal reason inline for a plain key without a modifier", () => {
