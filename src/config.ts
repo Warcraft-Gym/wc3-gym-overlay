@@ -59,3 +59,12 @@ export const W3C_API_BASE = "https://website-backend.w3champions.com/api";
 /** W3Champions gateway 20 is the (only) live one. */
 export const W3C_GATEWAY = 20;
 export const W3C_GAME_MODE_1V1 = 1;
+
+/**
+ * Opponent card "Army" section (their usual units, read from their replays
+ * through our site's replay importer, about 5 site requests per new
+ * opponent). Built and tested, but off until it ships as a premium feature
+ * (decided 2026-10-03). While off, no replay requests are made and nothing
+ * about the army is shown.
+ */
+export const OPPONENT_ARMY_ENABLED = false;

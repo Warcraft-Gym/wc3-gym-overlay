@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 import { GameIcon } from "../../components/GameIcon";
 import { IconButton } from "../../components/IconButton";
 import { RaceCrest } from "../../components/RaceCrest";
-import { WINDOW_OPPONENT } from "../../config";
+import { OPPONENT_ARMY_ENABLED, WINDOW_OPPONENT } from "../../config";
 import { host } from "../../host";
 import { isValidBattleTag } from "../../opponentWatcher";
 import { OPPONENT, SETTINGS, type OpponentState, type Settings } from "../../store/keys";
@@ -111,7 +111,10 @@ export function perGameLabel(perGame: number): string {
   return `${Number.isInteger(perGame) ? perGame : perGame.toFixed(1)} per game`;
 }
 
-function ArmySection({ card, apiBase }: { card: Card; apiBase: string }) {
+/** Their usual army. Off unless OPPONENT_ARMY_ENABLED (a premium candidate):
+ *  even a card stored by a build that had it on shows nothing while off. */
+export function ArmySection({ card, apiBase, enabled = OPPONENT_ARMY_ENABLED }: { card: Card; apiBase: string; enabled?: boolean }) {
+  if (!enabled) return null;
   if (card.armyStatus === "loading") return <p className="opponent-card__note">Loading army…</p>;
   const army = card.composition;
   if (!army || army.units.length === 0) return null;

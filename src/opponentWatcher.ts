@@ -14,7 +14,7 @@
  * history only once per match, and a longer pause after errors.
  */
 
-import { WINDOW_OPPONENT } from "./config";
+import { OPPONENT_ARMY_ENABLED, WINDOW_OPPONENT } from "./config";
 import { host } from "./host";
 import { OPPONENT, SETTINGS, type OpponentState } from "./store/keys";
 import { buildComposition, COMPOSITION_GAMES, fetchMatchSteps, type Composition, type ImportedSteps } from "./w3c/composition";
@@ -64,6 +64,8 @@ export type OpponentWatcherDeps = {
   fetchProfile: typeof fetchProfile;
   fetchMatchDetail: typeof fetchMatchDetail;
   fetchMatchSteps: typeof fetchMatchSteps;
+  /** Whether to read replays for the "Army" section (off by default). */
+  armyEnabled: boolean;
   /** Opens the opponent window (it never takes focus, so the game keeps it). */
   showOpponentWindow: () => Promise<void>;
   now: () => number;
@@ -77,6 +79,7 @@ const defaultDeps: OpponentWatcherDeps = {
   fetchProfile,
   fetchMatchDetail,
   fetchMatchSteps,
+  armyEnabled: OPPONENT_ARMY_ENABLED,
   showOpponentWindow: () => host.showWindow(WINDOW_OPPONENT),
   now: () => Date.now(),
 };
@@ -227,7 +230,8 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
   try {
     const history = await opponentHistory(live.opponent.battleTag, deps, caches);
     const card = buildOpponentCard(live, history);
-    await write({ status: "ok", live: true, card: { ...card, extrasStatus: "loading", armyStatus: "loading" } }, deps.now());
+    const armyLoading = deps.armyEnabled ? { armyStatus: "loading" as const } : {};
+    await write({ status: "ok", live: true, card: { ...card, extrasStatus: "loading", ...armyLoading } }, deps.now());
     // The basics are on screen; identity and play style follow.
     const extras = await opponentExtras(card, history, deps, caches).then(
       (value) => ({ ...value, extrasStatus: "ok" as const }),
@@ -236,8 +240,9 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
     // Your own record in this matchup: your history, cached like theirs.
     const myHistory = await opponentHistory(tag, deps, caches).catch(() => null);
     const myRecord = myHistory ? buildMyRecord(myHistory, tag, card.myRace, card.opponent.race, card.map) : null;
-    const withExtras = { ...card, ...extras, myRecord, armyStatus: "loading" as const };
+    const withExtras = { ...card, ...extras, myRecord, ...armyLoading };
     if (readKey(OPPONENT).matchId === live.matchId) await write({ card: withExtras }, deps.now());
+    if (!deps.armyEnabled) return OPPONENT_POLL_MS;
     // Their army last: it reads replays, a few seconds after everything else.
     const army = await opponentArmy(card, history, settings.apiBase, deps, caches).then(
       (composition) => ({ composition, armyStatus: "ok" as const }),

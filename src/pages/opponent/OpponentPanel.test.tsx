@@ -14,6 +14,7 @@ import { buildComposition } from "../../w3c/composition";
 import { matchDetailSchema, w3cMatchSchema } from "../../w3c/client";
 import { buildIdentity, buildOpponentCard, buildStyle, type LiveMatch } from "../../w3c/opponentCard";
 import {
+  ArmySection,
   emptyMessage,
   formatRecord,
   formatRelative,
@@ -215,8 +216,10 @@ describe("army (real d0wi replays)", () => {
     expect(perGameLabel(4.2)).toBe("4.2 per game");
   });
 
-  it("lists the usual units with how often", async () => {
-    await show(state({ card: { ...card, armyStatus: "ok", composition: buildComposition(unitsFixture.map((g) => g.steps)) } }));
+  const armyCard = { ...card, armyStatus: "ok" as const, composition: buildComposition(unitsFixture.map((g) => g.steps)) };
+
+  it("lists the usual units with how often (when enabled)", () => {
+    render(<ArmySection card={armyCard} apiBase="https://warcraft-gym.com" enabled />);
     expect(screen.getByText(/^Army · last 5/)).toBeTruthy();
     expect(screen.getByText("Dryad")).toBeTruthy();
     expect(screen.getByText("7 per game · 5 of 5")).toBeTruthy();
@@ -224,8 +227,15 @@ describe("army (real d0wi replays)", () => {
     expect(screen.getByText("3.2 per game · 3 of 5")).toBeTruthy();
   });
 
-  it("says the army is loading", async () => {
-    await show(state({ card: { ...card, armyStatus: "loading" } }));
+  it("says the army is loading (when enabled)", () => {
+    render(<ArmySection card={{ ...card, armyStatus: "loading" }} apiBase="https://warcraft-gym.com" enabled />);
     expect(screen.getByText("Loading army…")).toBeTruthy();
+  });
+
+  it("shows nothing while the feature is off, even for a stored card with an army", async () => {
+    await show(state({ card: armyCard }));
+    expect(screen.queryByText(/^Army/)).toBeNull();
+    expect(screen.queryByText("Dryad")).toBeNull();
+    expect(screen.queryByText("Loading army…")).toBeNull();
   });
 });

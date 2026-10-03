@@ -11,6 +11,7 @@ import {
   startOpponentWatcher,
   type OpponentWatcherDeps,
 } from "./opponentWatcher";
+import { OPPONENT_ARMY_ENABLED } from "./config";
 import { OPPONENT, SETTINGS } from "./store/keys";
 import { readKey, writeKey } from "./store/state";
 import akaLife from "./w3c/__fixtures__/aka.Medusa.json";
@@ -32,6 +33,7 @@ function deps(overrides: Partial<OpponentWatcherDeps> = {}): OpponentWatcherDeps
     fetchProfile: vi.fn(async () => profileD0wi),
     fetchMatchDetail: vi.fn(async () => matchDetailSchema.parse(detailsFixture[0])),
     fetchMatchSteps: vi.fn(async (_apiBase: string, id: string) => unitsFixture.find((g) => g.id === id)?.steps ?? null),
+    armyEnabled: true,
     showOpponentWindow: vi.fn(async () => {}),
     now: () => Date.parse("2026-10-03T00:00:00Z"),
     ...overrides,
@@ -157,6 +159,18 @@ describe("pollOnce", () => {
       { name: "Druid of the Claw", icon: "ne-druid-of-the-claw", perGame: 3.2, inGames: 3 },
     ]);
     expect(d.fetchAka).toHaveBeenCalledWith("d0wi#2726");
+  });
+
+  it("reads no replays and shows no army while the feature is off (the shipped default)", async () => {
+    const d = deps({ armyEnabled: false });
+    await setTag("ElTurry#1520");
+    await pollOnce(d, freshCaches());
+    const card = readKey(OPPONENT).card!;
+    expect(d.fetchMatchSteps).not.toHaveBeenCalled();
+    expect(card.armyStatus).toBeUndefined();
+    expect(card.composition).toBeUndefined();
+    expect(card.extrasStatus).toBe("ok");
+    expect(OPPONENT_ARMY_ENABLED).toBe(false);
   });
 
   it("keeps the card when the extras fail", async () => {
