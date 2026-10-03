@@ -47,6 +47,12 @@ export const HISTORY_CACHE_MS = 30 * 60_000;
 export const SEASONS_CACHE_MS = 12 * 60 * 60_000;
 /** Matches per season page; two seasons cover a regular's recent games. */
 export const HISTORY_PAGE_SIZE = 100;
+/**
+ * W3Champions sometimes keeps a game listed as live for hours (one was 606
+ * minutes old on 2026-10-03). A listing this old is treated as no game, so a
+ * stuck entry never pins a "live" card.
+ */
+export const STALE_LIVE_MS = 90 * 60_000;
 /** Score sheets are fetched this many at a time (polite to the API). */
 export const DETAIL_CONCURRENCY = 2;
 
@@ -195,6 +201,9 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
     console.warn("[wc3gym] W3Champions live-match check failed", err);
     return OPPONENT_ERROR_BACKOFF_MS;
   }
+
+  const started = match ? Date.parse(match.startTime) : NaN;
+  if (match && !Number.isNaN(started) && deps.now() - started >= STALE_LIVE_MS) match = null;
 
   if (!match) {
     if (state.live) await write({ live: false }, deps.now());

@@ -7,6 +7,7 @@ import {
   OPPONENT_ERROR_BACKOFF_MS,
   OPPONENT_POLL_MS,
   pollOnce,
+  STALE_LIVE_MS,
   startOpponentWatcher,
   type OpponentWatcherDeps,
 } from "./opponentWatcher";
@@ -258,6 +259,27 @@ describe("pollOnce", () => {
     await setTag(null);
     await pollOnce(d, caches);
     expect(readKey(OPPONENT).live).toBe(false);
+  });
+
+  it("treats a game listed as live for 90+ minutes as over (stuck W3Champions entry)", async () => {
+    const startedAt = Date.parse(liveMatch.startTime);
+    let now = startedAt + 10 * 60_000;
+    const d = deps({ now: () => now });
+    const caches = freshCaches();
+    await setTag("ElTurry#1520");
+    await pollOnce(d, caches);
+    expect(readKey(OPPONENT).live).toBe(true);
+    now = startedAt + STALE_LIVE_MS;
+    await pollOnce(d, caches);
+    expect(readKey(OPPONENT).live).toBe(false);
+
+    // A stuck listing never starts a card either.
+    localStorage.clear();
+    await setTag("ElTurry#1520");
+    const late = deps({ now: () => startedAt + 600 * 60_000 });
+    await pollOnce(late, freshCaches());
+    expect(readKey(OPPONENT).status).toBe("idle");
+    expect(late.fetchMatchHistory).not.toHaveBeenCalled();
   });
 
   it("ignores a live match I am not part of (a mistyped tag)", async () => {
