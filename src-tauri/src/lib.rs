@@ -1,6 +1,7 @@
 use std::io::Write;
 use tauri::Manager;
 
+mod game_clock;
 mod portable;
 use portable::is_installed_bundle;
 
@@ -135,6 +136,7 @@ pub fn run() {
                     handle.exit(0);
                 });
             }
+            game_clock::spawn(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {

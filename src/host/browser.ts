@@ -380,5 +380,6 @@ export function createBrowserHost(): Host {
     installUpdate,
     relaunch,
     isPortableBuild,
+    onGameClock: () => () => {},
   };
 }

@@ -9,6 +9,7 @@ function isTauri(): boolean {
 export const host: Host = isTauri() ? createTauriHost() : createBrowserHost();
 
 export type {
+  GameClockSample,
   Host,
   ShortcutAction,
   ShortcutMap,
