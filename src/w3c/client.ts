@@ -121,3 +121,50 @@ export async function fetchMatchHistory(
   const { body } = await getJson(`/matches/search?${query.toString()}`, signal);
   return parse(searchResponseSchema, body, "match history").matches ?? [];
 }
+
+// --- Opponent extras: identity and per-game score sheets --------------------
+
+const akaSchema = z.object({
+  name: z.string().nullable().optional(),
+  main_race: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  liquipedia: z.string().nullable().optional(),
+});
+export type W3cAka = z.infer<typeof akaSchema>;
+
+const profileSchema = z.object({
+  participatedInSeasons: z.array(z.object({ id: z.number() })).nullable().default([]),
+});
+export type W3cProfile = z.infer<typeof profileSchema>;
+
+const scoreSchema = z.object({
+  battleTag: z.string(),
+  unitScore: z.object({ unitsProduced: z.number(), unitsKilled: z.number(), largestArmy: z.number() }),
+  heroScore: z.object({ heroesKilled: z.number(), itemsObtained: z.number(), mercsHired: z.number(), expGained: z.number() }),
+  resourceScore: z.object({ goldCollected: z.number(), lumberCollected: z.number(), goldUpkeepLost: z.number() }),
+});
+export const matchDetailSchema = z.object({
+  match: z.object({ id: z.string(), durationInSeconds: z.number() }),
+  playerScores: z.array(scoreSchema),
+});
+export type W3cMatchDetail = z.infer<typeof matchDetailSchema>;
+
+/** Known-player data ("aka"): a real name, country and Liquipedia page for
+ *  pros (every Grandmaster had it on 2026-10-03); all fields null otherwise.
+ *  Note: `/players/{tag}` itself returns an empty aka; only `/aka` has it. */
+export async function fetchAka(battleTag: string, signal?: AbortSignal): Promise<W3cAka> {
+  const { body } = await getJson(`/players/${encodeURIComponent(battleTag)}/aka`, signal);
+  return parse(akaSchema, body, "player aka");
+}
+
+/** The player's profile: which seasons they played. */
+export async function fetchProfile(battleTag: string, signal?: AbortSignal): Promise<W3cProfile> {
+  const { body } = await getJson(`/players/${encodeURIComponent(battleTag)}`, signal);
+  return parse(profileSchema, body, "player profile");
+}
+
+/** One finished game's score sheet for both players. */
+export async function fetchMatchDetail(matchId: string, signal?: AbortSignal): Promise<W3cMatchDetail> {
+  const { body } = await getJson(`/matches/${encodeURIComponent(matchId)}`, signal);
+  return parse(matchDetailSchema, body, "match details");
+}

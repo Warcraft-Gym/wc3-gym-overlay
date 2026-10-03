@@ -12,7 +12,10 @@ import {
 } from "./opponentWatcher";
 import { OPPONENT, SETTINGS } from "./store/keys";
 import { readKey, writeKey } from "./store/state";
-import { w3cMatchSchema, type W3cMatch } from "./w3c/client";
+import akaLife from "./w3c/__fixtures__/aka.Medusa.json";
+import detailsFixture from "./w3c/__fixtures__/match-details.d0wi.vsUndead.json";
+import profileD0wi from "./w3c/__fixtures__/player.d0wi.json";
+import { matchDetailSchema, w3cMatchSchema, type W3cMatch } from "./w3c/client";
 
 const liveMatch = w3cMatchSchema.parse(ongoing); // ElTurry#1520 vs CactusPunch#2510, Autumn Leaves v2
 const opponentTag = liveMatch.teams.flatMap((t) => t.players).find((p) => p.battleTag !== "ElTurry#1520")!.battleTag;
@@ -23,6 +26,9 @@ function deps(overrides: Partial<OpponentWatcherDeps> = {}): OpponentWatcherDeps
     fetchOngoingMatch: vi.fn(async () => liveMatch),
     fetchSeasonIds: vi.fn(async () => [25, 24, 23]),
     fetchMatchHistory: vi.fn(async () => history),
+    fetchAka: vi.fn(async () => akaLife),
+    fetchProfile: vi.fn(async () => profileD0wi),
+    fetchMatchDetail: vi.fn(async () => matchDetailSchema.parse(detailsFixture[0])),
     showOpponentWindow: vi.fn(async () => {}),
     now: () => Date.parse("2026-10-03T00:00:00Z"),
     ...overrides,
@@ -99,6 +105,56 @@ describe("pollOnce", () => {
     await setTag("ElTurry#1520");
     await pollOnce(d, freshCaches());
     expect(readKey(OPPONENT).status).toBe("ok");
+  });
+
+  it("adds identity and play style after the basics (end to end on d0wi's real data)", async () => {
+    // ElTurry's real live match, re-cast as Undead vs d0wi so the real
+    // history and score sheets apply.
+    const [mine, theirs] = liveMatch.teams.flatMap((t) => t.players);
+    const me = mine.battleTag === "ElTurry#1520" ? mine : theirs;
+    const vsD0wi = {
+      ...liveMatch,
+      teams: [{ players: [{ ...me, race: 8 }] }, { players: [{ ...me, battleTag: "d0wi#2726", name: "d0wi", race: 4 }] }],
+    };
+    const sheets = new Map(detailsFixture.map((x) => [x.match.id, matchDetailSchema.parse(x)]));
+    const d = deps({
+      fetchOngoingMatch: vi.fn(async () => vsD0wi),
+      fetchMatchDetail: vi.fn(async (id: string) => sheets.get(id)!),
+    });
+    await setTag("ElTurry#1520");
+    await pollOnce(d, freshCaches());
+    const card = readKey(OPPONENT).card!;
+    expect(card.extrasStatus).toBe("ok");
+    expect(card.identity).toEqual({ aka: "Life", country: "CN", seasons: 19 });
+    expect(card.style).toEqual({ games: 8, goldPerMinute: 560, goldVsOpponents: 1.06, killsVsOpponents: 1.22, upkeepGames: 4, mercsPerGame: 1.4 });
+    expect(d.fetchMatchDetail).toHaveBeenCalledTimes(8);
+    expect(d.fetchAka).toHaveBeenCalledWith("d0wi#2726");
+  });
+
+  it("keeps the card when the extras fail", async () => {
+    const d = deps({
+      fetchAka: vi.fn(async () => Promise.reject(new Error("503"))),
+      fetchProfile: vi.fn(async () => Promise.reject(new Error("503"))),
+      fetchMatchDetail: vi.fn(async () => Promise.reject(new Error("503"))),
+    });
+    await setTag("ElTurry#1520");
+    await pollOnce(d, freshCaches());
+    const state = readKey(OPPONENT);
+    expect(state.status).toBe("ok");
+    expect(state.card?.identity).toBeNull();
+    expect(state.card?.style).toBeNull();
+  });
+
+  it("reuses cached extras for a rematch", async () => {
+    let id = "m1";
+    const d = deps({ fetchOngoingMatch: vi.fn(async () => ({ ...liveMatch, id })) });
+    const caches = freshCaches();
+    await setTag("ElTurry#1520");
+    await pollOnce(d, caches);
+    id = "m2";
+    await pollOnce(d, caches);
+    expect(d.fetchAka).toHaveBeenCalledTimes(1);
+    expect(readKey(OPPONENT).card?.identity?.aka).toBe("Life");
   });
 
   it("makes one request per poll while the same match is live", async () => {

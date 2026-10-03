@@ -16,7 +16,7 @@
 
 import { z } from "zod";
 import { isKnownHero } from "./heroes";
-import type { W3cMatch, W3cPlayer } from "./client";
+import type { W3cAka, W3cMatch, W3cMatchDetail, W3cPlayer, W3cProfile } from "./client";
 
 export const CARD_RACES = ["human", "orc", "nightelf", "undead", "random"] as const;
 export type CardRace = (typeof CARD_RACES)[number];
@@ -33,6 +33,13 @@ export const MIN_GAMES_FOR_STATS = 5;
 export const OPENERS_SHOWN = 2;
 /** A combination needs at least this many games to be shown. */
 export const MIN_OPENER_GAMES = 2;
+/** A game shorter than this counts as decided early. */
+export const EARLY_GAME_MINUTES = 10;
+/** Score sheets read for the play-style line (one request each). */
+export const STYLE_GAMES = 8;
+/** Gold lost to upkeep above this in a game counts as "into upkeep". */
+export const UPKEEP_NOTABLE_GOLD = 500;
+const DAY_MS = 24 * 60 * 60_000;
 
 export function raceOf(player: Pick<W3cPlayer, "race" | "rndRace">): CardRace {
   const random = player.rndRace !== null && player.rndRace !== undefined ? RACE_BY_ID[player.rndRace] : undefined;
@@ -96,10 +103,43 @@ export const opponentCardSchema = z.object({
   firstHero: z.object({ hero: z.string(), count: z.number() }).nullable(),
   openers: z.array(z.object({ heroes: z.array(z.string()), count: z.number() })),
   avgMinutes: z.object({ win: z.number().nullable(), loss: z.number().nullable() }),
+  // Added after the first local beta: optional so stored cards still parse.
+  headToHead: recordSchema.nullable().optional(),
+  streak: z.object({ result: z.enum(["W", "L"]), length: z.number() }).nullable().optional(),
+  gamesLast24h: z.number().optional(),
+  earlyWins: z.object({ count: z.number(), of: z.number() }).nullable().optional(),
+  extrasStatus: z.enum(["loading", "ok", "error"]).optional(),
+  identity: z
+    .object({ aka: z.string().nullable(), country: z.string().nullable(), seasons: z.number() })
+    .nullable()
+    .optional(),
+  style: z
+    .object({
+      games: z.number(),
+      goldPerMinute: z.number(),
+      /** Opponent's gold over their own opponents', 1.12 = 12% more. */
+      goldVsOpponents: z.number().nullable(),
+      killsVsOpponents: z.number().nullable(),
+      upkeepGames: z.number(),
+      mercsPerGame: z.number(),
+    })
+    .nullable()
+    .optional(),
 });
 export type OpponentCard = z.infer<typeof opponentCardSchema>;
+export type OpponentIdentity = NonNullable<OpponentCard["identity"]>;
+export type OpponentStyle = NonNullable<OpponentCard["style"]>;
 
-type Game = { won: boolean; map: string; vsRace: CardRace; heroes: string[]; minutes: number; start: string };
+type Game = {
+  id: string;
+  won: boolean;
+  map: string;
+  vsRace: CardRace;
+  vsTag: string;
+  heroes: string[];
+  minutes: number;
+  start: string;
+};
 
 /** The opponent's games with the race they are playing now, newest first,
  *  de-duplicated by match id (seasons can overlap at the boundary). */
@@ -116,6 +156,8 @@ export function opponentGames(history: W3cMatch[], opponentTag: string, race: Ca
     if (!them || !other || typeof them.won !== "boolean") continue;
     if (race !== "random" && raceOf(them) !== race) continue;
     games.push({
+      id: match.id,
+      vsTag: other.battleTag,
       won: them.won,
       map: mapKey(match.mapName),
       vsRace: raceOf(other),
@@ -159,6 +201,9 @@ export function buildOpponentCard(live: LiveMatch, history: W3cMatch[]): Opponen
     .filter((p) => p.count >= MIN_OPENER_GAMES)
     .slice(0, OPENERS_SHOWN);
   const durationBase = useMatchup ? vsMine : games;
+  const versusMe = games.filter((g) => sameTag(g.vsTag, live.me.battleTag));
+  const wins = durationBase.filter((g) => g.won);
+  const reference = Date.parse(live.startTime);
 
   return {
     matchId: live.matchId,
@@ -186,5 +231,83 @@ export function buildOpponentCard(live: LiveMatch, history: W3cMatch[]): Opponen
       win: average(durationBase.filter((g) => g.won).map((g) => g.minutes)),
       loss: average(durationBase.filter((g) => !g.won).map((g) => g.minutes)),
     },
+    // From the opponent's side, so flip it: their losses are your wins.
+    headToHead: versusMe.length > 0 ? { wins: versusMe.filter((g) => !g.won).length, losses: versusMe.filter((g) => g.won).length } : null,
+    streak: streakOf(games),
+    gamesLast24h: Number.isNaN(reference)
+      ? 0
+      : games.filter((g) => {
+          const t = Date.parse(g.start);
+          return t <= reference && reference - t < DAY_MS;
+        }).length,
+    earlyWins: wins.length > 0 ? { count: wins.filter((g) => g.minutes < EARLY_GAME_MINUTES).length, of: wins.length } : null,
+  };
+}
+
+/** The opponent's current run of identical results, newest first. */
+function streakOf(games: Game[]): { result: "W" | "L"; length: number } | null {
+  if (games.length === 0) return null;
+  const first = games[0].won;
+  let length = 0;
+  while (length < games.length && games[length].won === first) length++;
+  return { result: first ? "W" : "L", length };
+}
+
+/** Match ids whose score sheets feed the play-style line: the opponent's
+ *  most recent games against your race, or all their games when there are
+ *  too few of those (same basis as the openers). */
+export function styleGameIds(card: OpponentCard, history: W3cMatch[], limit = STYLE_GAMES): string[] {
+  const games = opponentGames(history, card.opponent.battleTag, card.opponent.race);
+  const vsMine = games.filter((g) => g.vsRace === card.myRace);
+  const base = card.openersBasis === "vs-your-race" ? vsMine : games;
+  return base.slice(0, limit).map((g) => g.id);
+}
+
+/** Known-player name and how long they have been on the ladder. */
+export function buildIdentity(aka: W3cAka | null, profile: W3cProfile | null): OpponentIdentity | null {
+  if (!aka && !profile) return null;
+  return {
+    aka: aka?.name?.trim() || null,
+    country: aka?.country ? aka.country.toUpperCase() : null,
+    seasons: profile?.participatedInSeasons?.length ?? 0,
+  };
+}
+
+function ratio(mine: number, theirs: number): number | null {
+  return theirs > 0 ? Math.round((mine / theirs) * 100) / 100 : null;
+}
+
+/** Averages over the opponent's score sheets, relative to the players they
+ *  faced in those same games (raw totals mostly measure game length). */
+export function buildStyle(details: W3cMatchDetail[], opponentTag: string): OpponentStyle | null {
+  let gold = 0;
+  let goldOpp = 0;
+  let kills = 0;
+  let killsOpp = 0;
+  let minutes = 0;
+  let upkeepGames = 0;
+  let mercs = 0;
+  let games = 0;
+  for (const detail of details) {
+    const them = detail.playerScores.find((p) => sameTag(p.battleTag, opponentTag));
+    const other = detail.playerScores.find((p) => !sameTag(p.battleTag, opponentTag));
+    if (!them || !other || detail.match.durationInSeconds <= 0) continue;
+    games++;
+    minutes += detail.match.durationInSeconds / 60;
+    gold += them.resourceScore.goldCollected;
+    goldOpp += other.resourceScore.goldCollected;
+    kills += them.unitScore.unitsKilled;
+    killsOpp += other.unitScore.unitsKilled;
+    if (them.resourceScore.goldUpkeepLost > UPKEEP_NOTABLE_GOLD) upkeepGames++;
+    mercs += them.heroScore.mercsHired;
+  }
+  if (games === 0) return null;
+  return {
+    games,
+    goldPerMinute: Math.round(gold / minutes),
+    goldVsOpponents: ratio(gold, goldOpp),
+    killsVsOpponents: ratio(kills, killsOpp),
+    upkeepGames,
+    mercsPerGame: Math.round((mercs / games) * 10) / 10,
   };
 }

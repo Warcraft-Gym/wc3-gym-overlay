@@ -18,8 +18,24 @@ import { WINDOW_OPPONENT } from "./config";
 import { host } from "./host";
 import { OPPONENT, SETTINGS, type OpponentState } from "./store/keys";
 import { readKey, writeKey } from "./store/state";
-import { fetchMatchHistory, fetchOngoingMatch, fetchSeasonIds, type W3cMatch } from "./w3c/client";
-import { buildOpponentCard, readLiveMatch } from "./w3c/opponentCard";
+import {
+  fetchAka,
+  fetchMatchDetail,
+  fetchMatchHistory,
+  fetchOngoingMatch,
+  fetchProfile,
+  fetchSeasonIds,
+  type W3cMatch,
+  type W3cMatchDetail,
+} from "./w3c/client";
+import {
+  buildIdentity,
+  buildOpponentCard,
+  buildStyle,
+  readLiveMatch,
+  styleGameIds,
+  type OpponentCard,
+} from "./w3c/opponentCard";
 
 export const OPPONENT_POLL_MS = 15_000;
 export const OPPONENT_ERROR_BACKOFF_MS = 60_000;
@@ -29,11 +45,16 @@ export const HISTORY_CACHE_MS = 30 * 60_000;
 export const SEASONS_CACHE_MS = 12 * 60 * 60_000;
 /** Matches per season page; two seasons cover a regular's recent games. */
 export const HISTORY_PAGE_SIZE = 100;
+/** Score sheets are fetched this many at a time (polite to the API). */
+export const DETAIL_CONCURRENCY = 2;
 
 export type OpponentWatcherDeps = {
   fetchOngoingMatch: typeof fetchOngoingMatch;
   fetchSeasonIds: typeof fetchSeasonIds;
   fetchMatchHistory: typeof fetchMatchHistory;
+  fetchAka: typeof fetchAka;
+  fetchProfile: typeof fetchProfile;
+  fetchMatchDetail: typeof fetchMatchDetail;
   /** Opens the opponent window (it never takes focus, so the game keeps it). */
   showOpponentWindow: () => Promise<void>;
   now: () => number;
@@ -43,6 +64,9 @@ const defaultDeps: OpponentWatcherDeps = {
   fetchOngoingMatch,
   fetchSeasonIds,
   fetchMatchHistory,
+  fetchAka,
+  fetchProfile,
+  fetchMatchDetail,
   showOpponentWindow: () => host.showWindow(WINDOW_OPPONENT),
   now: () => Date.now(),
 };
@@ -52,9 +76,12 @@ export function isValidBattleTag(value: string): boolean {
   return /^[^#\s]{2,16}#\d{3,6}$/.test(value.trim());
 }
 
+type Extras = Pick<OpponentCard, "identity" | "style">;
+
 type Caches = {
   seasons: { ids: number[]; at: number } | null;
   history: Map<string, { matches: W3cMatch[]; at: number }>;
+  extras?: Map<string, { value: Extras; at: number }>;
 };
 
 function describe(err: unknown): string {
@@ -83,6 +110,35 @@ async function opponentHistory(tag: string, deps: OpponentWatcherDeps, caches: C
   const matches = pages.flat();
   caches.history.set(key, { matches, at: deps.now() });
   return matches;
+}
+
+async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += size) out.push(...(await Promise.all(items.slice(i, i + size).map(fn))));
+  return out;
+}
+
+/** Identity and play style: 2 + up to STYLE_GAMES requests, cached per
+ *  opponent like the history. A missing piece is null, never fatal. */
+async function opponentExtras(card: OpponentCard, history: W3cMatch[], deps: OpponentWatcherDeps, caches: Caches): Promise<Extras> {
+  const tag = card.opponent.battleTag;
+  const key = `${tag.toLowerCase()}|${card.myRace}`;
+  caches.extras ??= new Map();
+  const cached = caches.extras.get(key);
+  if (cached && deps.now() - cached.at < HISTORY_CACHE_MS) return cached.value;
+  const [aka, profile] = await Promise.all([
+    deps.fetchAka(tag).catch(() => null),
+    deps.fetchProfile(tag).catch(() => null),
+  ]);
+  const details = await inBatches(styleGameIds(card, history), DETAIL_CONCURRENCY, (id) =>
+    deps.fetchMatchDetail(id).catch((): W3cMatchDetail | null => null),
+  );
+  const value: Extras = {
+    identity: buildIdentity(aka, profile),
+    style: buildStyle(details.filter((d): d is W3cMatchDetail => d !== null), tag),
+  };
+  caches.extras.set(key, { value, at: deps.now() });
+  return value;
 }
 
 /** One poll. Returns the delay before the next one. Exported for tests. */
@@ -120,7 +176,14 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
   }
   try {
     const history = await opponentHistory(live.opponent.battleTag, deps, caches);
-    await write({ status: "ok", card: buildOpponentCard(live, history) }, deps.now());
+    const card = buildOpponentCard(live, history);
+    await write({ status: "ok", card: { ...card, extrasStatus: "loading" } }, deps.now());
+    // The basics are on screen; identity and play style follow.
+    const extras = await opponentExtras(card, history, deps, caches).then(
+      (value) => ({ ...value, extrasStatus: "ok" as const }),
+      () => ({ extrasStatus: "error" as const }),
+    );
+    if (readKey(OPPONENT).matchId === live.matchId) await write({ card: { ...card, ...extras } }, deps.now());
     return OPPONENT_POLL_MS;
   } catch (err) {
     console.warn("[wc3gym] could not build the opponent card", err);

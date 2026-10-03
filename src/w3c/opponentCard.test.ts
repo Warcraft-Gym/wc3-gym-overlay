@@ -2,10 +2,17 @@ import { describe, expect, it } from "vitest";
 import ongoing from "./__fixtures__/ongoing.ElTurry.json";
 import season24 from "./__fixtures__/search.d0wi.season24.json";
 import season25 from "./__fixtures__/search.d0wi.season25.json";
-import { w3cMatchSchema, type W3cMatch } from "./client";
+import akaD0wi from "./__fixtures__/aka.d0wi.json";
+import akaLife from "./__fixtures__/aka.Medusa.json";
+import detailsFixture from "./__fixtures__/match-details.d0wi.vsUndead.json";
+import profileD0wi from "./__fixtures__/player.d0wi.json";
+import { matchDetailSchema, w3cMatchSchema, type W3cMatch } from "./client";
 import { W3C_HEROES } from "./heroes";
 import {
+  buildIdentity,
   buildOpponentCard,
+  buildStyle,
+  styleGameIds,
   mapKey,
   opponentCardSchema,
   opponentGames,
@@ -129,5 +136,69 @@ describe("thin data", () => {
     const card = buildOpponentCard({ ...live, me: { battleTag: "Me#1", race: 0, rndRace: null } }, history);
     expect(card.vsMyRace).toBeNull();
     expect(card.openersBasis).toBe("all-games");
+  });
+});
+
+describe("extras computed from the history (real d0wi data)", () => {
+  const card = buildOpponentCard(live, history);
+
+  it("streak, activity and early wins", () => {
+    expect(card.streak).toEqual({ result: "W", length: 1 });
+    expect(card.gamesLast24h).toBe(8);
+    expect(card.earlyWins).toEqual({ count: 3, of: 12 });
+  });
+
+  it("no head-to-head when you never met", () => {
+    expect(card.headToHead).toBeNull();
+  });
+
+  it("head-to-head from your side when you did", () => {
+    const asShifu = buildOpponentCard({ ...live, me: { battleTag: "shifu#31833", race: 4, rndRace: null } }, history);
+    expect(asShifu.headToHead).toEqual({ wins: 0, losses: 1 });
+  });
+
+  it("picks the 8 most recent games against your race for the score sheets", () => {
+    expect(styleGameIds(card, history)).toEqual([
+      "6ac027418c6ce278894f6b14",
+      "6a11d8dfe406684e942f9465",
+      "6a11cb6ee406684e942f8ccc",
+      "6a118681e406684e942f671f",
+      "6a117da3e406684e942f6354",
+      "6a11794be406684e942f6148",
+      "6a10365f73588e6634d9f9ef",
+      "6a10296c73588e6634d9f5cd",
+    ]);
+  });
+});
+
+describe("buildStyle on d0wi's real score sheets", () => {
+  it("averages relative to the players he faced", () => {
+    const details = detailsFixture.map((d) => matchDetailSchema.parse(d));
+    expect(buildStyle(details, "d0wi#2726")).toEqual({
+      games: 8,
+      goldPerMinute: 560,
+      goldVsOpponents: 1.06,
+      killsVsOpponents: 1.22,
+      upkeepGames: 4,
+      mercsPerGame: 1.4,
+    });
+  });
+
+  it("is null without usable sheets", () => {
+    expect(buildStyle([], "d0wi#2726")).toBeNull();
+  });
+});
+
+describe("buildIdentity", () => {
+  it("names a known pro (real /aka response for Medusa#31315)", () => {
+    expect(buildIdentity(akaLife, null)).toEqual({ aka: "Life", country: "CN", seasons: 0 });
+  });
+
+  it("an unknown player keeps only the seasons played", () => {
+    expect(buildIdentity(akaD0wi, profileD0wi)).toEqual({ aka: null, country: null, seasons: 19 });
+  });
+
+  it("is null with nothing to go on", () => {
+    expect(buildIdentity(null, null)).toBeNull();
   });
 });

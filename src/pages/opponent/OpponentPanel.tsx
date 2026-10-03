@@ -63,6 +63,57 @@ function HeroIcons({ heroes, apiBase }: { heroes: string[]; apiBase: string }) {
   );
 }
 
+/** 1.06 → "+6%", 0.8 → "-20%". */
+export function formatRelative(ratio: number): string {
+  const pct = Math.round((ratio - 1) * 100);
+  return `${pct >= 0 ? "+" : "-"}${Math.abs(pct)}%`;
+}
+
+/** "aka Life · CN · 19 seasons", "19 seasons", "First season". */
+export function identityLine(identity: Card["identity"]): string | null {
+  if (!identity) return null;
+  const seasons = identity.seasons <= 1 ? "first season" : `${identity.seasons} seasons`;
+  if (!identity.aka) return seasons.charAt(0).toUpperCase() + seasons.slice(1);
+  return [`aka ${identity.aka}`, identity.country, seasons].filter(Boolean).join(" · ");
+}
+
+/** "3 wins in a row · 8 games in 24 h"; a single result is not a streak. */
+export function momentumLine(card: Card): string | null {
+  const parts: string[] = [];
+  if (card.streak && card.streak.length >= 2) {
+    parts.push(card.streak.result === "W" ? `${card.streak.length} wins in a row` : `${card.streak.length} losses in a row`);
+  }
+  if (card.gamesLast24h) parts.push(`${card.gamesLast24h} game${card.gamesLast24h === 1 ? "" : "s"} in 24 h`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function StyleSection({ card, apiBase }: { card: Card; apiBase: string }) {
+  if (card.extrasStatus === "loading") return <p className="opponent-card__note">Loading play style…</p>;
+  const style = card.style;
+  if (!style) return null;
+  return (
+    <div className="opponent-card__openers">
+      <p className="opponent-card__kicker">
+        Play style · last {style.games}
+        {card.openersBasis === "vs-your-race" ? (
+          <>
+            {" "}
+            vs <RaceIcon race={card.myRace} apiBase={apiBase} size={14} />
+          </>
+        ) : null}
+      </p>
+      <p>
+        {style.goldPerMinute} gold/min
+        {style.goldVsOpponents !== null ? ` · ${formatRelative(style.goldVsOpponents)} gold vs his opponents` : ""}
+      </p>
+      {style.killsVsOpponents !== null ? <p>{formatRelative(style.killsVsOpponents)} kills vs his opponents</p> : null}
+      <p className="opponent-card__faint">
+        Into upkeep in {style.upkeepGames} of {style.games} · {style.mercsPerGame} mercs per game
+      </p>
+    </div>
+  );
+}
+
 function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
   const { opponent } = card;
   const meta = [opponent.mmr !== null ? `${opponent.mmr} MMR` : null, opponent.rank !== null ? `rank ${opponent.rank}` : null, opponent.location]
@@ -70,6 +121,7 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
     .join(" · ");
   return (
     <>
+      {identityLine(card.identity) ? <p className="opponent-card__identity">{identityLine(card.identity)}</p> : null}
       {meta ? <p className="opponent-card__meta">{meta}</p> : null}
       {card.sampleSize === 0 ? (
         <p className="opponent-card__note">No ladder games found for this opponent yet.</p>
@@ -83,6 +135,7 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
             ))}
             <span className="opponent-card__faint">{card.sampleSize} games</span>
           </p>
+          {momentumLine(card) ? <p className="opponent-card__meta">{momentumLine(card)}</p> : null}
           <dl className="opponent-card__stats">
             {card.vsMyRace ? (
               <>
@@ -94,6 +147,20 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
             ) : null}
             <dt>on {card.map}</dt>
             <dd>{formatRecord(card.onMap)}</dd>
+            {card.headToHead ? (
+              <>
+                <dt>You vs them</dt>
+                <dd>{formatRecord(card.headToHead)}</dd>
+              </>
+            ) : null}
+            {card.earlyWins && card.earlyWins.of > 0 ? (
+              <>
+                <dt>Wins before 10 min</dt>
+                <dd>
+                  {card.earlyWins.count} of {card.earlyWins.of}
+                </dd>
+              </>
+            ) : null}
           </dl>
           {card.firstHero ? (
             <div className="opponent-card__openers">
@@ -125,6 +192,7 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
               ))}
             </div>
           ) : null}
+          <StyleSection card={card} apiBase={apiBase} />
           {card.thinSample ? <p className="opponent-card__note">Few games, take the numbers lightly.</p> : null}
         </>
       )}

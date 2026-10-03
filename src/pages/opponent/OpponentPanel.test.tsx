@@ -6,9 +6,12 @@ import { OPPONENT, SETTINGS, type OpponentState } from "../../store/keys";
 import { readKey, writeKey } from "../../store/state";
 import season24 from "../../w3c/__fixtures__/search.d0wi.season24.json";
 import season25 from "../../w3c/__fixtures__/search.d0wi.season25.json";
-import { w3cMatchSchema } from "../../w3c/client";
-import { buildOpponentCard, type LiveMatch } from "../../w3c/opponentCard";
-import { emptyMessage, formatRecord, OpponentPanel } from "./OpponentPanel";
+import akaLife from "../../w3c/__fixtures__/aka.Medusa.json";
+import detailsFixture from "../../w3c/__fixtures__/match-details.d0wi.vsUndead.json";
+import profileD0wi from "../../w3c/__fixtures__/player.d0wi.json";
+import { matchDetailSchema, w3cMatchSchema } from "../../w3c/client";
+import { buildIdentity, buildOpponentCard, buildStyle, type LiveMatch } from "../../w3c/opponentCard";
+import { emptyMessage, formatRecord, formatRelative, identityLine, momentumLine, OpponentPanel } from "./OpponentPanel";
 
 const history = [...season25.matches, ...season24.matches].map((m) => w3cMatchSchema.parse(m));
 const live: LiveMatch = {
@@ -106,5 +109,60 @@ describe("OpponentPanel", () => {
     await show(state());
     fireEvent.click(screen.getByRole("button", { name: "Hide opponent window" }));
     expect(hide).toHaveBeenCalledWith(WINDOW_OPPONENT);
+  });
+});
+
+const withExtras = {
+  ...card,
+  extrasStatus: "ok" as const,
+  identity: buildIdentity(akaLife, profileD0wi),
+  style: buildStyle(detailsFixture.map((d) => matchDetailSchema.parse(d)), "d0wi#2726"),
+};
+
+describe("extras formatting", () => {
+  it("formatRelative", () => {
+    expect(formatRelative(1.06)).toBe("+6%");
+    expect(formatRelative(1.22)).toBe("+22%");
+    expect(formatRelative(0.8)).toBe("-20%");
+    expect(formatRelative(1)).toBe("+0%");
+  });
+
+  it("identityLine", () => {
+    expect(identityLine({ aka: "Life", country: "CN", seasons: 19 })).toBe("aka Life · CN · 19 seasons");
+    expect(identityLine({ aka: "Life", country: null, seasons: 1 })).toBe("aka Life · first season");
+    expect(identityLine({ aka: null, country: null, seasons: 19 })).toBe("19 seasons");
+    expect(identityLine({ aka: null, country: null, seasons: 1 })).toBe("First season");
+    expect(identityLine(null)).toBeNull();
+  });
+
+  it("momentumLine skips a single result", () => {
+    expect(momentumLine(card)).toBe("8 games in 24 h");
+    expect(momentumLine({ ...card, streak: { result: "L", length: 3 }, gamesLast24h: 1 })).toBe("3 losses in a row · 1 game in 24 h");
+    expect(momentumLine({ ...card, streak: { result: "W", length: 1 }, gamesLast24h: 0 })).toBeNull();
+  });
+});
+
+describe("OpponentPanel with extras (real d0wi data, Life's aka)", () => {
+  it("shows identity, momentum, early wins and play style", async () => {
+    await show(state({ card: withExtras }));
+    expect(screen.getByText("aka Life · CN · 19 seasons")).toBeTruthy();
+    expect(screen.getByText("8 games in 24 h")).toBeTruthy();
+    expect(screen.getByText("Wins before 10 min")).toBeTruthy();
+    expect(screen.getByText("3 of 12")).toBeTruthy();
+    expect(screen.getByText(/560 gold\/min · \+6% gold vs his opponents/)).toBeTruthy();
+    expect(screen.getByText("+22% kills vs his opponents")).toBeTruthy();
+    expect(screen.getByText("Into upkeep in 4 of 8 · 1.4 mercs per game")).toBeTruthy();
+    expect(screen.queryByText("You vs them")).toBeNull();
+  });
+
+  it("shows the head-to-head when you have met", async () => {
+    await show(state({ card: { ...withExtras, headToHead: { wins: 2, losses: 1 } } }));
+    expect(screen.getByText("You vs them")).toBeTruthy();
+    expect(screen.getByText("2–1 (67%)")).toBeTruthy();
+  });
+
+  it("says the play style is loading", async () => {
+    await show(state({ card: { ...card, extrasStatus: "loading" } }));
+    expect(screen.getByText("Loading play style…")).toBeTruthy();
   });
 });

@@ -412,3 +412,8 @@
   align-items: center;
   gap: 0.3rem;
 }
+
+.opponent-card__identity {
+  font-weight: 600;
+  color: var(--wg-gold);
+}
