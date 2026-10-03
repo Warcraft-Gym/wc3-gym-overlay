@@ -47,7 +47,7 @@
         "title": "Opponent",
         "url": "opponent.html",
         "width": 340,
-        "height": 330,
+        "height": 480,
         "minWidth": 260,
         "minHeight": 180,
         "transparent": true,

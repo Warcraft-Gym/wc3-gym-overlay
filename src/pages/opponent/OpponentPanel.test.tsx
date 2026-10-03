@@ -11,7 +11,16 @@ import detailsFixture from "../../w3c/__fixtures__/match-details.d0wi.vsUndead.j
 import profileD0wi from "../../w3c/__fixtures__/player.d0wi.json";
 import { matchDetailSchema, w3cMatchSchema } from "../../w3c/client";
 import { buildIdentity, buildOpponentCard, buildStyle, type LiveMatch } from "../../w3c/opponentCard";
-import { emptyMessage, formatRecord, formatRelative, identityLine, momentumLine, OpponentPanel } from "./OpponentPanel";
+import {
+  emptyMessage,
+  formatRecord,
+  formatRelative,
+  identityLine,
+  momentumLine,
+  OpponentPanel,
+  phasesLine,
+  winLossSuffix,
+} from "./OpponentPanel";
 
 const history = [...season25.matches, ...season24.matches].map((m) => w3cMatchSchema.parse(m));
 const live: LiveMatch = {
@@ -70,9 +79,9 @@ describe("OpponentPanel", () => {
     expect(screen.getAllByText("Undead")).toHaveLength(2);
     expect(screen.getByText(/^Opens vs/)).toBeTruthy();
     expect(screen.queryByText(/Night Elf ·/)).toBeNull();
-    expect(screen.getByText("15 of 18")).toBeTruthy();
-    expect(screen.getByText("11 of 18")).toBeTruthy();
-    expect(screen.getByText("2 of 18")).toBeTruthy();
+    expect(screen.getByText("15 of 18 · 9–6")).toBeTruthy();
+    expect(screen.getByText("11 of 18 · 6–5")).toBeTruthy();
+    expect(screen.getByText("2 of 18 · 2–0")).toBeTruthy();
     expect(screen.getByLabelText("Recent form, newest first: W L W W W L L W L L")).toBeTruthy();
     expect(screen.queryByText("Last game")).toBeNull();
   });
@@ -164,5 +173,35 @@ describe("OpponentPanel with extras (real d0wi data, Life's aka)", () => {
   it("says the play style is loading", async () => {
     await show(state({ card: { ...card, extrasStatus: "loading" } }));
     expect(screen.getByText("Loading play style…")).toBeTruthy();
+  });
+});
+
+describe("top picks (real d0wi data)", () => {
+  const top = {
+    ...withExtras,
+    winChance: 0.53,
+    myRecord: { vsRace: { wins: 12, losses: 6 }, onMap: { wins: 1, losses: 1 } },
+  };
+
+  it("formatters", () => {
+    expect(winLossSuffix({ wins: 6, losses: 5 })).toBe(" · 6–5");
+    expect(winLossSuffix({})).toBe("");
+    expect(phasesLine(card.phases)).toBe("Under 10 min 3–1 · 10–20 min 6–2 · 20+ min 3–3");
+    expect(phasesLine({ early: { wins: 0, losses: 0 }, mid: { wins: 1, losses: 0 }, late: { wins: 0, losses: 0 } })).toBe("10–20 min 1–0");
+    expect(phasesLine(null)).toBeNull();
+  });
+
+  it("shows win chance, game length, opener records, hero kills and your record", async () => {
+    await show(state({ card: top }));
+    expect(screen.getByText("Your win chance")).toBeTruthy();
+    expect(screen.getByText("53% (MMR)")).toBeTruthy();
+    expect(screen.getByText("Under 10 min 3–1 · 10–20 min 6–2 · 20+ min 3–3")).toBeTruthy();
+    expect(screen.getByText("15 of 18 · 9–6")).toBeTruthy();
+    expect(screen.getByText("11 of 18 · 6–5")).toBeTruthy();
+    expect(screen.getByText("2 of 18 · 2–0")).toBeTruthy();
+    expect(screen.getByText("Hero kills 0.8 per game · loses 2.1")).toBeTruthy();
+    expect(screen.getByText("Your games on Hammerfall")).toBeTruthy();
+    expect(screen.getByText("1–1 (50%)")).toBeTruthy();
+    expect(screen.getAllByText("12–6 (67%)")).toHaveLength(2); // their record vs you-race, and yours vs their race
   });
 });

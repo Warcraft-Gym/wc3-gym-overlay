@@ -40,6 +40,15 @@ export const STYLE_GAMES = 8;
 /** Gold lost to upkeep above this in a game counts as "into upkeep". */
 export const UPKEEP_NOTABLE_GOLD = 500;
 const DAY_MS = 24 * 60 * 60_000;
+/** Games from this length on count as late. */
+export const LATE_GAME_MINUTES = 20;
+/**
+ * Elo-style scale for the MMR win chance, fitted (log loss) to 1,730
+ * player-games of real W3Champions 1v1 results captured 2026-10-03. The
+ * textbook 400 was overconfident (predicted 64% won 59%, 74% won 61%):
+ * matchmaking pairs similar players, so MMR gaps say less than chess Elo.
+ */
+export const MMR_WIN_SCALE = 675;
 
 export function raceOf(player: Pick<W3cPlayer, "race" | "rndRace">): CardRace {
   const random = player.rndRace !== null && player.rndRace !== undefined ? RACE_BY_ID[player.rndRace] : undefined;
@@ -100,8 +109,12 @@ export const opponentCardSchema = z.object({
   onMap: recordSchema,
   openersBasis: z.enum(["vs-your-race", "all-games"]),
   openerGames: z.number(),
-  firstHero: z.object({ hero: z.string(), count: z.number() }).nullable(),
-  openers: z.array(z.object({ heroes: z.array(z.string()), count: z.number() })),
+  firstHero: z
+    .object({ hero: z.string(), count: z.number(), wins: z.number().optional(), losses: z.number().optional() })
+    .nullable(),
+  openers: z.array(
+    z.object({ heroes: z.array(z.string()), count: z.number(), wins: z.number().optional(), losses: z.number().optional() }),
+  ),
   avgMinutes: z.object({ win: z.number().nullable(), loss: z.number().nullable() }),
   // Added after the first local beta: optional so stored cards still parse.
   headToHead: recordSchema.nullable().optional(),
@@ -109,6 +122,12 @@ export const opponentCardSchema = z.object({
   gamesLast24h: z.number().optional(),
   earlyWins: z.object({ count: z.number(), of: z.number() }).nullable().optional(),
   extrasStatus: z.enum(["loading", "ok", "error"]).optional(),
+  /** Your expected win probability from the MMR gap (0..1), or null. */
+  winChance: z.number().nullable().optional(),
+  /** Their record by game length (same basis as the openers). */
+  phases: z.object({ early: recordSchema, mid: recordSchema, late: recordSchema }).nullable().optional(),
+  /** Your own record with your race against theirs, overall and on this map. */
+  myRecord: z.object({ vsRace: recordSchema, onMap: recordSchema }).nullable().optional(),
   identity: z
     .object({ aka: z.string().nullable(), country: z.string().nullable(), seasons: z.number() })
     .nullable()
@@ -122,6 +141,8 @@ export const opponentCardSchema = z.object({
       killsVsOpponents: z.number().nullable(),
       upkeepGames: z.number(),
       mercsPerGame: z.number(),
+      heroKillsPerGame: z.number().optional(),
+      opponentHeroKillsPerGame: z.number().optional(),
     })
     .nullable()
     .optional(),
@@ -197,6 +218,7 @@ export function buildOpponentCard(live: LiveMatch, history: W3cMatch[]): Opponen
   const openerBase = (useMatchup ? vsMine : games).filter((g) => g.heroes.length > 0);
 
   const first = mostCommon(openerBase.map((g) => g.heroes[0]))[0];
+  const recordWhere = (pick: (g: Game) => boolean) => record(openerBase.filter(pick));
   const pairs = mostCommon(openerBase.filter((g) => g.heroes.length >= 2).map((g) => g.heroes.slice(0, 2).join("+")))
     .filter((p) => p.count >= MIN_OPENER_GAMES)
     .slice(0, OPENERS_SHOWN);
@@ -225,8 +247,12 @@ export function buildOpponentCard(live: LiveMatch, history: W3cMatch[]): Opponen
     onMap: record(games.filter((g) => g.map === mapKey(live.map))),
     openersBasis: useMatchup ? "vs-your-race" : "all-games",
     openerGames: openerBase.length,
-    firstHero: first ? { hero: first.key, count: first.count } : null,
-    openers: pairs.map((p) => ({ heroes: p.key.split("+"), count: p.count })),
+    firstHero: first ? { hero: first.key, count: first.count, ...recordWhere((g) => g.heroes[0] === first.key) } : null,
+    openers: pairs.map((p) => ({
+      heroes: p.key.split("+"),
+      count: p.count,
+      ...recordWhere((g) => g.heroes.slice(0, 2).join("+") === p.key),
+    })),
     avgMinutes: {
       win: average(durationBase.filter((g) => g.won).map((g) => g.minutes)),
       loss: average(durationBase.filter((g) => !g.won).map((g) => g.minutes)),
@@ -241,6 +267,15 @@ export function buildOpponentCard(live: LiveMatch, history: W3cMatch[]): Opponen
           return t <= reference && reference - t < DAY_MS;
         }).length,
     earlyWins: wins.length > 0 ? { count: wins.filter((g) => g.minutes < EARLY_GAME_MINUTES).length, of: wins.length } : null,
+    winChance: winChance(live.me.oldMmr, live.opponent.oldMmr),
+    phases:
+      durationBase.length > 0
+        ? {
+            early: record(durationBase.filter((g) => g.minutes < EARLY_GAME_MINUTES)),
+            mid: record(durationBase.filter((g) => g.minutes >= EARLY_GAME_MINUTES && g.minutes < LATE_GAME_MINUTES)),
+            late: record(durationBase.filter((g) => g.minutes >= LATE_GAME_MINUTES)),
+          }
+        : null,
   };
 }
 
@@ -287,6 +322,8 @@ export function buildStyle(details: W3cMatchDetail[], opponentTag: string): Oppo
   let minutes = 0;
   let upkeepGames = 0;
   let mercs = 0;
+  let heroKills = 0;
+  let heroKillsOpp = 0;
   let games = 0;
   for (const detail of details) {
     const them = detail.playerScores.find((p) => sameTag(p.battleTag, opponentTag));
@@ -300,6 +337,8 @@ export function buildStyle(details: W3cMatchDetail[], opponentTag: string): Oppo
     killsOpp += other.unitScore.unitsKilled;
     if (them.resourceScore.goldUpkeepLost > UPKEEP_NOTABLE_GOLD) upkeepGames++;
     mercs += them.heroScore.mercsHired;
+    heroKills += them.heroScore.heroesKilled;
+    heroKillsOpp += other.heroScore.heroesKilled;
   }
   if (games === 0) return null;
   return {
@@ -309,5 +348,28 @@ export function buildStyle(details: W3cMatchDetail[], opponentTag: string): Oppo
     killsVsOpponents: ratio(kills, killsOpp),
     upkeepGames,
     mercsPerGame: Math.round((mercs / games) * 10) / 10,
+    heroKillsPerGame: Math.round((heroKills / games) * 10) / 10,
+    opponentHeroKillsPerGame: Math.round((heroKillsOpp / games) * 10) / 10,
   };
+}
+
+/** Your expected win probability from the MMR gap (see MMR_WIN_SCALE). */
+export function winChance(myMmr: number | null | undefined, theirMmr: number | null | undefined): number | null {
+  if (typeof myMmr !== "number" || typeof theirMmr !== "number") return null;
+  const p = 1 / (1 + 10 ** (-(myMmr - theirMmr) / MMR_WIN_SCALE));
+  return Math.round(p * 100) / 100;
+}
+
+/** Your own results with your race against their race, overall and on this
+ *  map, from your match history. */
+export function buildMyRecord(
+  myHistory: W3cMatch[],
+  myTag: string,
+  myRace: CardRace,
+  theirRace: CardRace,
+  map: string,
+): NonNullable<OpponentCard["myRecord"]> | null {
+  if (myRace === "random") return null;
+  const mine = opponentGames(myHistory, myTag, myRace).filter((g) => theirRace === "random" || g.vsRace === theirRace);
+  return { vsRace: record(mine), onMap: record(mine.filter((g) => g.map === mapKey(map))) };
 }

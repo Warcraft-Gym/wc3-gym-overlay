@@ -63,6 +63,25 @@ function HeroIcons({ heroes, apiBase }: { heroes: string[]; apiBase: string }) {
   );
 }
 
+/** " · 6–5" when the opener's record is known. */
+export function winLossSuffix(o: { wins?: number; losses?: number }): string {
+  return typeof o.wins === "number" && typeof o.losses === "number" ? ` · ${o.wins}–${o.losses}` : "";
+}
+
+/** "Under 10 min 3–1 · 10–20 min 6–2 · 20+ min 3–3", skipping empty buckets. */
+export function phasesLine(phases: Card["phases"]): string | null {
+  if (!phases) return null;
+  const buckets: { label: string; record: WinLoss }[] = [
+    { label: "Under 10 min", record: phases.early },
+    { label: "10–20 min", record: phases.mid },
+    { label: "20+ min", record: phases.late },
+  ];
+  const parts = buckets
+    .filter(({ record }) => record.wins + record.losses > 0)
+    .map(({ label, record }) => `${label} ${record.wins}–${record.losses}`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 /** 1.06 → "+6%", 0.8 → "-20%". */
 export function formatRelative(ratio: number): string {
   const pct = Math.round((ratio - 1) * 100);
@@ -107,6 +126,11 @@ function StyleSection({ card, apiBase }: { card: Card; apiBase: string }) {
         {style.goldVsOpponents !== null ? ` · ${formatRelative(style.goldVsOpponents)} gold vs his opponents` : ""}
       </p>
       {style.killsVsOpponents !== null ? <p>{formatRelative(style.killsVsOpponents)} kills vs his opponents</p> : null}
+      {typeof style.heroKillsPerGame === "number" ? (
+        <p>
+          Hero kills {style.heroKillsPerGame} per game · loses {style.opponentHeroKillsPerGame ?? 0}
+        </p>
+      ) : null}
       <p className="opponent-card__faint">
         Into upkeep in {style.upkeepGames} of {style.games} · {style.mercsPerGame} mercs per game
       </p>
@@ -136,7 +160,14 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
             <span className="opponent-card__faint">{card.sampleSize} games</span>
           </p>
           {momentumLine(card) ? <p className="opponent-card__meta">{momentumLine(card)}</p> : null}
+          {phasesLine(card.phases) ? <p className="opponent-card__meta">{phasesLine(card.phases)}</p> : null}
           <dl className="opponent-card__stats">
+            {typeof card.winChance === "number" ? (
+              <>
+                <dt>Your win chance</dt>
+                <dd>{Math.round(card.winChance * 100)}% (MMR)</dd>
+              </>
+            ) : null}
             {card.vsMyRace ? (
               <>
                 <dt>
@@ -151,6 +182,16 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
               <>
                 <dt>You vs them</dt>
                 <dd>{formatRecord(card.headToHead)}</dd>
+              </>
+            ) : null}
+            {card.myRecord ? (
+              <>
+                <dt>
+                  Your games vs <RaceIcon race={card.opponent.race} apiBase={apiBase} />
+                </dt>
+                <dd>{formatRecord(card.myRecord.vsRace)}</dd>
+                <dt>Your games on {card.map}</dt>
+                <dd>{formatRecord(card.myRecord.onMap)}</dd>
               </>
             ) : null}
             {card.earlyWins && card.earlyWins.of > 0 ? (
@@ -179,14 +220,14 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
                   <span>first</span>
                 </span>
                 <span className="opponent-card__faint">
-                  {card.firstHero.count} of {card.openerGames}
+                  {card.firstHero.count} of {card.openerGames}{winLossSuffix(card.firstHero)}
                 </span>
               </p>
               {card.openers.map((o) => (
                 <p key={o.heroes.join("+")} className="opponent-card__opener">
                   <HeroIcons heroes={o.heroes} apiBase={apiBase} />
                   <span className="opponent-card__faint">
-                    {o.count} of {card.openerGames}
+                    {o.count} of {card.openerGames}{winLossSuffix(o)}
                   </span>
                 </p>
               ))}

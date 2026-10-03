@@ -30,6 +30,7 @@ import {
 } from "./w3c/client";
 import {
   buildIdentity,
+  buildMyRecord,
   buildOpponentCard,
   buildStyle,
   readLiveMatch,
@@ -193,7 +194,10 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
       (value) => ({ ...value, extrasStatus: "ok" as const }),
       () => ({ extrasStatus: "error" as const }),
     );
-    if (readKey(OPPONENT).matchId === live.matchId) await write({ card: { ...card, ...extras } }, deps.now());
+    // Your own record in this matchup: your history, cached like theirs.
+    const myHistory = await opponentHistory(tag, deps, caches).catch(() => null);
+    const myRecord = myHistory ? buildMyRecord(myHistory, tag, card.myRace, card.opponent.race, card.map) : null;
+    if (readKey(OPPONENT).matchId === live.matchId) await write({ card: { ...card, ...extras, myRecord } }, deps.now());
     return OPPONENT_POLL_MS;
   } catch (err) {
     console.warn("[wc3gym] could not build the opponent card", err);

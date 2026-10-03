@@ -79,8 +79,14 @@ describe("pollOnce", () => {
     expect(state.live).toBe(true);
     expect(state.matchId).toBe(liveMatch.id);
     expect(state.card?.opponent.battleTag).toBe(opponentTag);
-    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(d.fetchMatchHistory).mock.calls.map((c) => c[1])).toEqual([25, 24]);
+    // The opponent's two seasons, then your own two (for "your record").
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(4);
+    expect(vi.mocked(d.fetchMatchHistory).mock.calls.map((c) => [c[0], c[1]])).toEqual([
+      [opponentTag, 25],
+      [opponentTag, 24],
+      ["ElTurry#1520", 25],
+      ["ElTurry#1520", 24],
+    ]);
   });
 
   it("opens the opponent window once per new match, unless switched off", async () => {
@@ -126,7 +132,18 @@ describe("pollOnce", () => {
     const card = readKey(OPPONENT).card!;
     expect(card.extrasStatus).toBe("ok");
     expect(card.identity).toEqual({ aka: "Life", country: "CN", seasons: 19 });
-    expect(card.style).toEqual({ games: 8, goldPerMinute: 560, goldVsOpponents: 1.06, killsVsOpponents: 1.22, upkeepGames: 4, mercsPerGame: 1.4 });
+    expect(card.style).toEqual({
+      games: 8,
+      goldPerMinute: 560,
+      goldVsOpponents: 1.06,
+      killsVsOpponents: 1.22,
+      upkeepGames: 4,
+      mercsPerGame: 1.4,
+      heroKillsPerGame: 0.8,
+      opponentHeroKillsPerGame: 2.1,
+    });
+    // Your own history is d0wi's too in this test, cast as Undead: no Undead games, so 0-0.
+    expect(card.myRecord).toEqual({ vsRace: { wins: 0, losses: 0 }, onMap: { wins: 0, losses: 0 } });
     expect(d.fetchMatchDetail).toHaveBeenCalledTimes(8);
     expect(d.fetchAka).toHaveBeenCalledWith("d0wi#2726");
   });
@@ -172,10 +189,10 @@ describe("pollOnce", () => {
     const caches = freshCaches();
     await pollOnce(d, caches);
     expect(readKey(OPPONENT).card?.extrasStatus).toBe("ok");
-    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2);
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(4);
     expect(d.showOpponentWindow).not.toHaveBeenCalled(); // not a new game: no surprise pop-up
     await pollOnce(d, caches);
-    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2); // only once per run
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(4); // only once per run
   });
 
   it("makes one request per poll while the same match is live", async () => {
@@ -186,7 +203,7 @@ describe("pollOnce", () => {
     await pollOnce(d, caches);
     await pollOnce(d, caches);
     expect(d.fetchOngoingMatch).toHaveBeenCalledTimes(3);
-    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2);
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(4);
   });
 
   it("reuses a cached opponent history for a rematch", async () => {
@@ -198,7 +215,7 @@ describe("pollOnce", () => {
     id = "m2";
     await pollOnce(d, caches);
     expect(readKey(OPPONENT).matchId).toBe("m2");
-    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2);
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(4);
   });
 
   it("marks the card not live when the game ends, keeping it", async () => {

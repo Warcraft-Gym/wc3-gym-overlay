@@ -10,9 +10,11 @@ import { matchDetailSchema, w3cMatchSchema, type W3cMatch } from "./client";
 import { W3C_HEROES } from "./heroes";
 import {
   buildIdentity,
+  buildMyRecord,
   buildOpponentCard,
   buildStyle,
   styleGameIds,
+  winChance,
   mapKey,
   opponentCardSchema,
   opponentGames,
@@ -101,11 +103,12 @@ describe("buildOpponentCard on the real d0wi history", () => {
   it("openers against your race", () => {
     expect(card.openersBasis).toBe("vs-your-race");
     expect(card.openerGames).toBe(18);
-    expect(card.firstHero).toEqual({ hero: "demonhunter", count: 15 });
+    expect(card.firstHero).toEqual({ hero: "demonhunter", count: 15, wins: 9, losses: 6 });
     expect(card.openers).toEqual([
-      { heroes: ["demonhunter", "seawitch"], count: 11 },
-      { heroes: ["pandarenbrewmaster", "demonhunter"], count: 2 },
+      { heroes: ["demonhunter", "seawitch"], count: 11, wins: 6, losses: 5 },
+      { heroes: ["pandarenbrewmaster", "demonhunter"], count: 2, wins: 2, losses: 0 },
     ]);
+    expect(card.phases).toEqual({ early: { wins: 3, losses: 1 }, mid: { wins: 6, losses: 2 }, late: { wins: 3, losses: 3 } });
     expect(card.avgMinutes).toEqual({ win: 16, loss: 19 });
   });
 
@@ -181,6 +184,8 @@ describe("buildStyle on d0wi's real score sheets", () => {
       killsVsOpponents: 1.22,
       upkeepGames: 4,
       mercsPerGame: 1.4,
+      heroKillsPerGame: 0.8,
+      opponentHeroKillsPerGame: 2.1,
     });
   });
 
@@ -200,5 +205,33 @@ describe("buildIdentity", () => {
 
   it("is null with nothing to go on", () => {
     expect(buildIdentity(null, null)).toBeNull();
+  });
+});
+
+describe("winChance (Elo scale fitted to real W3C results)", () => {
+  it("is 50% at equal MMR and moves gently with the gap", () => {
+    expect(winChance(1858, 1858)).toBe(0.5);
+    expect(winChance(1744, 1711)).toBe(0.53);
+    expect(winChance(2187, 2513)).toBe(0.25);
+    expect(winChance(null, 1858)).toBeNull();
+  });
+
+  it("is on the card when both MMRs are known", () => {
+    const card = buildOpponentCard({ ...live, me: { ...live.me, oldMmr: 1744 }, opponent: { ...live.opponent, oldMmr: 1711 } }, history);
+    expect(card.winChance).toBe(0.53);
+    expect(buildOpponentCard(live, history).winChance).toBeNull();
+  });
+});
+
+describe("buildMyRecord", () => {
+  it("your race against theirs, overall and on this map (d0wi's history as 'you')", () => {
+    expect(buildMyRecord(history, "d0wi#2726", "nightelf", "undead", "Hammerfall")).toEqual({
+      vsRace: { wins: 12, losses: 6 },
+      onMap: { wins: 1, losses: 1 },
+    });
+  });
+
+  it("is null when you play random", () => {
+    expect(buildMyRecord(history, "d0wi#2726", "random", "undead", "Hammerfall")).toBeNull();
   });
 });
