@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Search } from "lucide-react";
 import type { BuildRace, BuildVsRace } from "../../components/BuildBadges";
 import { cn } from "../../lib/cn";
@@ -120,15 +119,12 @@ export function FilterBar({
   onChange,
   matchCount,
   totalCount,
-  actions,
 }: {
   apiBase: string;
   filters: Filters;
   onChange: (next: Filters) => void;
   matchCount: number;
   totalCount: number;
-  /** The Builds tab's own actions, at the end of the race row. */
-  actions?: ReactNode;
 }) {
   const active = hasActiveFilters(filters);
 
@@ -147,7 +143,6 @@ export function FilterBar({
         <RaceToggles label="Your race" value={filters.race ?? "any"} apiBase={apiBase} onPick={pickRace} />
         <span className="font-display text-sm font-extrabold uppercase tracking-[0.2em] text-foil">vs</span>
         <RaceToggles label="Against" value={(filters.vsRace as RaceChoice | undefined) ?? "any"} apiBase={apiBase} onPick={pickVsRace} />
-        {actions ? <div className="ml-auto">{actions}</div> : null}
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

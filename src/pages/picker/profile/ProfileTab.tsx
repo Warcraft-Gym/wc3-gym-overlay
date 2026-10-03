@@ -5,6 +5,8 @@ import { relativeTime } from "../../../lib/relativeTime";
 import { isValidBattleTag } from "../../../opponentWatcher";
 import { refreshProfile } from "../../../profileLoader";
 import { OPPONENT, PROFILE, SETTINGS } from "../../../store/keys";
+import { updateKey } from "../../../store/state";
+import type { ProfilePick } from "../../../w3c/profile";
 import { useStoreValue } from "../../../store/useStore";
 import { ProfileView } from "./ProfileView";
 
@@ -74,5 +76,9 @@ export function ProfileTab({ onOpenSettings }: { onOpenSettings: () => void }) {
       </section>
     );
   }
-  return <ProfileView profile={profile} apiBase={settings.apiBase} actions={refresh} />;
+  async function pickRace(race: ProfilePick): Promise<void> {
+    await updateKey(SETTINGS, (s) => ({ ...s, profileRace: race }));
+    await refreshProfile();
+  }
+  return <ProfileView profile={profile} apiBase={settings.apiBase} actions={refresh} onRace={(race) => void pickRace(race)} />;
 }

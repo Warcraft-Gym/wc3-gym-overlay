@@ -6,7 +6,7 @@ import profileD0wi from "./w3c/__fixtures__/player.d0wi.json";
 import season24 from "./w3c/__fixtures__/search.d0wi.season24.json";
 import season25 from "./w3c/__fixtures__/search.d0wi.season25.json";
 import detailsFixture from "./w3c/__fixtures__/match-details.d0wi.vsUndead.json";
-import { loadProfile, needsRefresh, PROFILE_TTL_MS, refreshProfile, type ProfileDeps } from "./profileLoader";
+import { clearProfileCache, loadProfile, needsRefresh, PROFILE_TTL_MS, refreshProfile, type ProfileDeps } from "./profileLoader";
 import { PROFILE, SETTINGS } from "./store/keys";
 import { readKey, writeKey } from "./store/state";
 import { matchDetailSchema, w3cMatchSchema } from "./w3c/client";
@@ -29,7 +29,10 @@ function deps(overrides: Partial<ProfileDeps> = {}): ProfileDeps {
   };
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  clearProfileCache();
+});
 
 describe("loadProfile", () => {
   it("builds d0wi's profile from both seasons, the ladder stats and 8 score sheets", async () => {
@@ -81,12 +84,39 @@ describe("refreshProfile", () => {
   });
 });
 
+describe("switching race", () => {
+  it("reloads for the new race without fetching the history again", async () => {
+    await writeKey(SETTINGS, { ...readKey(SETTINGS), myBattleTag: D0WI });
+    const d = deps();
+    await refreshProfile({}, d);
+    await writeKey(SETTINGS, { ...readKey(SETTINGS), profileRace: "random" });
+    await refreshProfile({}, d);
+    expect(readKey(PROFILE).race).toBe("random");
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2); // two seasons, once
+    // d0wi has no Random games, so the profile falls back to Night Elf.
+    expect(readKey(PROFILE).profile?.race).toBe("nightelf");
+  });
+
+  it("asks W3Champions for Random's MMR line with race id 0", async () => {
+    const d = deps();
+    const season25 = (await d.fetchMatchHistory(D0WI, 25)).map((m) => ({
+      ...m,
+      teams: m.teams.map((t) => ({ ...t, players: t.players.map((p) => (p.battleTag === D0WI ? { ...p, race: 0, rndRace: 4 } : p)) })),
+    }));
+    const random = deps({ fetchMatchHistory: vi.fn(async (_t: string, s: number) => (s === 25 ? season25 : [])) });
+    const p = await loadProfile(D0WI, random, "random");
+    expect(p?.race).toBe("random");
+    expect(random.fetchMmrTimeline).toHaveBeenCalledWith(D0WI, 0, 25);
+  });
+});
+
 describe("needsRefresh", () => {
-  const ok = { status: "ok" as const, tag: D0WI, profile: null, error: null, fetchedAt: new Date(PROFILE_NOW).toISOString() };
+  const ok = { status: "ok" as const, tag: D0WI, race: null, profile: null, error: null, fetchedAt: new Date(PROFILE_NOW).toISOString() };
   it("reloads when stale, for another tag, or after an error", () => {
     expect(needsRefresh(ok, D0WI, PROFILE_NOW + 1000)).toBe(false);
     expect(needsRefresh(ok, D0WI, PROFILE_NOW + PROFILE_TTL_MS)).toBe(true);
     expect(needsRefresh(ok, "Other#1234", PROFILE_NOW)).toBe(true);
     expect(needsRefresh({ ...ok, status: "error" }, D0WI, PROFILE_NOW)).toBe(true);
+    expect(needsRefresh(ok, D0WI, PROFILE_NOW, "random")).toBe(true);
   });
 });

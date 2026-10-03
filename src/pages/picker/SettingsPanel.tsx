@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../components/Button";
 import type { ReactNode } from "react";
-import { TextField } from "../../components/TextField";
 import { host } from "../../host";
 import type { ShortcutRegistrationResult, UpdateInfo } from "../../host/bridge";
 import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
@@ -115,10 +114,9 @@ function RangeField({
 }
 
 /** The Settings tab: overlay look, W3Champions, shortcuts, updates and
- *  private-build backup, as panels on the page. The API base is only
- *  written to the store once it parses as a valid URL; an invalid draft
- *  stays local and shows an inline error instead of clobbering the
- *  working value. */
+ *  private-build backup, as panels on the page. The site address is not a
+ *  setting: developers point the app elsewhere with the `?api=` override
+ *  (see `applyApiBaseOverride.ts`). */
 export function SettingsPanel({
   settings,
   registrations,
@@ -134,8 +132,6 @@ export function SettingsPanel({
    *  from being a hard requirement for every test render) can omit it. */
   onOpenUpdate?: (info: UpdateInfo) => void;
 }) {
-  const [apiBaseInput, setApiBaseInput] = useState(settings.apiBase);
-  const [apiBaseError, setApiBaseError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckState>({ kind: "idle" });
   const localBuildCount = useStoreValue(LOCAL_BUILDS).length;
@@ -148,17 +144,6 @@ export function SettingsPanel({
   async function handleCheckForUpdates() {
     setUpdateCheck({ kind: "checking" });
     setUpdateCheck(await runUpdateCheck(settings.skippedVersion));
-  }
-
-  function handleApiBaseChange(value: string) {
-    setApiBaseInput(value);
-    try {
-      const url = new URL(value);
-      setApiBaseError(null);
-      void updateKey(SETTINGS, (s) => ({ ...s, apiBase: url.toString().replace(/\/$/, "") }));
-    } catch {
-      setApiBaseError("Enter a valid URL, e.g. https://warcraft-gym.com");
-    }
   }
 
   return (
@@ -242,13 +227,7 @@ export function SettingsPanel({
           ) : null}
         </Group>
 
-        <Group title="Advanced">
-          <TextField
-            label="API base"
-            value={apiBaseInput}
-            error={apiBaseError}
-            onChange={(e) => handleApiBaseChange(e.target.value)}
-          />
+        <Group title="App">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-faint">Version {APP_VERSION}</p>
             {host.kind === "tauri" && (

@@ -22,7 +22,8 @@ import {
   type W3cMatchDetail,
 } from "./w3c/client";
 import { buildIdentity, STYLE_GAMES } from "./w3c/opponentCard";
-import { buildProfile, mainRace, profileStyleIds, raceId, type Profile } from "./w3c/profile";
+import { buildProfile, profileRace, profileStyleIds, raceId, type Profile, type ProfilePick } from "./w3c/profile";
+import type { W3cMatch } from "./w3c/client";
 
 /** A profile younger than this is shown as is when the tab opens. */
 export const PROFILE_TTL_MS = 5 * 60_000;
@@ -49,13 +50,38 @@ export const defaultProfileDeps: ProfileDeps = {
   now: () => Date.now(),
 };
 
-/** Fetch and build one player's profile. Optional pieces (ladder stats,
- *  MMR timeline, aka, score sheets) degrade to empty, never fail the load. */
-export async function loadProfile(tag: string, deps: ProfileDeps): Promise<Profile | null> {
+type History = { tag: string; at: number; seasons: number[]; matches: W3cMatch[] };
+let historyCache: History | null = null;
+
+/** Your two seasons of games, reused for PROFILE_TTL_MS so switching race
+ *  only fetches that race's ladder stats, MMR line and score sheets. */
+async function myHistory(tag: string, deps: ProfileDeps, force: boolean): Promise<History> {
+  const cached = historyCache;
+  if (!force && cached && cached.tag.toLowerCase() === tag.toLowerCase() && deps.now() - cached.at < PROFILE_TTL_MS) return cached;
   const [current, previous] = await deps.fetchSeasonIds();
   const seasons = [current, previous].filter((s): s is number => typeof s === "number");
-  const history = (await Promise.all(seasons.map((s) => deps.fetchMatchHistory(tag, s, HISTORY_PAGE_SIZE)))).flat();
-  const race = mainRace(history, tag);
+  const matches = (await Promise.all(seasons.map((s) => deps.fetchMatchHistory(tag, s, HISTORY_PAGE_SIZE)))).flat();
+  historyCache = { tag, at: deps.now(), seasons, matches };
+  return historyCache;
+}
+
+/** Test hook: forget the cached history. */
+export function clearProfileCache(): void {
+  historyCache = null;
+}
+
+/** Fetch and build one player's profile for a race (null: the one they
+ *  pick most). Optional pieces (ladder stats, MMR timeline, aka, score
+ *  sheets) degrade to empty, never fail the load. */
+export async function loadProfile(
+  tag: string,
+  deps: ProfileDeps,
+  wanted: ProfilePick | null = null,
+  force = true,
+): Promise<Profile | null> {
+  const { seasons, matches: history } = await myHistory(tag, deps, force);
+  const [current] = seasons;
+  const race = profileRace(history, tag, wanted);
   const id = race ? raceId(race) : null;
   const oldestFirst = [...seasons].reverse();
   const [stats, timelines, aka, w3cProfile, details] = await Promise.all([
@@ -79,6 +105,7 @@ export async function loadProfile(tag: string, deps: ProfileDeps): Promise<Profi
     identity: buildIdentity(aka, w3cProfile),
     details: details.filter((d): d is W3cMatchDetail => d !== null),
     now: deps.now(),
+    race,
   });
 }
 
@@ -93,8 +120,9 @@ async function write(next: Partial<ProfileState>): Promise<void> {
 let inFlight: Promise<void> | null = null;
 
 /** Whether the stored profile should be reloaded (see the module comment). */
-export function needsRefresh(state: ProfileState, tag: string, now: number): boolean {
+export function needsRefresh(state: ProfileState, tag: string, now: number, race: ProfilePick | null = null): boolean {
   if (state.tag?.toLowerCase() !== tag.toLowerCase() || state.status === "error" || state.status === "idle") return true;
+  if ((state.race ?? null) !== race) return true;
   if (!state.fetchedAt) return true;
   return now - Date.parse(state.fetchedAt) >= PROFILE_TTL_MS;
 }
@@ -102,15 +130,18 @@ export function needsRefresh(state: ProfileState, tag: string, now: number): boo
 /** Reload your profile into the store, once at a time. */
 export function refreshProfile(options: { force?: boolean } = {}, deps: ProfileDeps = defaultProfileDeps): Promise<void> {
   if (inFlight) return inFlight;
-  const tag = readKey(SETTINGS).myBattleTag;
+  const settings = readKey(SETTINGS);
+  const tag = settings.myBattleTag;
+  const race = settings.profileRace ?? null;
   if (!tag || !isValidBattleTag(tag)) return Promise.resolve();
   const state = readKey(PROFILE);
-  if (!options.force && !needsRefresh(state, tag, deps.now())) return Promise.resolve();
+  if (!options.force && !needsRefresh(state, tag, deps.now(), race)) return Promise.resolve();
+  const raceOnly = !options.force && state.tag?.toLowerCase() === tag.toLowerCase() && (state.race ?? null) !== race;
   const sameTag = state.tag?.toLowerCase() === tag.toLowerCase();
   inFlight = (async () => {
-    await write({ status: "loading", tag, error: null, profile: sameTag ? state.profile : null });
+    await write({ status: "loading", tag, race, error: null, profile: sameTag ? state.profile : null });
     try {
-      const profile = await loadProfile(tag, deps);
+      const profile = await loadProfile(tag, deps, race, !raceOnly);
       await write({ status: "ok", profile, error: null, fetchedAt: new Date(deps.now()).toISOString() });
     } catch (err) {
       await write({ status: "error", error: `Couldn't load your W3Champions profile: ${describe(err)}` });

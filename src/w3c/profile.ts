@@ -15,7 +15,6 @@ import {
   mostCommon,
   opponentGames,
   record,
-  type CardRace,
   type Game,
   type OpponentIdentity,
 } from "./opponentCard";
@@ -23,7 +22,11 @@ import { TAG_THRESHOLDS } from "./tags";
 
 /** The four races a profile is split by (random opponents are left out). */
 export const PROFILE_RACES = ["human", "orc", "nightelf", "undead"] as const;
-const RACE_IDS: Readonly<Record<(typeof PROFILE_RACES)[number], number>> = { human: 1, orc: 2, nightelf: 4, undead: 8 };
+/** What you can view your profile as: the race picked in the W3Champions
+ *  lobby, Random included (its own ladder entry, whatever race it rolls). */
+export const PROFILE_PICKS = ["human", "orc", "nightelf", "undead", "random"] as const;
+export type ProfilePick = (typeof PROFILE_PICKS)[number];
+const RACE_IDS: Readonly<Record<ProfilePick, number>> = { random: 0, human: 1, orc: 2, nightelf: 4, undead: 8 };
 /** Maps with fewer games than this are too noisy to call best or worst. */
 export const PROFILE_MAP_MIN_GAMES = 5;
 /** Best and worst maps shown. */
@@ -39,7 +42,9 @@ const winLoss = z.object({ wins: z.number(), losses: z.number() });
 export const profileSchema = z.object({
   battleTag: z.string(),
   name: z.string(),
-  race: z.enum(["human", "orc", "nightelf", "undead", "random"]),
+  race: z.enum(PROFILE_PICKS),
+  /** Games per picked race in the same history, for the race switcher. */
+  racesPlayed: z.array(z.object({ race: z.enum(PROFILE_PICKS), games: z.number() })).default([]),
   mmr: z.number().nullable(),
   rank: z.number().nullable(),
   identity: z.object({ aka: z.string().nullable(), country: z.string().nullable(), seasons: z.number() }).nullable(),
@@ -70,18 +75,30 @@ export const profileSchema = z.object({
 export type Profile = z.infer<typeof profileSchema>;
 type WinLoss = z.infer<typeof winLoss>;
 
-/** The race you play most in this history (your profile is about that race). */
-export function mainRace(history: W3cMatch[], tag: string): CardRace | null {
-  let best: { race: CardRace; games: number } | null = null;
-  for (const race of PROFILE_RACES) {
-    const games = opponentGames(history, tag, race).length;
+/** Games per race picked in the lobby, Random included. */
+export function racesPlayed(history: W3cMatch[], tag: string): { race: ProfilePick; games: number }[] {
+  return PROFILE_PICKS.map((race) => ({ race, games: opponentGames(history, tag, race, "picked").length }));
+}
+
+/** The race you pick most in this history (your profile defaults to it). */
+export function mainRace(history: W3cMatch[], tag: string): ProfilePick | null {
+  let best: { race: ProfilePick; games: number } | null = null;
+  for (const { race, games } of racesPlayed(history, tag)) {
     if (games > 0 && (!best || games > best.games)) best = { race, games };
   }
   return best?.race ?? null;
 }
 
-export function raceId(race: CardRace): number | null {
-  return race === "random" ? null : RACE_IDS[race];
+/** The race to show: the one asked for when you have games with it,
+ *  otherwise the one you pick most. */
+export function profileRace(history: W3cMatch[], tag: string, wanted: ProfilePick | null | undefined): ProfilePick | null {
+  if (wanted && opponentGames(history, tag, wanted, "picked").length > 0) return wanted;
+  return mainRace(history, tag);
+}
+
+/** W3Champions' race id (Random is 0). */
+export function raceId(race: ProfilePick): number {
+  return RACE_IDS[race];
 }
 
 function rate(r: WinLoss): number {
@@ -131,13 +148,15 @@ export type ProfileInputs = {
   identity: OpponentIdentity | null;
   details: W3cMatchDetail[];
   now: number;
+  /** The race you asked to see; defaults to the one you pick most. */
+  race?: ProfilePick | null;
 };
 
 /** Everything the Profile tab shows, or null when there are no 1v1 games. */
 export function buildProfile(input: ProfileInputs): Profile | null {
-  const race = mainRace(input.history, input.tag);
+  const race = profileRace(input.history, input.tag, input.race);
   if (!race) return null;
-  const games = opponentGames(input.history, input.tag, race);
+  const games = opponentGames(input.history, input.tag, race, "picked");
   const stat = input.stats.find((s) => s.gameMode === 1 && s.race === raceId(race));
   const maps = mapRecords(games, mapNames(input.history));
   const byRate = [...maps].sort((a, b) => rate(b.record) - rate(a.record) || a.map.localeCompare(b.map));
@@ -149,6 +168,7 @@ export function buildProfile(input: ProfileInputs): Profile | null {
     battleTag: input.tag,
     name: input.tag.split("#")[0],
     race,
+    racesPlayed: racesPlayed(input.history, input.tag),
     mmr: stat?.mmr ?? null,
     rank: stat?.rank ?? null,
     identity: input.identity
@@ -179,8 +199,8 @@ export function buildProfile(input: ProfileInputs): Profile | null {
 }
 
 /** Match ids for the play-style score sheets: your latest games. */
-export function profileStyleIds(history: W3cMatch[], tag: string, race: CardRace, limit: number): string[] {
-  return opponentGames(history, tag, race)
+export function profileStyleIds(history: W3cMatch[], tag: string, race: ProfilePick, limit: number): string[] {
+  return opponentGames(history, tag, race, "picked")
     .slice(0, limit)
     .map((g) => g.id);
 }

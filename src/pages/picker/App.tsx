@@ -211,6 +211,15 @@ export function App() {
         onTab={selectTab}
         opponentShortcut={settings.shortcuts.toggle_opponent}
         onToggleOpponent={() => void host.toggleWindow(WINDOW_OPPONENT)}
+        actions={
+          section === "builds" ? (
+            <BuildsToolbar
+              onNewBuild={() => setEditor({ mode: "new", sourceBuild: null })}
+              onImportReplay={() => void handleImportReplay()}
+              onImportFromW3Champions={handleImportFromW3Champions}
+            />
+          ) : null
+        }
       />
 
       <main className="mx-auto max-w-6xl px-6 py-6">
@@ -245,13 +254,6 @@ export function App() {
             onChange={updateFilters}
             matchCount={filtered.length}
             totalCount={builds.length}
-            actions={
-              <BuildsToolbar
-                onNewBuild={() => setEditor({ mode: "new", sourceBuild: null })}
-                onImportReplay={() => void handleImportReplay()}
-                onImportFromW3Champions={handleImportFromW3Champions}
-              />
-            }
           />
 
           {status === "offline" ? <OfflineBanner fetchedAt={fetchedAt} onRetry={retry} /> : null}

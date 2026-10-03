@@ -101,3 +101,55 @@ describe("deriveProfileTags", () => {
     expect(deriveProfileTags(thin)).toEqual({ strengths: [], weaknesses: [] });
   });
 });
+
+describe("picking a race (Random included)", () => {
+  /** d0wi's history with his 10 newest games re-labelled as Random picks
+   *  that rolled Night Elf, the way W3Champions records them. */
+  function withRandomGames() {
+    const input = profileInputs();
+    const newest = [...input.history].sort((a, b) => (a.startTime < b.startTime ? 1 : -1)).slice(0, 10);
+    const ids = new Set(newest.map((m) => m.id));
+    const history = input.history.map((m) =>
+      ids.has(m.id)
+        ? {
+            ...m,
+            teams: m.teams.map((t) => ({
+              ...t,
+              players: t.players.map((p) => (p.battleTag === D0WI ? { ...p, race: 0, rndRace: 4 } : p)),
+            })),
+          }
+        : m,
+    );
+    return { ...input, history, stats: [...input.stats, { race: 0, gameMode: 1, mmr: 1700, rank: 300, wins: 6, losses: 4 }] };
+  }
+
+  it("counts games per race picked in the lobby", () => {
+    expect(realProfile().racesPlayed).toEqual([
+      { race: "human", games: 0 },
+      { race: "orc", games: 0 },
+      { race: "nightelf", games: 109 },
+      { race: "undead", games: 0 },
+      { race: "random", games: 0 },
+    ]);
+    expect(buildProfile(withRandomGames())?.racesPlayed.find((r) => r.race === "random")?.games).toBe(10);
+  });
+
+  it("Random shows only the Random games, with Random's own ladder entry", () => {
+    const p = buildProfile({ ...withRandomGames(), race: "random" });
+    expect(p?.race).toBe("random");
+    expect((p?.overall.wins ?? 0) + (p?.overall.losses ?? 0)).toBe(10);
+    expect(p?.form.join("")).toBe("WLWWWLLWLL");
+    expect(p?.mmr).toBe(1700);
+    expect(p?.rank).toBe(300);
+  });
+
+  it("the picked race leaves the Random games out", () => {
+    const p = buildProfile({ ...withRandomGames(), race: "nightelf" });
+    expect((p?.overall.wins ?? 0) + (p?.overall.losses ?? 0)).toBe(99);
+    expect(p?.mmr).toBe(1830);
+  });
+
+  it("a race with no games falls back to the one picked most", () => {
+    expect(buildProfile({ ...profileInputs(), race: "orc" })?.race).toBe("nightelf");
+  });
+});

@@ -54,11 +54,11 @@ describe("ProfileTab states", () => {
 
   it("shows loading, then the error with a retry", async () => {
     await writeKey(SETTINGS, { ...readKey(SETTINGS), myBattleTag: D0WI });
-    await writeKey(PROFILE, { status: "loading", tag: D0WI, profile: null, error: null, fetchedAt: null });
+    await writeKey(PROFILE, { status: "loading", tag: D0WI, race: null, profile: null, error: null, fetchedAt: null });
     const { unmount } = render(<ProfileTab onOpenSettings={() => {}} />);
     expect(screen.getByText(`Loading ${D0WI}'s W3Champions games…`)).toBeTruthy();
     unmount();
-    await writeKey(PROFILE, { status: "error", tag: D0WI, profile: null, error: "Couldn't load your W3Champions profile: 503", fetchedAt: null });
+    await writeKey(PROFILE, { status: "error", tag: D0WI, race: null, profile: null, error: "Couldn't load your W3Champions profile: 503", fetchedAt: null });
     render(<ProfileTab onOpenSettings={() => {}} />);
     expect(screen.getByRole("alert").textContent).toContain("503");
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
@@ -66,7 +66,7 @@ describe("ProfileTab states", () => {
 
   it("keeps showing the profile while it refreshes", async () => {
     await writeKey(SETTINGS, { ...readKey(SETTINGS), myBattleTag: D0WI });
-    await writeKey(PROFILE, { status: "loading", tag: D0WI, profile: realProfile(), error: null, fetchedAt: "2026-10-03T11:58:00Z" });
+    await writeKey(PROFILE, { status: "loading", tag: D0WI, race: null, profile: realProfile(), error: null, fetchedAt: "2026-10-03T11:58:00Z" });
     render(<ProfileTab onOpenSettings={() => {}} />);
     expect(screen.getByText("d0wi")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Refresh profile" }) as HTMLButtonElement).disabled).toBe(true);
@@ -87,5 +87,24 @@ describe("sparklinePoints", () => {
   it("needs two points and spans the box", () => {
     expect(sparklinePoints([1800])).toBe("");
     expect(sparklinePoints([1700, 1800], 100, 20)).toBe("3.0,17.0 97.0,3.0");
+  });
+});
+
+describe("RacePicker", () => {
+  it("one radio per race, Random included, with game counts; unplayed races are disabled", () => {
+    const onRace = vi.fn();
+    render(<ProfileView profile={realProfile()} apiBase={API} onRace={onRace} />);
+    const radios = within(screen.getByRole("radiogroup", { name: "Show my profile as" })).getAllByRole("radio");
+    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([
+      "Human, 0 games",
+      "Orc, 0 games",
+      "Night Elf, 109 games",
+      "Undead, 0 games",
+      "Random, 0 games",
+    ]);
+    expect(radios[2].getAttribute("aria-checked")).toBe("true");
+    expect((radios[4] as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(radios[2]);
+    expect(onRace).toHaveBeenCalledWith("nightelf");
   });
 });

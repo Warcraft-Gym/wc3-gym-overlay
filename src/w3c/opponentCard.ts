@@ -166,9 +166,17 @@ export type Game = {
   start: string;
 };
 
+/** Which race a player's game counts under: the race they ended up playing
+ *  (a Random pick counts as the race it rolled), or the race they picked in
+ *  the lobby (Random is its own pick, as on the W3Champions ladder). */
+export type RaceBasis = "played" | "picked";
+
+const PICKED_ID: Readonly<Record<CardRace, number>> = { random: 0, human: 1, orc: 2, nightelf: 4, undead: 8 };
+
 /** The opponent's games with the race they are playing now, newest first,
- *  de-duplicated by match id (seasons can overlap at the boundary). */
-export function opponentGames(history: W3cMatch[], opponentTag: string, race: CardRace): Game[] {
+ *  de-duplicated by match id (seasons can overlap at the boundary). With
+ *  the "played" basis, race "random" means every game. */
+export function opponentGames(history: W3cMatch[], opponentTag: string, race: CardRace, basis: RaceBasis = "played"): Game[] {
   const seen = new Set<string>();
   const games: Game[] = [];
   for (const match of history) {
@@ -179,7 +187,7 @@ export function opponentGames(history: W3cMatch[], opponentTag: string, race: Ca
     const them = players.find((p) => sameTag(p.battleTag, opponentTag));
     const other = players.find((p) => !sameTag(p.battleTag, opponentTag));
     if (!them || !other || typeof them.won !== "boolean") continue;
-    if (race !== "random" && raceOf(them) !== race) continue;
+    if (basis === "picked" ? them.race !== PICKED_ID[race] : race !== "random" && raceOf(them) !== race) continue;
     games.push({
       id: match.id,
       vsTag: other.battleTag,

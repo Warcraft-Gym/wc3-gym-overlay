@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { opponentCardSchema } from "../w3c/opponentCard";
-import { profileSchema } from "../w3c/profile";
+import { PROFILE_PICKS, profileSchema, type ProfilePick } from "../w3c/profile";
 import {
   apiBuildListItemSchema,
   apiBuildStepSchema,
@@ -142,6 +142,8 @@ export type Settings = {
   opponentBounds?: OverlayBounds;
   /** The picker tab last open: your builds or your W3Champions profile. */
   pickerTab?: PickerTab;
+  /** The race the Profile tab shows; null means the one you pick most. */
+  profileRace?: ProfilePick | null;
 };
 
 export type PickerTab = "builds" | "profile";
@@ -223,6 +225,7 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     opponentAutoOpen: z.boolean().default(true),
     opponentBounds: overlayBoundsSchema.optional(),
     pickerTab: z.enum(["builds", "profile"]).default("builds"),
+    profileRace: z.enum(PROFILE_PICKS).nullable().default(null),
   }),
 );
 
@@ -350,6 +353,8 @@ export const OPPONENT: StoreKey<OpponentState> = {
 export const profileStateSchema = z.object({
   status: z.enum(["idle", "loading", "ok", "error"]),
   tag: z.string().nullable(),
+  /** The race asked for when this was loaded (null: the one you pick most). */
+  race: z.enum(PROFILE_PICKS).nullable().default(null),
   profile: profileSchema.nullable(),
   error: z.string().nullable(),
   fetchedAt: z.string().nullable(),
@@ -359,5 +364,5 @@ export type ProfileState = z.infer<typeof profileStateSchema>;
 export const PROFILE: StoreKey<ProfileState> = {
   name: "wc3gym.profile",
   schema: profileStateSchema,
-  defaultValue: () => ({ status: "idle", tag: null, profile: null, error: null, fetchedAt: null }),
+  defaultValue: () => ({ status: "idle", tag: null, race: null, profile: null, error: null, fetchedAt: null }),
 };

@@ -18,8 +18,9 @@ import { RaceCrest } from "../../../components/RaceCrest";
 import { cn } from "../../../lib/cn";
 import { heroInfo } from "../../../w3c/heroes";
 import { EARLY_GAME_MINUTES, LATE_GAME_MINUTES, type WinLoss } from "../../../w3c/opponentCard";
-import { deriveProfileTags, type Profile, type ProfileTag } from "../../../w3c/profile";
+import { deriveProfileTags, type Profile, type ProfilePick, type ProfileTag } from "../../../w3c/profile";
 import { formatRelative, formatWinLoss, RACE_LABEL, toneOfYourRate, winRate, type Tone } from "../../opponent/format";
+import { RacePicker } from "./RacePicker";
 import { Sparkline } from "./Sparkline";
 
 function tagIcon(id: string): LucideIcon {
@@ -161,7 +162,18 @@ function Style({ s }: { s: NonNullable<Profile["style"]> }) {
 
 /** Your W3Champions profile: who you are on the ladder, then what to keep
  *  and what to work on, then the numbers behind it. */
-export function ProfileView({ profile: p, apiBase, actions }: { profile: Profile; apiBase: string; actions?: ReactNode }) {
+export function ProfileView({
+  profile: p,
+  apiBase,
+  actions,
+  onRace,
+}: {
+  profile: Profile;
+  apiBase: string;
+  actions?: ReactNode;
+  /** Switch race; without it the race picker is not shown. */
+  onRace?: (race: ProfilePick) => void;
+}) {
   const { strengths, weaknesses } = deriveProfileTags(p);
   const iconUrl = (icon: string | undefined) => (icon ? `${apiBase}/wc3-icons/${icon}.webp` : undefined);
   const first = p.mmrHistory[0];
@@ -173,7 +185,7 @@ export function ProfileView({ profile: p, apiBase, actions }: { profile: Profile
         <RaceCrest race={p.race} apiBase={apiBase} size={48} />
         <div className="min-w-0 flex-1">
           <p className="kicker">Your profile · {RACE_LABEL[p.race]}</p>
-          <h2 className="mt-1 flex items-center gap-2 font-display text-[1.4rem] tracking-[0.03em] text-fg">
+          <h2 className="mt-1 flex items-center gap-2 text-[1.45rem] font-semibold leading-tight text-fg">
             <span>{p.name}</span>
             {p.identity?.aka ? <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs normal-case tracking-normal text-gold">aka {p.identity.aka}</span> : null}
           </h2>
@@ -181,6 +193,11 @@ export function ProfileView({ profile: p, apiBase, actions }: { profile: Profile
             {profileSubtitle(p)}
             <span className="ml-2 tnum">· {formatWinLoss(p.overall)} ({pct(p.overall)})</span>
           </p>
+          {onRace && p.racesPlayed.length > 0 ? (
+            <div className="mt-3">
+              <RacePicker races={p.racesPlayed} value={p.race} apiBase={apiBase} onPick={onRace} />
+            </div>
+          ) : null}
         </div>
         {p.mmrHistory.length >= 2 && first !== undefined && last !== undefined ? (
           <div className="flex flex-col items-end gap-1">
