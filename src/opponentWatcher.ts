@@ -82,6 +82,10 @@ type Caches = {
   seasons: { ids: number[]; at: number } | null;
   history: Map<string, { matches: W3cMatch[]; at: number }>;
   extras?: Map<string, { value: Extras; at: number }>;
+  /** The match this watcher built a card for. A card stored by an earlier
+   *  app run (possibly an older version, without newer fields) is rebuilt
+   *  once rather than trusted. */
+  builtMatchId?: string | null;
 };
 
 function describe(err: unknown): string {
@@ -165,19 +169,25 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
     if (state.live) await write({ live: false }, deps.now());
     return OPPONENT_POLL_MS;
   }
-  if (match.id === state.matchId) return OPPONENT_POLL_MS;
+  if (match.id === state.matchId && match.id === caches.builtMatchId) return OPPONENT_POLL_MS;
 
   const live = readLiveMatch(match, tag);
   if (!live) return OPPONENT_POLL_MS;
 
-  await write({ status: "loading", matchId: live.matchId, live: true, error: null, card: null }, deps.now());
-  if (settings.opponentAutoOpen) {
+  const sameMatchAsStored = live.matchId === state.matchId;
+  caches.builtMatchId = live.matchId;
+  // A fresh match starts from "loading"; a rebuild of the stored one keeps
+  // showing the old card until the new one is ready.
+  if (!sameMatchAsStored) {
+    await write({ status: "loading", matchId: live.matchId, live: true, error: null, card: null }, deps.now());
+  }
+  if (settings.opponentAutoOpen && !sameMatchAsStored) {
     await deps.showOpponentWindow().catch((err: unknown) => console.warn("[wc3gym] could not open the opponent window", err));
   }
   try {
     const history = await opponentHistory(live.opponent.battleTag, deps, caches);
     const card = buildOpponentCard(live, history);
-    await write({ status: "ok", card: { ...card, extrasStatus: "loading" } }, deps.now());
+    await write({ status: "ok", live: true, card: { ...card, extrasStatus: "loading" } }, deps.now());
     // The basics are on screen; identity and play style follow.
     const extras = await opponentExtras(card, history, deps, caches).then(
       (value) => ({ ...value, extrasStatus: "ok" as const }),

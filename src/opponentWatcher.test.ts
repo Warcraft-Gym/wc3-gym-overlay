@@ -157,6 +157,27 @@ describe("pollOnce", () => {
     expect(readKey(OPPONENT).card?.identity?.aka).toBe("Life");
   });
 
+  it("rebuilds a card stored by an earlier app run for the same match", async () => {
+    const d = deps();
+    await setTag("ElTurry#1520");
+    // What the previous version left behind: the same live match, an old card.
+    await writeKey(OPPONENT, {
+      status: "ok",
+      matchId: liveMatch.id,
+      live: true,
+      error: null,
+      card: { ...(await (async () => { await pollOnce(deps(), freshCaches()); return readKey(OPPONENT).card!; })()), identity: undefined, style: undefined, extrasStatus: undefined },
+      updatedAt: null,
+    });
+    const caches = freshCaches();
+    await pollOnce(d, caches);
+    expect(readKey(OPPONENT).card?.extrasStatus).toBe("ok");
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2);
+    expect(d.showOpponentWindow).not.toHaveBeenCalled(); // not a new game: no surprise pop-up
+    await pollOnce(d, caches);
+    expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2); // only once per run
+  });
+
   it("makes one request per poll while the same match is live", async () => {
     const d = deps();
     const caches = freshCaches();
