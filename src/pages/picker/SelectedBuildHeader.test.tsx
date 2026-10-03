@@ -36,6 +36,7 @@ async function setToggleCombo(combo: string): Promise<void> {
     scale: 1,
     shortcuts: { ...DEFAULT_SHORTCUTS, toggle_overlay: combo },
     autoUpdate: false,
+    shortcutsEnabled: true,
     skippedVersion: null,
     myBattleTag: null,
     opponentCard: true,

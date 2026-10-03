@@ -32,6 +32,7 @@ function settingsValue(autoUpdate: boolean): Settings {
       step_prev: "CommandOrControl+Shift+[",
     },
     autoUpdate,
+    shortcutsEnabled: true,
     skippedVersion: null,
     myBattleTag: null,
     opponentCard: true,

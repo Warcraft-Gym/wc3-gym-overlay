@@ -114,6 +114,10 @@ downloads those directly — there is no proxy in between.
 | Next step | `Ctrl+Shift+]` | `⌘⇧]` | Jump the clock to the next timed step |
 | Previous step | `Ctrl+Shift+[` | `⌘⇧[` | Jump the clock to the previous timed step |
 
+These combos are global: while they are registered, no other app receives
+them. Untick **Enable shortcuts** in the picker's **Settings → Shortcuts**
+panel to register none; the windows' own buttons still work.
+
 Change any combo from the picker's **Settings → Shortcuts** panel: click
 **Change**, then press the new combo (Escape cancels the capture). A modifier combo needs Ctrl, Alt, or ⌘; a
 single **function key** (F1–F12, and F13–F24 if your keyboard has them) or

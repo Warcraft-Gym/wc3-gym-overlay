@@ -52,6 +52,7 @@ export function activeShortcuts(map: ShortcutMap, scouting = W3C_SCOUTING_ENABLE
 export async function applyShortcuts(): Promise<ShortcutRegistrationResult[]> {
   const settings = readKey(SETTINGS);
   await host.unregisterAllShortcuts();
+  if (!settings.shortcutsEnabled) return [];
   return host.registerShortcuts(activeShortcuts(settings.shortcuts), (action) => {
     void dispatch(action);
   });

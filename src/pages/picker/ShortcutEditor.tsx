@@ -6,6 +6,7 @@ import { comboFromKeyboardEvent, explainRefusal } from "../../lib/combo";
 import { applyShortcuts, formatCombo } from "../../shortcuts";
 import { SETTINGS } from "../../store/keys";
 import { updateKey } from "../../store/state";
+import { useStoreValue } from "../../store/useStore";
 
 const ACTION_LABEL: Record<ShortcutAction, string> = {
   toggle_overlay: "Toggle overlay",
@@ -43,9 +44,15 @@ export function ShortcutEditor({
   const [refusal, setRefusal] = useState<string | null>(null);
   const resultByAction = new Map(registrations.map((r) => [r.action, r]));
   const hasFailure = registrations.some((r) => !r.registered);
+  const enabled = useStoreValue(SETTINGS).shortcutsEnabled;
 
   async function commit(next: ShortcutMap) {
     await updateKey(SETTINGS, (s) => ({ ...s, shortcuts: next }));
+    onRegistrations(await applyShortcuts());
+  }
+
+  async function setEnabled(next: boolean) {
+    await updateKey(SETTINGS, (s) => ({ ...s, shortcutsEnabled: next }));
     onRegistrations(await applyShortcuts());
   }
 
@@ -87,7 +94,11 @@ export function ShortcutEditor({
 
   return (
     <div>
-      <ul className="divide-y divide-line">
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={enabled} onChange={(e) => void setEnabled(e.target.checked)} />
+        Enable shortcuts
+      </label>
+      <ul className={`mt-2 divide-y divide-line ${enabled ? "" : "opacity-50"}`}>
         {ACTIONS.map((action) => {
           const result = resultByAction.get(action);
           const isCapturing = capturing === action;
