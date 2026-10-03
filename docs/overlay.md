@@ -33,7 +33,7 @@ below; flip it to `true` to publish.
 3. First launch opens the **picker** window: pick a build, then click
    **Show overlay** to open the floating build-order panel (or press
    `Ctrl+Shift+B`).
-4. Settings (shortcuts, overlay opacity/scale, your BattleTag) are stored in the
+4. Settings (shortcuts, overlay opacity/scale) are stored in the
    app's WebView local storage, not a config file under `%APPDATA%`.
    Uninstalling the app clears this app data along with it.
 5. Once installed, you don't need to come back here for future releases —
@@ -109,7 +109,6 @@ downloads those directly — there is no proxy in between.
 | Action | Windows/Linux | macOS | What it does |
 |---|---|---|---|
 | Toggle build order | `Ctrl+Shift+B` | `⌘⇧B` | Show/hide the floating build-order window |
-| Toggle opponent card | `Ctrl+Shift+O` | `⌘⇧O` | Show/hide the opponent window (it also opens by itself when a W3Champions 1v1 starts) |
 | Play / pause timer | `Ctrl+Shift+P` | `⌘⇧P` | Start or pause the build-order clock |
 | Reset timer | `Ctrl+Shift+R` | `⌘⇧R` | Reset the clock to 0:00 |
 | Next step | `Ctrl+Shift+]` | `⌘⇧]` | Jump the clock to the next timed step |
@@ -147,48 +146,9 @@ whatever was holding the shortcut).
 
 ## The picker
 
-The picker window has three tabs in its header: **Builds** (pick, create
-and import builds; the import and **New build** buttons sit in the header
-while this tab is open), **Profile** (your own W3Champions stats) and
-**Settings**. It reopens on Builds or Profile, whichever you used last. The
-**Opponent** button on the right shows or hides the opponent window from
-any tab.
-
-## Opponent card
-
-Set your BattleTag in **Settings → W3Champions** (for example `Name#1234`).
-While the app runs it asks W3Champions every 15 seconds whether you are in
-a 1v1; when a game starts (W3Champions lists it 40 to 55 seconds in), the
-**opponent window** opens with:
-
-- **Tags**: a few words to act on, each with its numbers on hover (for
-  example "Wins fights", "Weak on Hammerfall", "Always Demon Hunter").
-- Your **win chance** from the MMR gap, their **recent form** and streak.
-- Their record against your race and on this map, next to yours.
-- Their record by **game length**, their usual **first heroes**, and their
-  **play style** from their last 8 score sheets (gold, kills, heroes lost,
-  upkeep).
-
-`Ctrl+Shift+O` / `⌘⇧O` shows or hides it; **Open the opponent window by
-itself** (Settings) turns the automatic opening off. After the game it
-keeps the last opponent, marked **Last game**. A game W3Champions has
-listed as live for more than 90 minutes is ignored (stuck listings exist).
-Only W3Champions 1v1 games are detected, from public W3Champions data; the
-app sends nothing anywhere else.
-
-## Your profile
-
-The **Profile** tab shows your own W3Champions stats over the current and
-previous season: MMR and rank, an MMR line with your peak, your
-**strengths** and what to **work on** (same thresholds as the opponent
-tags), matchups, best and worst maps (5+ games), form, record by game
-length, first heroes and play style.
-
-Pick the race to view with the chips under your name, **Random**
-included. Races follow your lobby pick: Random shows the games you queued
-as Random, whatever race they rolled, with Random's own MMR and rank, as on
-the W3Champions ladder. The profile reloads when you open the tab (if
-older than 5 minutes), when a game you were in ends, and from **Refresh**.
+The picker window has two tabs in its header: **Builds** (pick, create and
+import builds; the import and **New build** buttons sit in the header while
+this tab is open) and **Settings**.
 
 ## Private builds
 

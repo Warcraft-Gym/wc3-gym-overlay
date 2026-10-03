@@ -40,3 +40,11 @@ describe("BuildsToolbar", () => {
     for (const fn of Object.values(h)) expect(fn).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("PickerHeader without the scouting features", () => {
+  it("shows only the given tabs and no Opponent button", () => {
+    render(<PickerHeader tab="builds" onTab={() => {}} sections={["builds", "settings"]} />);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Builds", "Settings"]);
+    expect(screen.queryByRole("button", { name: "Opponent" })).toBeNull();
+  });
+});

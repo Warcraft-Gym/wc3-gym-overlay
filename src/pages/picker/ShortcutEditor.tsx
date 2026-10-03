@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Button } from "../../components/Button";
-import { DEFAULT_SHORTCUTS } from "../../config";
+import { DEFAULT_SHORTCUTS, W3C_SCOUTING_ENABLED } from "../../config";
 import type { ShortcutAction, ShortcutMap, ShortcutRegistrationResult } from "../../host/bridge";
 import { comboFromKeyboardEvent, explainRefusal } from "../../lib/combo";
 import { applyShortcuts, formatCombo } from "../../shortcuts";
@@ -16,7 +16,9 @@ const ACTION_LABEL: Record<ShortcutAction, string> = {
   step_prev: "Previous step",
 };
 
-const ACTIONS = Object.keys(ACTION_LABEL) as ShortcutAction[];
+const ACTIONS = (Object.keys(ACTION_LABEL) as ShortcutAction[]).filter(
+  (action) => W3C_SCOUTING_ENABLED || action !== "toggle_opponent",
+);
 
 /**
  * Five shortcut rows. "Change" captures the next keydown as the new combo

@@ -11,6 +11,7 @@ import { useStoreValue } from "../../store/useStore";
 import { APP_VERSION } from "../../version";
 import { ShortcutEditor } from "./ShortcutEditor";
 import { W3ChampionsSettings } from "./W3ChampionsSettings";
+import { W3C_SCOUTING_ENABLED } from "../../config";
 
 /** F002: Settings' own "Check for updates" state — independent of the
  *  banner's `useUpdateFlow` (see that module's doc comment): this always
@@ -171,9 +172,11 @@ export function SettingsPanel({
           </p>
         </Group>
 
-        <Group title="W3Champions">
-          <W3ChampionsSettings settings={settings} />
-        </Group>
+        {W3C_SCOUTING_ENABLED ? (
+          <Group title="W3Champions">
+            <W3ChampionsSettings settings={settings} />
+          </Group>
+        ) : null}
 
         <Group title="Private builds">
           <div className="flex flex-wrap gap-2">
