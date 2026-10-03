@@ -1,105 +1,49 @@
-import { FileUp, Link2, Plus, Settings as SettingsIcon, Swords } from "lucide-react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Button, type ButtonVariant } from "../../components/Button";
+import { Swords } from "lucide-react";
 import { formatCombo } from "../../shortcuts";
-import { SETTINGS_DIALOG_ID } from "./SettingsModal";
-
-const ICON_SIZE = 15;
+import { PickerTabs, type PickerSection } from "./PickerTabs";
 
 /**
- * One header action: an icon plus a short label that never wraps. Below
- * ~900 px wide (the picker's minimum is 720) secondary labels collapse to
- * icon-only; the accessible name and the tooltip always carry the full
- * label, so nothing is lost for keyboard or screen-reader users.
+ * One bar: the brand, the section tabs, and the opponent window toggle
+ * (the only action that works from every tab). Build actions live in the
+ * Builds tab (`BuildsToolbar`).
  */
-function HeaderAction({
-  icon,
-  label,
-  name,
-  variant = "ghost",
-  collapse = true,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  icon: ReactNode;
-  label?: string;
-  /** Accessible name and tooltip. */
-  name: string;
-  variant?: ButtonVariant;
-  /** Hide the visible label on narrow windows. */
-  collapse?: boolean;
-}) {
-  return (
-    <Button variant={variant} aria-label={name} title={props.title ?? name} className="whitespace-nowrap" {...props}>
-      <span aria-hidden="true" className="inline-flex">
-        {icon}
-      </span>
-      {label ? (
-        <span aria-hidden="true" className={collapse ? "hidden min-[900px]:inline" : undefined}>
-          {label}
-        </span>
-      ) : null}
-    </Button>
-  );
-}
-
 export function PickerHeader({
+  tab,
+  onTab,
   opponentShortcut,
-  settingsOpen,
-  onNewBuild,
-  onImportReplay,
-  onImportFromW3Champions,
   onToggleOpponent,
-  onToggleSettings,
 }: {
+  tab: PickerSection;
+  onTab: (tab: PickerSection) => void;
   opponentShortcut: string;
-  settingsOpen: boolean;
-  onNewBuild: () => void;
-  onImportReplay: () => void;
-  onImportFromW3Champions: () => void;
   onToggleOpponent: () => void;
-  onToggleSettings: () => void;
 }) {
+  const combo = formatCombo(opponentShortcut);
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-line/60 px-6 py-4">
-      <div className="min-w-0">
-        <h1 className="whitespace-nowrap font-display text-sm font-extrabold uppercase tracking-[0.12em] text-gold">
-          Warcraft 3 Gym
-        </h1>
-        <p className="text-xs text-muted">Build picker</p>
-      </div>
-      <nav aria-label="Picker actions" className="flex shrink-0 items-center gap-2">
-        <HeaderAction
-          variant="gold"
-          icon={<Plus size={ICON_SIZE} strokeWidth={2.5} />}
-          label="New build"
-          name="New private build"
-          collapse={false}
-          onClick={onNewBuild}
-        />
-        <span aria-hidden="true" className="mx-1 h-6 w-px bg-line" />
-        <HeaderAction icon={<FileUp size={ICON_SIZE} />} label="Import replay" name="Import replay" onClick={onImportReplay} />
-        <HeaderAction
-          icon={<Link2 size={ICON_SIZE} />}
-          label="W3C link"
-          name="From W3Champions"
-          title="Import a build from a W3Champions match link"
-          onClick={onImportFromW3Champions}
-        />
-        <HeaderAction
-          icon={<Swords size={ICON_SIZE} />}
-          label="Opponent"
-          name="Opponent"
-          title={`Show or hide the opponent window (${formatCombo(opponentShortcut)})`}
-          onClick={onToggleOpponent}
-        />
-        <HeaderAction
-          icon={<SettingsIcon size={ICON_SIZE} />}
-          name="Settings"
-          aria-expanded={settingsOpen}
-          aria-controls={SETTINGS_DIALOG_ID}
-          onClick={onToggleSettings}
-        />
+    <header className="flex h-14 items-stretch gap-6 border-b border-line/60 px-6">
+      <h1 className="flex items-center whitespace-nowrap font-display text-sm font-extrabold uppercase tracking-[0.12em] text-gold">
+        Warcraft 3 Gym
+      </h1>
+      <nav aria-label="Picker" className="flex flex-1 items-stretch">
+        <PickerTabs active={tab} onChange={onTab} />
       </nav>
+      <div className="flex items-center">
+        <button
+          type="button"
+          aria-label="Opponent"
+          title={`Show or hide the opponent window (${combo})`}
+          onClick={onToggleOpponent}
+          className="flex items-center gap-2 rounded-md border border-line px-3 py-1.5 text-xs text-muted transition-colors hover:border-line-strong hover:text-fg"
+        >
+          <Swords size={15} aria-hidden />
+          <span aria-hidden className="hidden font-display uppercase tracking-[0.14em] min-[900px]:inline">
+            Opponent
+          </span>
+          <kbd aria-hidden className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[0.6rem] text-faint">
+            {combo}
+          </kbd>
+        </button>
+      </div>
     </header>
   );
 }

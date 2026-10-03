@@ -1,43 +1,42 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { BuildsToolbar } from "./BuildsToolbar";
 import { PickerHeader } from "./PickerHeader";
 
 afterEach(() => cleanup());
 
-function renderHeader(settingsOpen = false) {
-  const handlers = {
-    onNewBuild: vi.fn(),
-    onImportReplay: vi.fn(),
-    onImportFromW3Champions: vi.fn(),
-    onToggleOpponent: vi.fn(),
-    onToggleSettings: vi.fn(),
-  };
-  render(<PickerHeader opponentShortcut="CommandOrControl+Shift+O" settingsOpen={settingsOpen} {...handlers} />);
-  return handlers;
-}
-
 describe("PickerHeader", () => {
-  it("every action keeps its full accessible name and an icon", () => {
-    renderHeader();
-    for (const name of ["New private build", "Import replay", "From W3Champions", "Opponent", "Settings"]) {
+  it("holds the three section tabs and the opponent toggle, nothing else", () => {
+    const onTab = vi.fn();
+    const onToggleOpponent = vi.fn();
+    render(<PickerHeader tab="builds" onTab={onTab} opponentShortcut="CommandOrControl+Shift+O" onToggleOpponent={onToggleOpponent} />);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Builds", "Profile", "Settings"]);
+    expect(screen.getAllByRole("button").filter((b) => b.getAttribute("role") !== "tab")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(onTab).toHaveBeenCalledWith("settings");
+    const opponent = screen.getByRole("button", { name: "Opponent" });
+    expect(opponent.getAttribute("title")).toMatch(/opponent window \(.+O\)/);
+    fireEvent.click(opponent);
+    expect(onToggleOpponent).toHaveBeenCalledTimes(1);
+  });
+
+  it("wraps from the last tab to the first with the arrow keys", () => {
+    const onTab = vi.fn();
+    render(<PickerHeader tab="settings" onTab={onTab} opponentShortcut="CommandOrControl+Shift+O" onToggleOpponent={() => {}} />);
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowRight" });
+    expect(onTab).toHaveBeenCalledWith("builds");
+  });
+});
+
+describe("BuildsToolbar", () => {
+  it("every action keeps its full accessible name, an icon and its handler", () => {
+    const h = { onNewBuild: vi.fn(), onImportReplay: vi.fn(), onImportFromW3Champions: vi.fn() };
+    render(<BuildsToolbar {...h} />);
+    for (const name of ["New private build", "Import replay", "From W3Champions"]) {
       const button = screen.getByRole("button", { name });
       expect(button.querySelector("svg")).not.toBeNull();
+      fireEvent.click(button);
     }
-  });
-
-  it("each button calls its handler", () => {
-    const h = renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: "New private build" }));
-    fireEvent.click(screen.getByRole("button", { name: "Import replay" }));
-    fireEvent.click(screen.getByRole("button", { name: "From W3Champions" }));
-    fireEvent.click(screen.getByRole("button", { name: "Opponent" }));
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     for (const fn of Object.values(h)) expect(fn).toHaveBeenCalledTimes(1);
-  });
-
-  it("settings reports its open state; the opponent tooltip shows the shortcut", () => {
-    renderHeader(true);
-    expect(screen.getByRole("button", { name: "Settings" }).getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByRole("button", { name: "Opponent" }).getAttribute("title")).toMatch(/opponent window \(.+O\)/);
   });
 });

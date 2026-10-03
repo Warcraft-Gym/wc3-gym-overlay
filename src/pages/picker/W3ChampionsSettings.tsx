@@ -40,8 +40,7 @@ export function W3ChampionsSettings({ settings }: { settings: Settings }) {
   }
 
   return (
-    <div>
-      <h3 className="kicker mb-2">W3Champions</h3>
+    <div className="space-y-3">
       <TextField
         label="Your BattleTag"
         placeholder="Name#1234"

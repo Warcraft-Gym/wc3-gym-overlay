@@ -12,7 +12,7 @@ import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
 import { startOpponentWatcher } from "../../opponentWatcher";
 import { UPDATE_CHECK_DELAY_MS, WINDOW_OPPONENT } from "../../config";
-import { SELECTED_BUILD_SLUG, SETTINGS, type PickerTab } from "../../store/keys";
+import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { readKey, writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
 import { BuildList } from "./BuildList";
@@ -21,10 +21,11 @@ import { EmptyState, NoMatches } from "./EmptyState";
 import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
 import { PickerHeader } from "./PickerHeader";
-import { panelId, PickerTabs, tabId } from "./PickerTabs";
+import { BuildsToolbar } from "./BuildsToolbar";
+import { panelId, tabId, type PickerSection } from "./PickerTabs";
 import { ProfileTab } from "./profile/ProfileTab";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
-import { SettingsModal } from "./SettingsModal";
+import { SettingsPanel } from "./SettingsPanel";
 import { UpdateBanner } from "./UpdateBanner";
 import { useUpdateFlow } from "./useUpdateFlow";
 
@@ -111,7 +112,8 @@ export function App() {
   const { status, builds, fetchedAt, error, retry } = useAllBuilds();
 
   const [registrations, setRegistrations] = useState<ShortcutRegistrationResult[]>([]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Settings is a tab but never remembered (see PickerTabs).
+  const [section, setSection] = useState<PickerSection>(() => settings.pickerTab ?? "builds");
   const [filters, setFilters] = useState<Filters>(() => parseHashFilters(location.hash));
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [replayImport, setReplayImport] = useState<ReplayImportSource | null>(null);
@@ -187,9 +189,9 @@ export function App() {
   // the EmptyState when there is truly nothing (site or local) to show.
   const nothingToShow = status === "empty" && builds.length === 0;
 
-  const tab: PickerTab = settings.pickerTab ?? "builds";
-  function selectTab(next: PickerTab): void {
-    void writeKey(SETTINGS, { ...readKey(SETTINGS), pickerTab: next });
+  function selectTab(next: PickerSection): void {
+    setSection(next);
+    if (next !== "settings") void writeKey(SETTINGS, { ...readKey(SETTINGS), pickerTab: next });
   }
 
   function selectBuild(slug: string): void {
@@ -205,24 +207,28 @@ export function App() {
       <UpdateBanner flow={updateFlow} />
 
       <PickerHeader
+        tab={section}
+        onTab={selectTab}
         opponentShortcut={settings.shortcuts.toggle_opponent}
-        settingsOpen={settingsOpen}
-        onNewBuild={() => setEditor({ mode: "new", sourceBuild: null })}
-        onImportReplay={() => void handleImportReplay()}
-        onImportFromW3Champions={handleImportFromW3Champions}
         onToggleOpponent={() => void host.toggleWindow(WINDOW_OPPONENT)}
-        onToggleSettings={() => setSettingsOpen((v) => !v)}
       />
 
-      <main className="mx-auto max-w-6xl px-6 pb-8 pt-4">
-        <PickerTabs active={tab} onChange={selectTab} />
-
-        {tab === "profile" ? (
-          <div role="tabpanel" id={panelId("profile")} aria-labelledby={tabId("profile")} className="pt-5">
-            <ProfileTab onOpenSettings={() => setSettingsOpen(true)} />
+      <main className="mx-auto max-w-6xl px-6 py-6">
+        {section === "profile" ? (
+          <div role="tabpanel" id={panelId("profile")} aria-labelledby={tabId("profile")}>
+            <ProfileTab onOpenSettings={() => selectTab("settings")} />
+          </div>
+        ) : section === "settings" ? (
+          <div role="tabpanel" id={panelId("settings")} aria-labelledby={tabId("settings")}>
+            <SettingsPanel
+              settings={settings}
+              registrations={registrations}
+              onRegistrations={setRegistrations}
+              onOpenUpdate={updateFlow.open}
+            />
           </div>
         ) : (
-        <div role="tabpanel" id={panelId("builds")} aria-labelledby={tabId("builds")} className="flex flex-col gap-5 pt-5">
+        <div role="tabpanel" id={panelId("builds")} aria-labelledby={tabId("builds")} className="flex flex-col gap-5">
           <SelectedBuildHeader
             build={selectedBuild}
             apiBase={settings.apiBase}
@@ -239,6 +245,13 @@ export function App() {
             onChange={updateFilters}
             matchCount={filtered.length}
             totalCount={builds.length}
+            actions={
+              <BuildsToolbar
+                onNewBuild={() => setEditor({ mode: "new", sourceBuild: null })}
+                onImportReplay={() => void handleImportReplay()}
+                onImportFromW3Champions={handleImportFromW3Champions}
+              />
+            }
           />
 
           {status === "offline" ? <OfflineBanner fetchedAt={fetchedAt} onRetry={retry} /> : null}
@@ -261,16 +274,6 @@ export function App() {
           )}
         </div>
         )}
-
-        {settingsOpen ? (
-          <SettingsModal
-            settings={settings}
-            registrations={registrations}
-            onRegistrations={setRegistrations}
-            onClose={() => setSettingsOpen(false)}
-            onOpenUpdate={updateFlow.open}
-          />
-        ) : null}
 
         {editor ? (
           <Suspense fallback={null}>

@@ -11,7 +11,7 @@ import type { UpdateInfo } from "../../host/bridge";
 import { APP_VERSION } from "../../version";
 import { SETTINGS, type Settings } from "../../store/keys";
 import { writeKey } from "../../store/state";
-import { SettingsModal } from "./SettingsModal";
+import { SettingsPanel } from "./SettingsPanel";
 
 const AVAILABLE: UpdateInfo = {
   version: "9.9.9",
@@ -44,17 +44,17 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
 
 function renderSettings(settings: Settings, onOpenUpdate = vi.fn()) {
   return render(
-    <SettingsModal
+    <SettingsPanel
       settings={settings}
       registrations={[]}
       onRegistrations={() => {}}
-      onClose={() => {}}
+     
       onOpenUpdate={onOpenUpdate}
     />,
   );
 }
 
-describe("SettingsModal — updates", () => {
+describe("SettingsPanel — updates", () => {
   beforeEach(async () => {
     localStorage.clear();
     await writeKey(SETTINGS, baseSettings());
