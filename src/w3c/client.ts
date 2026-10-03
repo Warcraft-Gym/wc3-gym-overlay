@@ -168,3 +168,43 @@ export async function fetchMatchDetail(matchId: string, signal?: AbortSignal): P
   const { body } = await getJson(`/matches/${encodeURIComponent(matchId)}`, signal);
   return parse(matchDetailSchema, body, "match details");
 }
+
+// --- Your own profile -------------------------------------------------------
+
+const gameModeStatSchema = z.object({
+  race: z.number(),
+  gameMode: z.number(),
+  mmr: z.number().nullable().optional(),
+  rank: z.number().nullable().optional(),
+  wins: z.number().nullable().optional(),
+  losses: z.number().nullable().optional(),
+});
+export type W3cGameModeStat = z.infer<typeof gameModeStatSchema>;
+
+const timelineSchema = z.object({
+  mmrRpAtDates: z.array(z.object({ mmr: z.number(), date: z.string() })).nullable().default([]),
+});
+
+/** MMR and ladder rank per race and mode for one season. */
+export async function fetchGameModeStats(battleTag: string, season: number, signal?: AbortSignal): Promise<W3cGameModeStat[]> {
+  const query = new URLSearchParams({ gateway: String(W3C_GATEWAY), season: String(season) });
+  const { body } = await getJson(`/players/${encodeURIComponent(battleTag)}/game-mode-stats?${query.toString()}`, signal);
+  return parse(z.array(gameModeStatSchema), body, "game mode stats");
+}
+
+/** The season's MMR points for one race (about one per day played). */
+export async function fetchMmrTimeline(
+  battleTag: string,
+  raceId: number,
+  season: number,
+  signal?: AbortSignal,
+): Promise<{ mmr: number; date: string }[]> {
+  const query = new URLSearchParams({
+    race: String(raceId),
+    gateway: String(W3C_GATEWAY),
+    season: String(season),
+    gameMode: String(W3C_GAME_MODE_1V1),
+  });
+  const { body } = await getJson(`/players/${encodeURIComponent(battleTag)}/mmr-rp-timeline?${query.toString()}`, signal);
+  return parse(timelineSchema, body, "MMR timeline").mmrRpAtDates ?? [];
+}

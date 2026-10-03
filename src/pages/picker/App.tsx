@@ -12,8 +12,8 @@ import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
 import { startOpponentWatcher } from "../../opponentWatcher";
 import { UPDATE_CHECK_DELAY_MS, WINDOW_OPPONENT } from "../../config";
-import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
-import { writeKey } from "../../store/state";
+import { SELECTED_BUILD_SLUG, SETTINGS, type PickerTab } from "../../store/keys";
+import { readKey, writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
 import { BuildList } from "./BuildList";
 import type { BuildEditorMode } from "./editor/BuildEditorModal";
@@ -21,6 +21,8 @@ import { EmptyState, NoMatches } from "./EmptyState";
 import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
 import { PickerHeader } from "./PickerHeader";
+import { panelId, PickerTabs, tabId } from "./PickerTabs";
+import { ProfileTab } from "./profile/ProfileTab";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
 import { SettingsModal } from "./SettingsModal";
 import { UpdateBanner } from "./UpdateBanner";
@@ -185,6 +187,11 @@ export function App() {
   // the EmptyState when there is truly nothing (site or local) to show.
   const nothingToShow = status === "empty" && builds.length === 0;
 
+  const tab: PickerTab = settings.pickerTab ?? "builds";
+  function selectTab(next: PickerTab): void {
+    void writeKey(SETTINGS, { ...readKey(SETTINGS), pickerTab: next });
+  }
+
   function selectBuild(slug: string): void {
     void writeKey(SELECTED_BUILD_SLUG, slug);
   }
@@ -207,8 +214,15 @@ export function App() {
         onToggleSettings={() => setSettingsOpen((v) => !v)}
       />
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="flex flex-col gap-5">
+      <main className="mx-auto max-w-6xl px-6 pb-8 pt-4">
+        <PickerTabs active={tab} onChange={selectTab} />
+
+        {tab === "profile" ? (
+          <div role="tabpanel" id={panelId("profile")} aria-labelledby={tabId("profile")} className="pt-5">
+            <ProfileTab onOpenSettings={() => setSettingsOpen(true)} />
+          </div>
+        ) : (
+        <div role="tabpanel" id={panelId("builds")} aria-labelledby={tabId("builds")} className="flex flex-col gap-5 pt-5">
           <SelectedBuildHeader
             build={selectedBuild}
             apiBase={settings.apiBase}
@@ -246,6 +260,7 @@ export function App() {
             />
           )}
         </div>
+        )}
 
         {settingsOpen ? (
           <SettingsModal

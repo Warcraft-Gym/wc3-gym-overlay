@@ -22,7 +22,7 @@ import type { W3cAka, W3cMatch, W3cMatchDetail, W3cPlayer, W3cProfile } from "./
 export const CARD_RACES = ["human", "orc", "nightelf", "undead", "random"] as const;
 export type CardRace = (typeof CARD_RACES)[number];
 
-const RACE_BY_ID: Readonly<Record<number, CardRace>> = { 0: "random", 1: "human", 2: "orc", 4: "nightelf", 8: "undead" };
+export const RACE_BY_ID: Readonly<Record<number, CardRace>> = { 0: "random", 1: "human", 2: "orc", 4: "nightelf", 8: "undead" };
 
 /** Most recent results shown as the form strip. */
 export const FORM_LENGTH = 10;
@@ -155,7 +155,7 @@ export type OpponentCard = z.infer<typeof opponentCardSchema>;
 export type OpponentIdentity = NonNullable<OpponentCard["identity"]>;
 export type OpponentStyle = NonNullable<OpponentCard["style"]>;
 
-type Game = {
+export type Game = {
   id: string;
   won: boolean;
   map: string;
@@ -194,7 +194,7 @@ export function opponentGames(history: W3cMatch[], opponentTag: string, race: Ca
   return games.sort((a, b) => (a.start < b.start ? 1 : a.start > b.start ? -1 : 0));
 }
 
-function record(games: Game[]): WinLoss {
+export function record(games: Game[]): WinLoss {
   const wins = games.filter((g) => g.won).length;
   return { wins, losses: games.length - wins };
 }
@@ -204,7 +204,7 @@ function average(values: number[]): number | null {
   return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
 }
 
-function mostCommon(keys: string[]): { key: string; count: number }[] {
+export function mostCommon(keys: string[]): { key: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1);
   return [...counts.entries()]

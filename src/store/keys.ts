@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import { opponentCardSchema } from "../w3c/opponentCard";
+import { profileSchema } from "../w3c/profile";
 import {
   apiBuildListItemSchema,
   apiBuildStepSchema,
@@ -139,7 +140,11 @@ export type Settings = {
   opponentAutoOpen: boolean;
   /** Last position/size of the opponent window. */
   opponentBounds?: OverlayBounds;
+  /** The picker tab last open: your builds or your W3Champions profile. */
+  pickerTab?: PickerTab;
 };
+
+export type PickerTab = "builds" | "profile";
 
 /**
  * 0.6.0 moved the defaults: the build overlay from Shift+O to Shift+B, and
@@ -217,6 +222,7 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     opponentCard: z.boolean().default(true),
     opponentAutoOpen: z.boolean().default(true),
     opponentBounds: overlayBoundsSchema.optional(),
+    pickerTab: z.enum(["builds", "profile"]).default("builds"),
   }),
 );
 
@@ -233,6 +239,7 @@ export const SETTINGS: StoreKey<Settings> = {
     myBattleTag: null,
     opponentCard: true,
     opponentAutoOpen: true,
+    pickerTab: "builds",
   }),
 };
 
@@ -333,4 +340,24 @@ export const OPPONENT: StoreKey<OpponentState> = {
   name: "wc3gym.opponent",
   schema: opponentStateSchema,
   defaultValue: () => ({ status: "idle", matchId: null, live: false, error: null, card: null, updatedAt: null }),
+};
+
+/**
+ * Your own W3Champions profile for the picker's Profile tab, written by
+ * `profileLoader.ts`. A refresh keeps the previous profile visible
+ * (status "loading" with `profile` still set).
+ */
+export const profileStateSchema = z.object({
+  status: z.enum(["idle", "loading", "ok", "error"]),
+  tag: z.string().nullable(),
+  profile: profileSchema.nullable(),
+  error: z.string().nullable(),
+  fetchedAt: z.string().nullable(),
+});
+export type ProfileState = z.infer<typeof profileStateSchema>;
+
+export const PROFILE: StoreKey<ProfileState> = {
+  name: "wc3gym.profile",
+  schema: profileStateSchema,
+  defaultValue: () => ({ status: "idle", tag: null, profile: null, error: null, fetchedAt: null }),
 };
