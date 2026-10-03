@@ -350,7 +350,13 @@ export const OPPONENT: StoreKey<OpponentState> = {
  * `profileLoader.ts`. A refresh keeps the previous profile visible
  * (status "loading" with `profile` still set).
  */
+/** Bump when `Profile` gains fields: a profile saved by an older version
+ *  is reloaded instead of shown without them. */
+export const PROFILE_STATE_VERSION = 2;
+
 export const profileStateSchema = z.object({
+  /** PROFILE_STATE_VERSION of the app that saved this (0: before 0.6). */
+  version: z.number().default(0),
   status: z.enum(["idle", "loading", "ok", "error"]),
   tag: z.string().nullable(),
   /** The race asked for when this was loaded (null: the one you pick most). */
@@ -364,5 +370,5 @@ export type ProfileState = z.infer<typeof profileStateSchema>;
 export const PROFILE: StoreKey<ProfileState> = {
   name: "wc3gym.profile",
   schema: profileStateSchema,
-  defaultValue: () => ({ status: "idle", tag: null, race: null, profile: null, error: null, fetchedAt: null }),
+  defaultValue: () => ({ version: PROFILE_STATE_VERSION, status: "idle", tag: null, race: null, profile: null, error: null, fetchedAt: null }),
 };

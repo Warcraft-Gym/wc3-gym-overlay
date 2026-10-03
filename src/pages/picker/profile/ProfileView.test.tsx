@@ -54,11 +54,11 @@ describe("ProfileTab states", () => {
 
   it("shows loading, then the error with a retry", async () => {
     await writeKey(SETTINGS, { ...readKey(SETTINGS), myBattleTag: D0WI });
-    await writeKey(PROFILE, { status: "loading", tag: D0WI, race: null, profile: null, error: null, fetchedAt: null });
+    await writeKey(PROFILE, { version: 2, status: "loading", tag: D0WI, race: null, profile: null, error: null, fetchedAt: null });
     const { unmount } = render(<ProfileTab onOpenSettings={() => {}} />);
     expect(screen.getByText(`Loading ${D0WI}'s W3Champions games…`)).toBeTruthy();
     unmount();
-    await writeKey(PROFILE, { status: "error", tag: D0WI, race: null, profile: null, error: "Couldn't load your W3Champions profile: 503", fetchedAt: null });
+    await writeKey(PROFILE, { version: 2, status: "error", tag: D0WI, race: null, profile: null, error: "Couldn't load your W3Champions profile: 503", fetchedAt: null });
     render(<ProfileTab onOpenSettings={() => {}} />);
     expect(screen.getByRole("alert").textContent).toContain("503");
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
@@ -66,7 +66,7 @@ describe("ProfileTab states", () => {
 
   it("keeps showing the profile while it refreshes", async () => {
     await writeKey(SETTINGS, { ...readKey(SETTINGS), myBattleTag: D0WI });
-    await writeKey(PROFILE, { status: "loading", tag: D0WI, race: null, profile: realProfile(), error: null, fetchedAt: "2026-10-03T11:58:00Z" });
+    await writeKey(PROFILE, { version: 2, status: "loading", tag: D0WI, race: null, profile: realProfile(), error: null, fetchedAt: "2026-10-03T11:58:00Z" });
     render(<ProfileTab onOpenSettings={() => {}} />);
     expect(screen.getByText("d0wi")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Refresh profile" }) as HTMLButtonElement).disabled).toBe(true);

@@ -9,7 +9,7 @@
  */
 
 import { isValidBattleTag, inBatches, DETAIL_CONCURRENCY, HISTORY_PAGE_SIZE } from "./opponentWatcher";
-import { PROFILE, SETTINGS, type ProfileState } from "./store/keys";
+import { PROFILE, PROFILE_STATE_VERSION, SETTINGS, type ProfileState } from "./store/keys";
 import { readKey, writeKey } from "./store/state";
 import {
   fetchAka,
@@ -123,6 +123,7 @@ let inFlight: Promise<void> | null = null;
 export function needsRefresh(state: ProfileState, tag: string, now: number, race: ProfilePick | null = null): boolean {
   if (state.tag?.toLowerCase() !== tag.toLowerCase() || state.status === "error" || state.status === "idle") return true;
   if ((state.race ?? null) !== race) return true;
+  if (state.version !== PROFILE_STATE_VERSION) return true;
   if (!state.fetchedAt) return true;
   return now - Date.parse(state.fetchedAt) >= PROFILE_TTL_MS;
 }
@@ -142,7 +143,7 @@ export function refreshProfile(options: { force?: boolean } = {}, deps: ProfileD
     await write({ status: "loading", tag, race, error: null, profile: sameTag ? state.profile : null });
     try {
       const profile = await loadProfile(tag, deps, race, !raceOnly);
-      await write({ status: "ok", profile, error: null, fetchedAt: new Date(deps.now()).toISOString() });
+      await write({ version: PROFILE_STATE_VERSION, status: "ok", profile, error: null, fetchedAt: new Date(deps.now()).toISOString() });
     } catch (err) {
       await write({ status: "error", error: `Couldn't load your W3Champions profile: ${describe(err)}` });
     }

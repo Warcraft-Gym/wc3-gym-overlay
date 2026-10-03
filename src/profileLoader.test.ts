@@ -110,13 +110,31 @@ describe("switching race", () => {
   });
 });
 
+describe("a profile saved by the previous build", () => {
+  it("reads as version 0 and is reloaded on open, so the race picker appears", async () => {
+    await writeKey(SETTINGS, { ...readKey(SETTINGS), myBattleTag: D0WI });
+    localStorage.setItem(
+      PROFILE.name,
+      JSON.stringify({ status: "ok", tag: D0WI, profile: null, error: null, fetchedAt: new Date(PROFILE_NOW).toISOString() }),
+    );
+    expect(readKey(PROFILE).version).toBe(0);
+    const d = deps();
+    await refreshProfile({}, d);
+    expect(d.fetchSeasonIds).toHaveBeenCalledTimes(1);
+    expect(readKey(PROFILE).version).toBe(2);
+    expect(readKey(PROFILE).profile?.racesPlayed.find((r) => r.race === "nightelf")?.games).toBe(109);
+  });
+});
+
 describe("needsRefresh", () => {
-  const ok = { status: "ok" as const, tag: D0WI, race: null, profile: null, error: null, fetchedAt: new Date(PROFILE_NOW).toISOString() };
+  const ok = { version: 2, status: "ok" as const, tag: D0WI, race: null, profile: null, error: null, fetchedAt: new Date(PROFILE_NOW).toISOString() };
   it("reloads when stale, for another tag, or after an error", () => {
     expect(needsRefresh(ok, D0WI, PROFILE_NOW + 1000)).toBe(false);
     expect(needsRefresh(ok, D0WI, PROFILE_NOW + PROFILE_TTL_MS)).toBe(true);
     expect(needsRefresh(ok, "Other#1234", PROFILE_NOW)).toBe(true);
     expect(needsRefresh({ ...ok, status: "error" }, D0WI, PROFILE_NOW)).toBe(true);
     expect(needsRefresh(ok, D0WI, PROFILE_NOW, "random")).toBe(true);
+    // Saved by an older version (no race counts): reload even when fresh.
+    expect(needsRefresh({ ...ok, version: 0 }, D0WI, PROFILE_NOW + 1000)).toBe(true);
   });
 });
