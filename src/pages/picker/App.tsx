@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Button } from "../../components/Button";
 import type { BuildRace, BuildVsRace } from "../../components/BuildBadges";
 import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
 import { isLocalBuild, useAllBuilds, type AnyBuild } from "../../data/useAllBuilds";
@@ -21,8 +20,9 @@ import type { BuildEditorMode } from "./editor/BuildEditorModal";
 import { EmptyState } from "./EmptyState";
 import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
+import { PickerHeader } from "./PickerHeader";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
-import { SETTINGS_DIALOG_ID, SettingsModal } from "./SettingsModal";
+import { SettingsModal } from "./SettingsModal";
 import { UpdateBanner } from "./UpdateBanner";
 import { useUpdateFlow } from "./useUpdateFlow";
 
@@ -197,40 +197,15 @@ export function App() {
     <>
       <UpdateBanner flow={updateFlow} />
 
-      <header className="flex items-center justify-between gap-3 border-b border-line/60 px-6 py-4">
-        <div>
-          <h1 className="font-display text-sm font-extrabold uppercase tracking-[0.12em] text-gold">
-            Warcraft 3 Gym
-          </h1>
-          <p className="text-xs text-muted">Build picker</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="gold" onClick={() => setEditor({ mode: "new", sourceBuild: null })}>
-            New private build
-          </Button>
-          <Button variant="ghost" onClick={() => void handleImportReplay()}>
-            Import replay
-          </Button>
-          <Button variant="ghost" onClick={handleImportFromW3Champions}>
-            From W3Champions
-          </Button>
-          <Button
-            variant="ghost"
-            title={`Show or hide the opponent window (${settings.shortcuts.toggle_opponent})`}
-            onClick={() => void host.toggleWindow(WINDOW_OPPONENT)}
-          >
-            Opponent
-          </Button>
-          <Button
-            variant="ghost"
-            aria-expanded={settingsOpen}
-            aria-controls={SETTINGS_DIALOG_ID}
-            onClick={() => setSettingsOpen((v) => !v)}
-          >
-            Settings
-          </Button>
-        </div>
-      </header>
+      <PickerHeader
+        opponentShortcut={settings.shortcuts.toggle_opponent}
+        settingsOpen={settingsOpen}
+        onNewBuild={() => setEditor({ mode: "new", sourceBuild: null })}
+        onImportReplay={() => void handleImportReplay()}
+        onImportFromW3Champions={handleImportFromW3Champions}
+        onToggleOpponent={() => void host.toggleWindow(WINDOW_OPPONENT)}
+        onToggleSettings={() => setSettingsOpen((v) => !v)}
+      />
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="flex flex-col gap-5">
