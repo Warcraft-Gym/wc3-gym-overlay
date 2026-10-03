@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { GameIcon } from "../../components/GameIcon";
 import { IconButton } from "../../components/IconButton";
+import { RaceCrest } from "../../components/RaceCrest";
 import { WINDOW_OPPONENT } from "../../config";
 import { host } from "../../host";
 import { isValidBattleTag } from "../../opponentWatcher";
@@ -21,6 +22,17 @@ export function formatRecord(r: WinLoss): string {
   const games = r.wins + r.losses;
   if (games === 0) return "no games";
   return `${r.wins}–${r.losses} (${Math.round((r.wins / games) * 100)}%)`;
+}
+
+/** A faction crest in place of the race's name; the name stays for screen
+ *  readers. */
+function RaceIcon({ race, apiBase, size = 16 }: { race: CardRace; apiBase: string; size?: number }) {
+  return (
+    <span className="opponent-card__race">
+      <RaceCrest race={race} apiBase={apiBase} size={size} />
+      <span className="sr-only">{RACE_LABEL[race]}</span>
+    </span>
+  );
 }
 
 function heroIconUrl(apiBase: string, icon: string | undefined): string | undefined {
@@ -58,10 +70,7 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
     .join(" · ");
   return (
     <>
-      <p className="opponent-card__meta">
-        {RACE_LABEL[opponent.race]}
-        {meta ? ` · ${meta}` : ""}
-      </p>
+      {meta ? <p className="opponent-card__meta">{meta}</p> : null}
       {card.sampleSize === 0 ? (
         <p className="opponent-card__note">No ladder games found for this opponent yet.</p>
       ) : (
@@ -77,7 +86,9 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
           <dl className="opponent-card__stats">
             {card.vsMyRace ? (
               <>
-                <dt>vs {RACE_LABEL[card.myRace]}</dt>
+                <dt>
+                  vs <RaceIcon race={card.myRace} apiBase={apiBase} />
+                </dt>
                 <dd>{formatRecord(card.vsMyRace)}</dd>
               </>
             ) : null}
@@ -87,7 +98,13 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
           {card.firstHero ? (
             <div className="opponent-card__openers">
               <p className="opponent-card__kicker">
-                Opens {card.openersBasis === "vs-your-race" ? `vs ${RACE_LABEL[card.myRace]}` : "(all games)"}
+                {card.openersBasis === "vs-your-race" ? (
+                  <>
+                    Opens vs <RaceIcon race={card.myRace} apiBase={apiBase} size={14} />
+                  </>
+                ) : (
+                  "Opens (all games)"
+                )}
               </p>
               <p className="opponent-card__opener">
                 <span className="opponent-card__heroes">
@@ -134,7 +151,7 @@ export function OpponentPanel() {
   const settings = useStoreValue(SETTINGS);
   const card = state.card;
   const empty = emptyMessage(settings, state);
-  const title = !empty && card ? `${card.opponent.name} · ${RACE_LABEL[card.opponent.race]}` : null;
+  const showCard = !empty && card !== null;
 
   return (
     <div
@@ -144,7 +161,12 @@ export function OpponentPanel() {
       <header data-tauri-drag-region onMouseDown={() => void host.startDragging()} className="overlay-header">
         <div className="overlay-header__title">
           <span className="opponent-card__kicker">Opponent</span>
-          {title ? <span className="opponent-panel__title">{title}</span> : null}
+          {showCard ? (
+            <span className="opponent-panel__title">
+              <RaceIcon race={card.opponent.race} apiBase={settings.apiBase} size={18} />
+              {card.opponent.name}
+            </span>
+          ) : null}
         </div>
         <div className="overlay-header__actions">
           <IconButton

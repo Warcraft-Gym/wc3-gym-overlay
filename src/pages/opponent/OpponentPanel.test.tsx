@@ -58,11 +58,15 @@ describe("emptyMessage", () => {
 describe("OpponentPanel", () => {
   it("shows the real card for d0wi on Hammerfall", async () => {
     await show(state());
-    expect(screen.getByText("d0wi · Night Elf")).toBeTruthy();
-    expect(screen.getByText(/1858 MMR · rank 19 · FR/)).toBeTruthy();
+    expect(screen.getByText("d0wi")).toBeTruthy();
+    expect(screen.getByText("Night Elf")).toBeTruthy(); // the crest's screen-reader name
+    expect(screen.getByText("1858 MMR · rank 19 · FR")).toBeTruthy();
     expect(screen.getByText("12–6 (67%)")).toBeTruthy();
     expect(screen.getByText("5–9 (36%)")).toBeTruthy();
-    expect(screen.getByText("Opens vs Undead")).toBeTruthy();
+    // "vs Undead" and "Opens vs Undead" are crests now, named for screen readers.
+    expect(screen.getAllByText("Undead")).toHaveLength(2);
+    expect(screen.getByText(/^Opens vs/)).toBeTruthy();
+    expect(screen.queryByText(/Night Elf ·/)).toBeNull();
     expect(screen.getByText("15 of 18")).toBeTruthy();
     expect(screen.getByText("11 of 18")).toBeTruthy();
     expect(screen.getByText("2 of 18")).toBeTruthy();

@@ -395,3 +395,20 @@
 [data-overlay-root] > .opponent-card .opponent-card__body {
   padding-top: 0.55rem;
 }
+
+.opponent-card__race {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.opponent-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.opponent-card__stats dt {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
