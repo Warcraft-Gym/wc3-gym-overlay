@@ -29,8 +29,10 @@ export const FORM_LENGTH = 10;
 export const MIN_GAMES_FOR_MATCHUP = 3;
 /** Below this many games in total, the card says the sample is thin. */
 export const MIN_GAMES_FOR_STATS = 5;
-/** Opener rows shown (most common hero pairs). */
+/** Opener rows shown (most common two-hero combinations). */
 export const OPENERS_SHOWN = 2;
+/** A combination needs at least this many games to be shown. */
+export const MIN_OPENER_GAMES = 2;
 
 export function raceOf(player: Pick<W3cPlayer, "race" | "rndRace">): CardRace {
   const random = player.rndRace !== null && player.rndRace !== undefined ? RACE_BY_ID[player.rndRace] : undefined;
@@ -153,7 +155,9 @@ export function buildOpponentCard(live: LiveMatch, history: W3cMatch[]): Opponen
   const openerBase = (useMatchup ? vsMine : games).filter((g) => g.heroes.length > 0);
 
   const first = mostCommon(openerBase.map((g) => g.heroes[0]))[0];
-  const pairs = mostCommon(openerBase.map((g) => g.heroes.slice(0, 2).join("+"))).slice(0, OPENERS_SHOWN);
+  const pairs = mostCommon(openerBase.filter((g) => g.heroes.length >= 2).map((g) => g.heroes.slice(0, 2).join("+")))
+    .filter((p) => p.count >= MIN_OPENER_GAMES)
+    .slice(0, OPENERS_SHOWN);
   const durationBase = useMatchup ? vsMine : games;
 
   return {

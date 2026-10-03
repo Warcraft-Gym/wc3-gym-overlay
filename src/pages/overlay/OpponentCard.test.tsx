@@ -58,7 +58,10 @@ describe("OpponentCard", () => {
     expect(screen.getByText("5–9 (36%)")).toBeTruthy();
     expect(screen.getByText("Opens vs Undead")).toBeTruthy();
     expect(screen.getByText("Naga Sea Witch")).toBeTruthy();
+    expect(screen.getByText("15 of 18")).toBeTruthy();
     expect(screen.getByText("11 of 18")).toBeTruthy();
+    expect(screen.getByText("2 of 18")).toBeTruthy();
+    expect(screen.getByText("Pandaren Brewmaster")).toBeTruthy();
     expect(screen.getByLabelText("Recent form, newest first: W L W W W L L W L L")).toBeTruthy();
   });
 

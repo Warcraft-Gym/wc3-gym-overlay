@@ -370,3 +370,9 @@
   align-items: center;
   gap: 0.25rem;
 }
+
+.opponent-card__form .opponent-card__faint {
+  margin-left: 0.45rem;
+  font-family: var(--wg-font-sans);
+  font-weight: 400;
+}

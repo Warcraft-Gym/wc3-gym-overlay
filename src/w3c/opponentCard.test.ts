@@ -97,7 +97,7 @@ describe("buildOpponentCard on the real d0wi history", () => {
     expect(card.firstHero).toEqual({ hero: "demonhunter", count: 15 });
     expect(card.openers).toEqual([
       { heroes: ["demonhunter", "seawitch"], count: 11 },
-      { heroes: ["demonhunter"], count: 3 },
+      { heroes: ["pandarenbrewmaster", "demonhunter"], count: 2 },
     ]);
     expect(card.avgMinutes).toEqual({ win: 16, loss: 19 });
   });

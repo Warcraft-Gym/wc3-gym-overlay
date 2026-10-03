@@ -27,18 +27,26 @@ function heroIconUrl(apiBase: string, icon: string | undefined): string | undefi
   return icon ? `${apiBase}/wc3-icons/${icon}.webp` : undefined;
 }
 
+function Hero({ name, apiBase }: { name: string; apiBase: string }) {
+  const info = heroInfo(name);
+  return (
+    <span className="opponent-card__hero">
+      <GameIcon icon={info.icon} iconUrl={heroIconUrl(apiBase, info.icon)} size={18} />
+      {info.title}
+    </span>
+  );
+}
+
+/** Heroes in pick order, "A → B". */
 function HeroIcons({ heroes, apiBase }: { heroes: string[]; apiBase: string }) {
   return (
     <span className="opponent-card__heroes">
-      {heroes.map((name, index) => {
-        const info = heroInfo(name);
-        return (
-          <span key={`${name}-${index}`} className="opponent-card__hero">
-            <GameIcon icon={info.icon} iconUrl={heroIconUrl(apiBase, info.icon)} size={18} />
-            {info.title}
-          </span>
-        );
-      })}
+      {heroes.map((name, index) => (
+        <span key={`${name}-${index}`} className="opponent-card__hero">
+          {index > 0 ? <span className="opponent-card__faint" aria-hidden="true">→</span> : null}
+          <Hero name={name} apiBase={apiBase} />
+        </span>
+      ))}
     </span>
   );
 }
@@ -64,7 +72,7 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
                 {r}
               </span>
             ))}
-            <span className="opponent-card__faint"> {card.sampleSize} games</span>
+            <span className="opponent-card__faint">{card.sampleSize} games</span>
           </p>
           <dl className="opponent-card__stats">
             {card.vsMyRace ? (
@@ -80,6 +88,15 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
             <div className="opponent-card__openers">
               <p className="opponent-card__kicker">
                 Opens {card.openersBasis === "vs-your-race" ? `vs ${RACE_LABEL[card.myRace]}` : "(all games)"}
+              </p>
+              <p className="opponent-card__opener">
+                <span className="opponent-card__heroes">
+                  <Hero name={card.firstHero.hero} apiBase={apiBase} />
+                  <span>first</span>
+                </span>
+                <span className="opponent-card__faint">
+                  {card.firstHero.count} of {card.openerGames}
+                </span>
               </p>
               {card.openers.map((o) => (
                 <p key={o.heroes.join("+")} className="opponent-card__opener">
