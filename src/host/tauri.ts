@@ -21,6 +21,7 @@ import { check as checkUpdate, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch as relaunchApp } from "@tauri-apps/plugin-process";
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  GameClockSample,
   Host,
   ShortcutAction,
   ShortcutMap,
@@ -142,6 +143,20 @@ function onStateChanged(cb: () => void): () => void {
   let unlisten: (() => void) | undefined;
   let cancelled = false;
   listen(STATE_CHANGED_EVENT, () => cb()).then((fn) => {
+    if (cancelled) fn();
+    else unlisten = fn;
+  });
+  return () => {
+    cancelled = true;
+    unlisten?.();
+  };
+}
+
+/** Listens to the samples that `src-tauri/src/game_clock.rs` emits. */
+function onGameClock(cb: (sample: GameClockSample) => void): () => void {
+  let unlisten: (() => void) | undefined;
+  let cancelled = false;
+  listen<GameClockSample>("wc3gym:game-clock", (event) => cb(event.payload)).then((fn) => {
     if (cancelled) fn();
     else unlisten = fn;
   });
@@ -307,5 +322,6 @@ export function createTauriHost(): Host {
     installUpdate,
     relaunch,
     isPortableBuild,
+    onGameClock,
   };
 }

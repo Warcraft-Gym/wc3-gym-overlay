@@ -136,14 +136,32 @@ whatever was holding the shortcut).
 
 1. In the picker, select a build from the list and click **Show overlay**.
 2. Alt-tab into Warcraft III (windowed/borderless — see Prerequisites).
-3. At the game clock's **0:00** (match start), press **play**
-   (`Ctrl+Shift+P` / `⌘⇧P`) on the overlay timer.
-4. Use **next step** / **prev step** to resync the highlighted step if the
-   timer drifts from the in-game clock.
+3. On Windows, the overlay timer starts, pauses and resets by itself when
+   the game starts, pauses or ends (see
+   [Clock sync with the game](#clock-sync-with-the-game-windows)). On macOS,
+   press **play** (`⌘⇧P`) by hand at the game clock's **0:00** (match start).
+4. On macOS, or when no game is running, use **next step** / **prev step**
+   to resync the highlighted step if the timer drifts from the in-game
+   clock. On Windows the game clock wins while a game runs.
 5. The step list header labels each column ("#", "Time", "Food", "Step");
    a Time or Food column only appears when the selected build actually has
    that data, and a step with no value for a shown column just leaves the
    cell blank instead of showing a placeholder.
+
+## Clock sync with the game (Windows)
+
+Warcraft III shares a block of memory named `War3StatsObserverSharedMemory`
+for its observer API. Players and observers get the same bytes.
+
+- The app reads the first 13 bytes of the block: the in-game flag and the
+  game clock. It reads no unit, gold, map or opponent data.
+- The app writes one value: the block's refresh interval (250 ms). This
+  turns the observer API on.
+- While a game runs, the game clock wins. Within 250 ms it overrides the
+  play, pause, reset and step shortcuts.
+- This works on Windows only. The app checks for the block four times a
+  second. It needs no administrator rights when the game and the overlay
+  run as the same user. macOS and Linux (Wine) have no supported path yet.
 
 ## Private builds
 

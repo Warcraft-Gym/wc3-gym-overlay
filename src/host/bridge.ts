@@ -42,6 +42,11 @@ export type UpdateProgress = {
   contentLength: number | null;
 };
 
+/** One poll of Warcraft III's observer shared-memory header (Windows only).
+ *  `null` while no game process exposes the block. `clockMs` is the game
+ *  clock; it holds its value while the game is paused. */
+export type GameClockSample = { inGame: boolean; clockMs: number; refreshMs: number } | null;
+
 export interface Host {
   readonly kind: "tauri" | "browser";
   showWindow(label: string): Promise<void>;
@@ -94,4 +99,7 @@ export interface Host {
   /** F002: true when running the portable exe, which has no updater
    *  wired up — the UI should offer a manual download instead. */
   isPortableBuild(): Promise<boolean>;
+  /** Fires every poll (about four times a second) with the game clock
+   *  sample. The browser host never fires and returns a no-op unsubscribe. */
+  onGameClock(cb: (sample: GameClockSample) => void): () => void;
 }

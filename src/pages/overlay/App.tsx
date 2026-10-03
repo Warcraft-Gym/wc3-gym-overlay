@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { startGameClockSync } from "../../data/gameClock";
 import { useOverlayBounds } from "../../data/useOverlayBounds";
 import { host } from "../../host";
 import { applyShortcuts } from "../../shortcuts";
@@ -22,6 +23,9 @@ export function App() {
     if (host.kind !== "browser") return;
     void applyShortcuts();
   }, []);
+
+  // Only the overlay window syncs the timer to the game, so there is one writer.
+  useEffect(() => startGameClockSync(), []);
 
   return <OverlayPanel />;
 }
