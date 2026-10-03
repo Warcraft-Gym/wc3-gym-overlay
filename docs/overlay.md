@@ -33,7 +33,7 @@ below; flip it to `true` to publish.
 3. First launch opens the **picker** window: pick a build, then click
    **Show overlay** to open the floating build-order panel (or press
    `Ctrl+Shift+B`).
-4. Settings (API base, shortcuts, overlay opacity/scale) are stored in the
+4. Settings (shortcuts, overlay opacity/scale, your BattleTag) are stored in the
    app's WebView local storage, not a config file under `%APPDATA%`.
    Uninstalling the app clears this app data along with it.
 5. Once installed, you don't need to come back here for future releases —
@@ -76,7 +76,7 @@ downloads those directly — there is no proxy in between.
 
 - **Auto-check on launch.** About 3 seconds after the picker window opens,
   the app silently checks for a newer release. This is controlled by the
-  **Auto-update on launch** setting (Settings dialog), on by default.
+  **Auto-update on launch** setting (**Settings** tab), on by default.
 - **Manual check.** **Settings → Check for updates** runs the same check
   on demand, regardless of the auto-update setting.
 - **The banner.** When a newer version is found, a banner offers three
@@ -116,8 +116,7 @@ downloads those directly — there is no proxy in between.
 | Previous step | `Ctrl+Shift+[` | `⌘⇧[` | Jump the clock to the previous timed step |
 
 Change any combo from the picker's **Settings → Shortcuts** panel: click
-**Change**, then press the new combo (Escape cancels the capture without
-closing the Settings dialog). A modifier combo needs Ctrl, Alt, or ⌘; a
+**Change**, then press the new combo (Escape cancels the capture). A modifier combo needs Ctrl, Alt, or ⌘; a
 single **function key** (F1–F12, and F13–F24 if your keyboard has them) or
 one of Insert, Delete, Home, End, PageUp, PageDown, Pause, ScrollLock also
 works on its own, no modifier required — press it and it's accepted
@@ -145,6 +144,51 @@ whatever was holding the shortcut).
    a Time or Food column only appears when the selected build actually has
    that data, and a step with no value for a shown column just leaves the
    cell blank instead of showing a placeholder.
+
+## The picker
+
+The picker window has three tabs in its header: **Builds** (pick, create
+and import builds; the import and **New build** buttons sit in the header
+while this tab is open), **Profile** (your own W3Champions stats) and
+**Settings**. It reopens on Builds or Profile, whichever you used last. The
+**Opponent** button on the right shows or hides the opponent window from
+any tab.
+
+## Opponent card
+
+Set your BattleTag in **Settings → W3Champions** (for example `Name#1234`).
+While the app runs it asks W3Champions every 15 seconds whether you are in
+a 1v1; when a game starts (W3Champions lists it 40 to 55 seconds in), the
+**opponent window** opens with:
+
+- **Tags**: a few words to act on, each with its numbers on hover (for
+  example "Wins fights", "Weak on Hammerfall", "Always Demon Hunter").
+- Your **win chance** from the MMR gap, their **recent form** and streak.
+- Their record against your race and on this map, next to yours.
+- Their record by **game length**, their usual **first heroes**, and their
+  **play style** from their last 8 score sheets (gold, kills, heroes lost,
+  upkeep).
+
+`Ctrl+Shift+O` / `⌘⇧O` shows or hides it; **Open the opponent window by
+itself** (Settings) turns the automatic opening off. After the game it
+keeps the last opponent, marked **Last game**. A game W3Champions has
+listed as live for more than 90 minutes is ignored (stuck listings exist).
+Only W3Champions 1v1 games are detected, from public W3Champions data; the
+app sends nothing anywhere else.
+
+## Your profile
+
+The **Profile** tab shows your own W3Champions stats over the current and
+previous season: MMR and rank, an MMR line with your peak, your
+**strengths** and what to **work on** (same thresholds as the opponent
+tags), matchups, best and worst maps (5+ games), form, record by game
+length, first heroes and play style.
+
+Pick the race to view with the chips under your name, **Random**
+included. Races follow your lobby pick: Random shows the games you queued
+as Random, whatever race they rolled, with Random's own MMR and rank, as on
+the W3Champions ladder. The profile reloads when you open the tab (if
+older than 5 minutes), when a game you were in ends, and from **Refresh**.
 
 ## Private builds
 
@@ -212,8 +256,8 @@ what a build contains before importing it.
 
 **The overlay ships no replay parser of its own (F004).** **Import replay**
 (top bar) sends one of your own `.w3g` replay files to the website's
-`POST /api/replay-import` (the same **API base** configured in Settings —
-see [Troubleshooting](#troubleshooting)) and turns the response into a
+`POST /api/replay-import` (on `https://warcraft-gym.com`; see
+[Troubleshooting](#troubleshooting)) and turns the response into a
 draft private build. **This needs a working connection** — with the site
 unreachable, rate-limited, or down, the import fails with a visible message
 (see [Troubleshooting an import](#troubleshooting-an-import) below)
@@ -321,7 +365,7 @@ result. The behavior below is what that service does with a replay.
 Every import failure shows a message in the dialog — nothing fails silently:
 
 - **"Couldn't reach \<host\>. Check your connection."** — a network or CORS
-  failure reaching the API base configured in Settings (offline, the site is
+  failure reaching the site (offline, the site is
   down, or a firewall/VPN is blocking it).
 - A server-reported error (shown verbatim, e.g. "not a Warcraft III replay",
   "unsupported replay version", the file isn't readable) — the `.w3g` picked
@@ -404,9 +448,8 @@ enforces that the two stay equal).
   hidden) rather than merely already running, end it from Task Manager
   (Windows) / Activity Monitor (macOS), or use the **Quit app** button in
   Settings, then relaunch.
-- **Build list is empty.** Check the **API base** setting (Settings
-  dialog) points at the right site origin — the default is
-  `https://warcraft-gym.com`; if the offline banner is
+- **Build list is empty.** The builds come from `https://warcraft-gym.com`;
+  if the offline banner is
   showing, the app is using a cached list because it couldn't reach the
   API. Note that `/api/builds` only serves data once the site deployment
   that ships it is live — until then a fresh install correctly shows the
