@@ -7,6 +7,7 @@
 
 export type ShortcutAction =
   | "toggle_overlay"
+  | "toggle_opponent"
   | "timer_play_pause"
   | "timer_reset"
   | "step_next"

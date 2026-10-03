@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import { GameIcon } from "../../components/GameIcon";
-import { OPPONENT, SETTINGS, type OpponentState } from "../../store/keys";
+import { IconButton } from "../../components/IconButton";
+import { WINDOW_OPPONENT } from "../../config";
+import { host } from "../../host";
+import { isValidBattleTag } from "../../opponentWatcher";
+import { OPPONENT, SETTINGS, type OpponentState, type Settings } from "../../store/keys";
 import { useStoreValue } from "../../store/useStore";
 import { heroInfo } from "../../w3c/heroes";
 import type { CardRace, OpponentCard as Card, WinLoss } from "../../w3c/opponentCard";
-
-/** The full card stays open this long after it appears, then collapses to
- *  one line so it never covers the build steps for the whole game. */
-export const CARD_EXPANDED_MS = 60_000;
 
 export const RACE_LABEL: Readonly<Record<CardRace, string>> = {
   human: "Human",
@@ -115,57 +115,64 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
   );
 }
 
-/** Whether the overlay should show anything for this state at all. */
-export function cardVisible(state: OpponentState, dismissedMatchId: string | null, enabled = true): boolean {
-  return enabled && state.live && state.status !== "idle" && state.matchId !== null && state.matchId !== dismissedMatchId;
+/** What the window says when there is no card to show yet. */
+export function emptyMessage(settings: Pick<Settings, "opponentCard" | "myBattleTag">, state: OpponentState): string | null {
+  if (!settings.opponentCard) return "The opponent card is off. Turn it on in Settings, W3Champions.";
+  if (!settings.myBattleTag || !isValidBattleTag(settings.myBattleTag)) return "Set your BattleTag in Settings, W3Champions.";
+  if (state.status === "idle" || (!state.card && !state.live)) return "Waiting for your next W3Champions 1v1.";
+  return null;
 }
 
-export function OpponentCard() {
+/** Buttons live inside the drag region, so a click on one must not also
+ *  start dragging the window. */
+function stopDragStart(event: MouseEvent): void {
+  event.stopPropagation();
+}
+
+export function OpponentPanel() {
   const state = useStoreValue(OPPONENT);
-  const { apiBase, opponentCard: enabled } = useStoreValue(SETTINGS);
-  const [dismissed, setDismissed] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(true);
-
-  // Every new match opens the full card, then it folds away after a minute.
-  useEffect(() => {
-    if (!state.matchId) return;
-    setExpanded(true);
-    const timer = setTimeout(() => setExpanded(false), CARD_EXPANDED_MS);
-    return () => clearTimeout(timer);
-  }, [state.matchId]);
-
-  if (!cardVisible(state, dismissed, enabled)) return null;
+  const settings = useStoreValue(SETTINGS);
   const card = state.card;
-  const title = card ? `${card.opponent.name} · ${RACE_LABEL[card.opponent.race]}` : "Your opponent";
+  const empty = emptyMessage(settings, state);
+  const title = !empty && card ? `${card.opponent.name} · ${RACE_LABEL[card.opponent.race]}` : null;
 
   return (
-    <section className="opponent-card" aria-label="Opponent">
-      <div className="opponent-card__header">
-        <button
-          type="button"
-          className="opponent-card__toggle"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
-        >
-          <span className="opponent-card__kicker">Opponent</span> {title}
-          {card?.opponent.mmr !== undefined && card?.opponent.mmr !== null && !expanded ? ` · ${card.opponent.mmr}` : ""}
-        </button>
-        <button
-          type="button"
-          className="opponent-card__close"
-          aria-label="Hide opponent card"
-          onClick={() => setDismissed(state.matchId)}
-        >
-          ×
-        </button>
-      </div>
-      {expanded ? (
-        <div className="opponent-card__body">
-          {state.status === "loading" ? <p className="opponent-card__note">Looking up your opponent…</p> : null}
-          {state.status === "error" ? <p className="opponent-card__note" role="alert">{state.error}</p> : null}
-          {state.status === "ok" && card ? <CardBody card={card} apiBase={apiBase} /> : null}
+    <div
+      data-overlay-root
+      style={{ opacity: settings.opacity, transform: `scale(${settings.scale})`, transformOrigin: "top left" }}
+    >
+      <header data-tauri-drag-region onMouseDown={() => void host.startDragging()} className="overlay-header">
+        <div className="overlay-header__title">
+          <span className="opponent-card__kicker">Opponent</span>
+          {title ? <span className="opponent-panel__title">{title}</span> : null}
         </div>
-      ) : null}
-    </section>
+        <div className="overlay-header__actions">
+          <IconButton
+            aria-label="Hide opponent window"
+            onMouseDown={stopDragStart}
+            onClick={() => void host.hideWindow(WINDOW_OPPONENT)}
+          >
+            <span aria-hidden="true">{"✕"}</span>
+          </IconButton>
+        </div>
+      </header>
+      <section className="opponent-card" aria-label="Opponent">
+        <div className="opponent-card__body">
+          {empty ? <p className="opponent-card__note">{empty}</p> : null}
+          {!empty && state.status === "loading" ? <p className="opponent-card__note">Looking up your opponent…</p> : null}
+          {!empty && state.status === "error" ? (
+            <p className="opponent-card__note" role="alert">
+              {state.error}
+            </p>
+          ) : null}
+          {!empty && state.status === "ok" && card ? (
+            <>
+              {!state.live ? <p className="opponent-card__kicker">Last game</p> : null}
+              <CardBody card={card} apiBase={settings.apiBase} />
+            </>
+          ) : null}
+        </div>
+      </section>
+    </div>
   );
 }

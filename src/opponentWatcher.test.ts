@@ -23,6 +23,7 @@ function deps(overrides: Partial<OpponentWatcherDeps> = {}): OpponentWatcherDeps
     fetchOngoingMatch: vi.fn(async () => liveMatch),
     fetchSeasonIds: vi.fn(async () => [25, 24, 23]),
     fetchMatchHistory: vi.fn(async () => history),
+    showOpponentWindow: vi.fn(async () => {}),
     now: () => Date.parse("2026-10-03T00:00:00Z"),
     ...overrides,
   };
@@ -74,6 +75,30 @@ describe("pollOnce", () => {
     expect(state.card?.opponent.battleTag).toBe(opponentTag);
     expect(d.fetchMatchHistory).toHaveBeenCalledTimes(2);
     expect(vi.mocked(d.fetchMatchHistory).mock.calls.map((c) => c[1])).toEqual([25, 24]);
+  });
+
+  it("opens the opponent window once per new match, unless switched off", async () => {
+    const d = deps();
+    const caches = freshCaches();
+    await setTag("ElTurry#1520");
+    await pollOnce(d, caches);
+    await pollOnce(d, caches);
+    expect(d.showOpponentWindow).toHaveBeenCalledTimes(1);
+
+    const quiet = deps();
+    localStorage.clear();
+    await writeKey(SETTINGS, { ...readKey(SETTINGS), myBattleTag: "ElTurry#1520", opponentAutoOpen: false });
+    await pollOnce(quiet, freshCaches());
+    expect(readKey(OPPONENT).status).toBe("ok");
+    expect(quiet.showOpponentWindow).not.toHaveBeenCalled();
+  });
+
+  it("still builds the card when the window cannot be opened", async () => {
+    const d = deps({ showOpponentWindow: vi.fn(async () => Promise.reject(new Error("no window"))) });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await setTag("ElTurry#1520");
+    await pollOnce(d, freshCaches());
+    expect(readKey(OPPONENT).status).toBe("ok");
   });
 
   it("makes one request per poll while the same match is live", async () => {

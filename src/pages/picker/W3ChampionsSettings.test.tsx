@@ -40,6 +40,12 @@ describe("W3ChampionsSettings", () => {
     expect(readKey(SETTINGS).opponentCard).toBe(false);
   });
 
+  it("toggles opening the window by itself", () => {
+    render(<W3ChampionsSettings settings={readKey(SETTINGS)} />);
+    fireEvent.click(screen.getByLabelText("Open the opponent window by itself"));
+    expect(readKey(SETTINGS).opponentAutoOpen).toBe(false);
+  });
+
   it("starts on, with nothing polled until a tag is set", () => {
     expect(readKey(SETTINGS).opponentCard).toBe(true);
     expect(readKey(SETTINGS).myBattleTag).toBeNull();

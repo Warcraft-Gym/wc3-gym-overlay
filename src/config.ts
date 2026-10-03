@@ -13,12 +13,14 @@ export const LEGACY_API_BASES: readonly string[] = ["https://warcraft3.gym", "ht
 
 export const WINDOW_PICKER = "picker";
 export const WINDOW_OVERLAY = "overlay";
+export const WINDOW_OPPONENT = "opponent";
 
 /** Store polling / clock tick interval, in milliseconds. */
 export const TICK_MS = 250;
 
 export const DEFAULT_SHORTCUTS: ShortcutMap = {
   toggle_overlay: "CommandOrControl+Shift+O",
+  toggle_opponent: "CommandOrControl+Shift+M",
   timer_play_pause: "CommandOrControl+Shift+P",
   timer_reset: "CommandOrControl+Shift+R",
   step_next: "CommandOrControl+Shift+]",

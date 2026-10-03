@@ -12,7 +12,7 @@ import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
 import { startOpponentWatcher } from "../../opponentWatcher";
-import { UPDATE_CHECK_DELAY_MS } from "../../config";
+import { UPDATE_CHECK_DELAY_MS, WINDOW_OPPONENT } from "../../config";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
 import { writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
@@ -213,6 +213,13 @@ export function App() {
           </Button>
           <Button variant="ghost" onClick={handleImportFromW3Champions}>
             From W3Champions
+          </Button>
+          <Button
+            variant="ghost"
+            title={`Show or hide the opponent window (${settings.shortcuts.toggle_opponent})`}
+            onClick={() => void host.toggleWindow(WINDOW_OPPONENT)}
+          >
+            Opponent
           </Button>
           <Button
             variant="ghost"

@@ -27,6 +27,7 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
     scale: 1,
     shortcuts: {
       toggle_overlay: "CommandOrControl+Shift+O",
+      toggle_opponent: "CommandOrControl+Shift+M",
       timer_play_pause: "CommandOrControl+Shift+P",
       timer_reset: "CommandOrControl+Shift+R",
       step_next: "CommandOrControl+Shift+]",
@@ -36,6 +37,7 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
     skippedVersion: null,
     myBattleTag: null,
     opponentCard: true,
+    opponentAutoOpen: true,
     ...overrides,
   };
 }

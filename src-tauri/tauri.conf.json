@@ -41,6 +41,25 @@
         "focusable": false,
         "focus": false,
         "acceptFirstMouse": true
+      },
+      {
+        "label": "opponent",
+        "title": "Opponent",
+        "url": "opponent.html",
+        "width": 340,
+        "height": 330,
+        "minWidth": 260,
+        "minHeight": 180,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": true,
+        "visible": false,
+        "shadow": false,
+        "focusable": false,
+        "focus": false,
+        "acceptFirstMouse": true
       }
     ],
     "security": {

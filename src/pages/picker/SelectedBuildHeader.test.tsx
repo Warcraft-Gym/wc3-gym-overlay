@@ -39,6 +39,7 @@ async function setToggleCombo(combo: string): Promise<void> {
     skippedVersion: null,
     myBattleTag: null,
     opponentCard: true,
+    opponentAutoOpen: true,
   });
 }
 

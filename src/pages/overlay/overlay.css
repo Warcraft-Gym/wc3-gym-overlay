@@ -376,3 +376,22 @@
   font-family: var(--wg-font-sans);
   font-weight: 400;
 }
+
+/* Opponent window: the card fills its own window, under the shared header. */
+.opponent-panel__title {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-overlay-root] > .opponent-card {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  border-bottom: 0;
+  background: none;
+}
+
+[data-overlay-root] > .opponent-card .opponent-card__body {
+  padding-top: 0.55rem;
+}

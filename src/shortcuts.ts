@@ -7,7 +7,7 @@
 
 import { host } from "./host";
 import type { ShortcutAction, ShortcutRegistrationResult } from "./host/bridge";
-import { WINDOW_OVERLAY } from "./config";
+import { WINDOW_OPPONENT, WINDOW_OVERLAY } from "./config";
 import { resolveSelectedSteps } from "./data/selectedBuildSteps";
 import { reset, stepNext, stepPrev, togglePlayPause } from "./lib/timerActions";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "./store/keys";
@@ -23,6 +23,9 @@ async function dispatch(action: ShortcutAction): Promise<void> {
   switch (action) {
     case "toggle_overlay":
       await host.toggleWindow(WINDOW_OVERLAY);
+      return;
+    case "toggle_opponent":
+      await host.toggleWindow(WINDOW_OPPONENT);
       return;
     case "timer_play_pause":
       await togglePlayPause();

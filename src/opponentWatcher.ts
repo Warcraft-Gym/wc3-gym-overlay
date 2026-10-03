@@ -14,6 +14,8 @@
  * history only once per match, and a longer pause after errors.
  */
 
+import { WINDOW_OPPONENT } from "./config";
+import { host } from "./host";
 import { OPPONENT, SETTINGS, type OpponentState } from "./store/keys";
 import { readKey, writeKey } from "./store/state";
 import { fetchMatchHistory, fetchOngoingMatch, fetchSeasonIds, type W3cMatch } from "./w3c/client";
@@ -32,10 +34,18 @@ export type OpponentWatcherDeps = {
   fetchOngoingMatch: typeof fetchOngoingMatch;
   fetchSeasonIds: typeof fetchSeasonIds;
   fetchMatchHistory: typeof fetchMatchHistory;
+  /** Opens the opponent window (it never takes focus, so the game keeps it). */
+  showOpponentWindow: () => Promise<void>;
   now: () => number;
 };
 
-const defaultDeps: OpponentWatcherDeps = { fetchOngoingMatch, fetchSeasonIds, fetchMatchHistory, now: () => Date.now() };
+const defaultDeps: OpponentWatcherDeps = {
+  fetchOngoingMatch,
+  fetchSeasonIds,
+  fetchMatchHistory,
+  showOpponentWindow: () => host.showWindow(WINDOW_OPPONENT),
+  now: () => Date.now(),
+};
 
 /** A "Name#1234" tag; the number is what W3Champions keys on. */
 export function isValidBattleTag(value: string): boolean {
@@ -105,6 +115,9 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
   if (!live) return OPPONENT_POLL_MS;
 
   await write({ status: "loading", matchId: live.matchId, live: true, error: null, card: null }, deps.now());
+  if (settings.opponentAutoOpen) {
+    await deps.showOpponentWindow().catch((err: unknown) => console.warn("[wc3gym] could not open the opponent window", err));
+  }
   try {
     const history = await opponentHistory(live.opponent.battleTag, deps, caches);
     await write({ status: "ok", card: buildOpponentCard(live, history) }, deps.now());

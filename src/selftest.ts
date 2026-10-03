@@ -8,7 +8,7 @@
  * scraping the webview console. A no-op whenever the flag is absent.
  */
 
-import { WINDOW_OVERLAY, WINDOW_PICKER } from "./config";
+import { WINDOW_OPPONENT, WINDOW_OVERLAY, WINDOW_PICKER } from "./config";
 import { host } from "./host";
 import type { ShortcutAction, ShortcutRegistrationResult } from "./host/bridge";
 import { SETTINGS } from "./store/keys";
@@ -109,6 +109,7 @@ export async function runSelftest(
   if (page === "picker" && host.kind === "tauri") {
     await logWindowState(WINDOW_PICKER);
     await logWindowState(WINDOW_OVERLAY);
+    await logWindowState(WINDOW_OPPONENT);
 
     const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
     await host.showWindow(WINDOW_OVERLAY);

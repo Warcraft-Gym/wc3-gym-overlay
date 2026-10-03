@@ -59,6 +59,15 @@ export function W3ChampionsSettings({ settings }: { settings: Settings }) {
         />
         Show the opponent card when a 1v1 starts
       </label>
+      <label className="mt-1 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={settings.opponentAutoOpen}
+          disabled={!settings.opponentCard}
+          onChange={(e) => void updateKey(SETTINGS, (s) => ({ ...s, opponentAutoOpen: e.target.checked }))}
+        />
+        Open the opponent window by itself
+      </label>
       <p className="mt-2 text-xs text-muted" data-testid="opponent-status">
         {opponentStatusText(settings, state)}
       </p>

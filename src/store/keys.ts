@@ -135,10 +135,16 @@ export type Settings = {
   myBattleTag: string | null;
   /** Show the opponent card when a W3Champions 1v1 starts. */
   opponentCard: boolean;
+  /** Open the opponent window by itself when a new 1v1 is detected. */
+  opponentAutoOpen: boolean;
+  /** Last position/size of the opponent window. */
+  opponentBounds?: OverlayBounds;
 };
 
 const shortcutMapSchema: z.ZodType<ShortcutMap> = z.object({
   toggle_overlay: z.string(),
+  // Opponent window: absent in shortcut maps saved by 0.5.x.
+  toggle_opponent: z.string().default(DEFAULT_SHORTCUTS.toggle_opponent),
   timer_play_pause: z.string(),
   timer_reset: z.string(),
   step_next: z.string(),
@@ -183,6 +189,8 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     // Opponent card: absent in settings written by 0.5.x.
     myBattleTag: z.string().nullable().default(null),
     opponentCard: z.boolean().default(true),
+    opponentAutoOpen: z.boolean().default(true),
+    opponentBounds: overlayBoundsSchema.optional(),
   }),
 );
 
@@ -198,6 +206,7 @@ export const SETTINGS: StoreKey<Settings> = {
     skippedVersion: null,
     myBattleTag: null,
     opponentCard: true,
+    opponentAutoOpen: true,
   }),
 };
 
