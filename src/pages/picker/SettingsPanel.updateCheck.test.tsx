@@ -11,7 +11,7 @@ import type { UpdateInfo } from "../../host/bridge";
 import { APP_VERSION } from "../../version";
 import { SETTINGS, type Settings } from "../../store/keys";
 import { writeKey } from "../../store/state";
-import { SettingsModal } from "./SettingsModal";
+import { SettingsPanel } from "./SettingsPanel";
 
 const AVAILABLE: UpdateInfo = {
   version: "9.9.9",
@@ -27,6 +27,7 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
     scale: 1,
     shortcuts: {
       toggle_overlay: "CommandOrControl+Shift+O",
+      toggle_opponent: "CommandOrControl+Shift+M",
       timer_play_pause: "CommandOrControl+Shift+P",
       timer_reset: "CommandOrControl+Shift+R",
       step_next: "CommandOrControl+Shift+]",
@@ -34,23 +35,26 @@ function baseSettings(overrides: Partial<Settings> = {}): Settings {
     },
     autoUpdate: true,
     skippedVersion: null,
+    myBattleTag: null,
+    opponentCard: true,
+    opponentAutoOpen: true,
     ...overrides,
   };
 }
 
 function renderSettings(settings: Settings, onOpenUpdate = vi.fn()) {
   return render(
-    <SettingsModal
+    <SettingsPanel
       settings={settings}
       registrations={[]}
       onRegistrations={() => {}}
-      onClose={() => {}}
+     
       onOpenUpdate={onOpenUpdate}
     />,
   );
 }
 
-describe("SettingsModal — updates", () => {
+describe("SettingsPanel — updates", () => {
   beforeEach(async () => {
     localStorage.clear();
     await writeKey(SETTINGS, baseSettings());

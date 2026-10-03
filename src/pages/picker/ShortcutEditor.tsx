@@ -9,6 +9,7 @@ import { updateKey } from "../../store/state";
 
 const ACTION_LABEL: Record<ShortcutAction, string> = {
   toggle_overlay: "Toggle overlay",
+  toggle_opponent: "Toggle opponent card",
   timer_play_pause: "Play / pause timer",
   timer_reset: "Reset timer",
   step_next: "Next step",

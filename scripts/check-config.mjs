@@ -128,28 +128,36 @@ function main() {
   const windows = conf.app?.windows ?? [];
   const labels = windows.map((w) => w.label).sort();
   report(
-    "windows are exactly picker and overlay",
-    labels.length === 2 && labels[0] === "overlay" && labels[1] === "picker",
+    "windows are exactly picker, overlay and opponent",
+    labels.length === 3 && labels[0] === "opponent" && labels[1] === "overlay" && labels[2] === "picker",
     `found: ${JSON.stringify(labels)}`,
   );
 
-  const overlay = findWindow(conf, "overlay");
-  if (overlay) {
-    report("overlay.transparent === true", overlay.transparent === true);
-    report("overlay.decorations === false", overlay.decorations === false);
-    report("overlay.alwaysOnTop === true", overlay.alwaysOnTop === true);
-    report("overlay.skipTaskbar === true", overlay.skipTaskbar === true);
-    report("overlay.resizable === true", overlay.resizable === true);
-    report("overlay.visible === false", overlay.visible === false);
-    report("overlay.minWidth >= 280", (overlay.minWidth ?? 0) >= 280);
-    report("overlay.minHeight >= 240", (overlay.minHeight ?? 0) >= 240);
-    // F001: the overlay must never take keyboard focus — an activated
-    // overlay steals focus from Warcraft III and pauses the game.
-    report("overlay.focusable === false", overlay.focusable === false);
-    report("overlay.focus === false", overlay.focus === false);
-    report("overlay.acceptFirstMouse === true", overlay.acceptFirstMouse === true);
-  } else {
-    report("overlay window declared", false, "missing");
+  // The floating in-game windows: the build-order overlay and the opponent
+  // card share the same rules.
+  const FLOATING = [
+    { label: "overlay", minWidth: 280, minHeight: 240 },
+    { label: "opponent", minWidth: 260, minHeight: 180 },
+  ];
+  for (const { label, minWidth, minHeight } of FLOATING) {
+    const win = findWindow(conf, label);
+    if (!win) {
+      report(`${label} window declared`, false, "missing");
+      continue;
+    }
+    report(`${label}.transparent === true`, win.transparent === true);
+    report(`${label}.decorations === false`, win.decorations === false);
+    report(`${label}.alwaysOnTop === true`, win.alwaysOnTop === true);
+    report(`${label}.skipTaskbar === true`, win.skipTaskbar === true);
+    report(`${label}.resizable === true`, win.resizable === true);
+    report(`${label}.visible === false`, win.visible === false);
+    report(`${label}.minWidth >= ${minWidth}`, (win.minWidth ?? 0) >= minWidth);
+    report(`${label}.minHeight >= ${minHeight}`, (win.minHeight ?? 0) >= minHeight);
+    // F001: a floating window must never take keyboard focus; an activated
+    // window steals focus from Warcraft III and pauses the game.
+    report(`${label}.focusable === false`, win.focusable === false);
+    report(`${label}.focus === false`, win.focus === false);
+    report(`${label}.acceptFirstMouse === true`, win.acceptFirstMouse === true);
   }
 
   const picker = findWindow(conf, "picker");

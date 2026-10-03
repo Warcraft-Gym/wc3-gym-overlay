@@ -1,0 +1,102 @@
+{
+ "map": "w3c2609191153AutumnLeavesv2_0",
+ "mapName": "Autumn Leaves v2",
+ "mapId": 44,
+ "id": "6ac038e18c6ce278894f6edf",
+ "original-ongoing-match-id": "9Fa3T7j-AC",
+ "floMatchId": null,
+ "durationInSeconds": 0,
+ "startTime": "2026-10-02T23:05:55.866+00:00",
+ "endTime": "0001-01-01T00:00:00+00:00",
+ "gameMode": 1,
+ "teams": [
+  {
+   "players": [
+    {
+     "race": 2,
+     "rndRace": null,
+     "oldMmr": 1269,
+     "oldMmrQuantile": 0.488398233641108,
+     "oldRankDeviation": null,
+     "currentMmr": null,
+     "battleTag": "CactusPunch#2510",
+     "inviteName": null,
+     "name": "CactusPunch",
+     "mmrGain": null,
+     "won": false,
+     "matchRanking": null,
+     "location": "RU",
+     "countryCode": "CU",
+     "country": null,
+     "twitch": "",
+     "heroes": null,
+     "ranking": {
+      "rp": 24.41518697232115,
+      "rank": 85,
+      "division": 12,
+      "leagueId": 31,
+      "leagueOrder": 4,
+      "progress": 0.9274999999999962
+     }
+    }
+   ],
+   "won": false,
+   "matchRanking": null
+  },
+  {
+   "players": [
+    {
+     "race": 1,
+     "rndRace": null,
+     "oldMmr": 1194,
+     "oldMmrQuantile": 0.4240867121637896,
+     "oldRankDeviation": null,
+     "currentMmr": null,
+     "battleTag": "ElTurry#1520",
+     "inviteName": null,
+     "name": "ElTurry",
+     "mmrGain": null,
+     "won": false,
+     "matchRanking": null,
+     "location": "PE",
+     "countryCode": null,
+     "country": null,
+     "twitch": null,
+     "heroes": null,
+     "ranking": {
+      "rp": 23.19056335755365,
+      "rank": 37,
+      "division": 16,
+      "leagueId": 35,
+      "leagueOrder": 4,
+      "progress": 1
+     }
+    }
+   ],
+   "won": false,
+   "matchRanking": null
+  }
+ ],
+ "gateWay": 20,
+ "season": 0,
+ "number": null,
+ "serverInfo": {
+  "provider": "FLO",
+  "nodeId": 120,
+  "countryCode": null,
+  "location": null,
+  "name": "US East 3",
+  "playerServerInfos": [
+   {
+    "battleTag": "CactusPunch#2510",
+    "averagePing": 119,
+    "currentPing": 119
+   },
+   {
+    "battleTag": "ElTurry#1520",
+    "averagePing": 126,
+    "currentPing": 119
+   }
+  ]
+ }
+}

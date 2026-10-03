@@ -12,7 +12,7 @@ import { exportAll, parseImport } from "../../lib/buildExchange";
 import { createLocalBuild } from "../../lib/localBuilds";
 import { LOCAL_BUILDS, SETTINGS, type Settings } from "../../store/keys";
 import { readKey, writeKey } from "../../store/state";
-import { SettingsModal } from "./SettingsModal";
+import { SettingsPanel } from "./SettingsPanel";
 
 const SETTINGS_VALUE: Settings = {
   apiBase: "https://wc3-gnl-website.vercel.app",
@@ -20,6 +20,7 @@ const SETTINGS_VALUE: Settings = {
   scale: 1,
   shortcuts: {
     toggle_overlay: "CommandOrControl+Shift+O",
+    toggle_opponent: "CommandOrControl+Shift+M",
     timer_play_pause: "CommandOrControl+Shift+P",
     timer_reset: "CommandOrControl+Shift+R",
     step_next: "CommandOrControl+Shift+]",
@@ -27,15 +28,18 @@ const SETTINGS_VALUE: Settings = {
   },
   autoUpdate: false,
   skippedVersion: null,
+  myBattleTag: null,
+  opponentCard: true,
+  opponentAutoOpen: true,
 };
 
 function renderSettings() {
   return render(
-    <SettingsModal settings={SETTINGS_VALUE} registrations={[]} onRegistrations={() => {}} onClose={() => {}} />,
+    <SettingsPanel settings={SETTINGS_VALUE} registrations={[]} onRegistrations={() => {}} />,
   );
 }
 
-describe("SettingsModal — export/import private builds", () => {
+describe("SettingsPanel — export/import private builds", () => {
   beforeEach(async () => {
     localStorage.clear();
     await writeKey(SETTINGS, SETTINGS_VALUE);

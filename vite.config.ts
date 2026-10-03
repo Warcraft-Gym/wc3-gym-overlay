@@ -19,6 +19,7 @@ export default defineConfig(() => {
         input: {
           picker: "picker.html",
           overlay: "overlay.html",
+          opponent: "opponent.html",
         },
       },
     },

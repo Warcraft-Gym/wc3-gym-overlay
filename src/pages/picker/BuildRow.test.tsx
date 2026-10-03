@@ -64,3 +64,30 @@ describe("BuildRow difficulty stripe colour tokens", () => {
     });
   }
 });
+
+describe("BuildRow compact actions", () => {
+  it("one ghost 'Use' button; the selected row says 'In game' and is marked current", async () => {
+    const { fireEvent, screen } = await import("@testing-library/react");
+    let selected = false;
+    const onSelect = () => {
+      selected = true;
+    };
+    const { rerender } = render(
+      <ul>
+        <BuildRow build={buildFor("beginner")} apiBase="https://warcraft-gym.com" selected={false} onSelect={onSelect} onDuplicate={() => {}} />
+      </ul>,
+    );
+    const use = screen.getByRole("button", { name: "Use in game" });
+    expect(use.getAttribute("aria-pressed")).toBe("false");
+    expect(use.className).not.toContain("btn-gold");
+    fireEvent.click(use);
+    expect(selected).toBe(true);
+    rerender(
+      <ul>
+        <BuildRow build={buildFor("beginner")} apiBase="https://warcraft-gym.com" selected onSelect={onSelect} onDuplicate={() => {}} />
+      </ul>,
+    );
+    expect(screen.getByRole("button", { name: "In game" }).getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("li")!.getAttribute("aria-current")).toBe("true");
+  });
+});

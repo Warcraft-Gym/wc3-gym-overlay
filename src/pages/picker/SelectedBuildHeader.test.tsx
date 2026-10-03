@@ -37,6 +37,9 @@ async function setToggleCombo(combo: string): Promise<void> {
     shortcuts: { ...DEFAULT_SHORTCUTS, toggle_overlay: combo },
     autoUpdate: false,
     skippedVersion: null,
+    myBattleTag: null,
+    opponentCard: true,
+    opponentAutoOpen: true,
   });
 }
 
@@ -112,5 +115,34 @@ describe("SelectedBuildHeader — private builds (F002)", () => {
 
     expect(screen.getByText("Open on site")).toBeTruthy();
     expect(screen.queryByText("Private")).toBeNull();
+  });
+});
+
+describe("SelectedBuildHeader — first steps preview", () => {
+  afterEach(() => cleanup());
+
+  it("lists the first three steps and how many more", () => {
+    const withSteps: AnyBuild = {
+      ...build,
+      steps: [
+        { supply: 5, instruction: "Train 2× Peon", icon: "or-peon" },
+        { supply: 7, instruction: "Build Altar of Storms", icon: "or-altar" },
+        { time: "0:45", instruction: "Build Orc Burrow", icon: "or-burrow" },
+        { supply: 9, instruction: "Build Barracks", icon: "or-barracks" },
+        { supply: 10, instruction: "Train Grunt", icon: "or-grunt" },
+      ],
+    };
+    render(<SelectedBuildHeader build={withSteps} apiBase="https://warcraft-gym.com" />);
+    const list = screen.getByRole("list", { name: "First steps" });
+    expect(list.textContent).toContain("Train 2× Peon");
+    expect(list.textContent).toContain("Build Altar of Storms");
+    expect(list.textContent).toContain("0:45");
+    expect(list.textContent).not.toContain("Build Barracks");
+    expect(screen.getByText("+2 more")).toBeTruthy();
+  });
+
+  it("has no preview for a build without steps", () => {
+    render(<SelectedBuildHeader build={build} apiBase="https://warcraft-gym.com" />);
+    expect(screen.queryByRole("list", { name: "First steps" })).toBeNull();
   });
 });

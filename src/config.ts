@@ -13,12 +13,23 @@ export const LEGACY_API_BASES: readonly string[] = ["https://warcraft3.gym", "ht
 
 export const WINDOW_PICKER = "picker";
 export const WINDOW_OVERLAY = "overlay";
+export const WINDOW_OPPONENT = "opponent";
 
 /** Store polling / clock tick interval, in milliseconds. */
 export const TICK_MS = 250;
 
-export const DEFAULT_SHORTCUTS: ShortcutMap = {
+/** Defaults that shipped earlier: a saved map still holding them is moved to
+ *  the current defaults (see `migrateLegacyShortcuts` in store/keys.ts). */
+export const LEGACY_DEFAULT_SHORTCUTS = {
+  /** 0.1.0 to 0.5.1. */
   toggle_overlay: "CommandOrControl+Shift+O",
+  /** 0.6.0 local betas only. */
+  toggle_opponent: "CommandOrControl+Shift+M",
+} as const;
+
+export const DEFAULT_SHORTCUTS: ShortcutMap = {
+  toggle_overlay: "CommandOrControl+Shift+B",
+  toggle_opponent: "CommandOrControl+Shift+O",
   timer_play_pause: "CommandOrControl+Shift+P",
   timer_reset: "CommandOrControl+Shift+R",
   step_next: "CommandOrControl+Shift+]",
@@ -41,3 +52,19 @@ export const PORTABLE_DOWNLOAD_URL =
 /** F002: linked from the banner when an install fails, so the user has a
  *  manual fallback without needing to know a GitHub URL by heart. */
 export const RELEASES_PAGE_URL = "https://github.com/Warcraft-Gym/wc3-gym-overlay/releases";
+
+/** Public W3Champions website backend (unofficial, no auth). Used to detect
+ *  the player's live 1v1 and scout the opponent. */
+export const W3C_API_BASE = "https://website-backend.w3champions.com/api";
+/** W3Champions gateway 20 is the (only) live one. */
+export const W3C_GATEWAY = 20;
+export const W3C_GAME_MODE_1V1 = 1;
+
+/**
+ * Opponent card "Army" section (their usual units, read from their replays
+ * through our site's replay importer, about 5 site requests per new
+ * opponent). Built and tested, but off until it ships as a premium feature
+ * (decided 2026-10-03). While off, no replay requests are made and nothing
+ * about the army is shown.
+ */
+export const OPPONENT_ARMY_ENABLED = false;

@@ -5,6 +5,8 @@
  */
 
 import { z } from "zod";
+import { opponentCardSchema } from "../w3c/opponentCard";
+import { PROFILE_PICKS, profileSchema, type ProfilePick } from "../w3c/profile";
 import {
   apiBuildListItemSchema,
   apiBuildStepSchema,
@@ -14,7 +16,7 @@ import {
   type ApiBuildListItem,
   type GameIconEntry,
 } from "../api/schema";
-import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES } from "../config";
+import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES, LEGACY_DEFAULT_SHORTCUTS } from "../config";
 import type { ShortcutMap } from "../host/bridge";
 
 /** JSON key name of the pre-F005 single-opponent field, before the site's
@@ -129,15 +131,58 @@ export type Settings = {
    *  A launch check that finds this exact version stays silent; the
    *  Settings manual check still surfaces it as "(skipped)". */
   skippedVersion: string | null;
+  /** The player's W3Champions BattleTag ("Name#1234"), or `null` until set.
+   *  Nothing polls W3Champions while this is empty. */
+  myBattleTag: string | null;
+  /** Show the opponent card when a W3Champions 1v1 starts. */
+  opponentCard: boolean;
+  /** Open the opponent window by itself when a new 1v1 is detected. */
+  opponentAutoOpen: boolean;
+  /** Last position/size of the opponent window. */
+  opponentBounds?: OverlayBounds;
+  /** The picker tab last open: your builds or your W3Champions profile. */
+  pickerTab?: PickerTab;
+  /** The race the Profile tab shows; null means the one you pick most. */
+  profileRace?: ProfilePick | null;
 };
 
-const shortcutMapSchema: z.ZodType<ShortcutMap> = z.object({
-  toggle_overlay: z.string(),
-  timer_play_pause: z.string(),
-  timer_reset: z.string(),
-  step_next: z.string(),
-  step_prev: z.string(),
-});
+export type PickerTab = "builds" | "profile";
+
+/**
+ * 0.6.0 moved the defaults: the build overlay from Shift+O to Shift+B, and
+ * the new opponent window onto Shift+O. A saved map still holding an old
+ * *default* is moved to the new one; a combo the user picked is kept. The
+ * opponent shortcut only takes Shift+O when nothing else in the map uses it,
+ * so a migration can never create a clash.
+ */
+export function migrateLegacyShortcuts(raw: unknown): unknown {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const map = { ...(raw as Record<string, unknown>) };
+  if (map.toggle_overlay === LEGACY_DEFAULT_SHORTCUTS.toggle_overlay) {
+    map.toggle_overlay = DEFAULT_SHORTCUTS.toggle_overlay;
+  }
+  if (map.toggle_opponent === undefined || map.toggle_opponent === LEGACY_DEFAULT_SHORTCUTS.toggle_opponent) {
+    const taken = Object.entries(map).some(
+      ([action, combo]) => action !== "toggle_opponent" && combo === DEFAULT_SHORTCUTS.toggle_opponent,
+    );
+    map.toggle_opponent = taken
+      ? (map.toggle_opponent ?? LEGACY_DEFAULT_SHORTCUTS.toggle_opponent)
+      : DEFAULT_SHORTCUTS.toggle_opponent;
+  }
+  return map;
+}
+
+const shortcutMapSchema: z.ZodType<ShortcutMap> = z.preprocess(
+  migrateLegacyShortcuts,
+  z.object({
+    toggle_overlay: z.string(),
+    toggle_opponent: z.string(),
+    timer_play_pause: z.string(),
+    timer_reset: z.string(),
+    step_next: z.string(),
+    step_prev: z.string(),
+  }),
+);
 
 const overlayBoundsSchema: z.ZodType<OverlayBounds> = z.object({
   x: z.number(),
@@ -174,6 +219,13 @@ export const settingsSchema: z.ZodType<Settings> = z.preprocess(
     // below when the key is missing, which is the whole migration.
     autoUpdate: z.boolean().default(true),
     skippedVersion: z.string().nullable().default(null),
+    // Opponent card: absent in settings written by 0.5.x.
+    myBattleTag: z.string().nullable().default(null),
+    opponentCard: z.boolean().default(true),
+    opponentAutoOpen: z.boolean().default(true),
+    opponentBounds: overlayBoundsSchema.optional(),
+    pickerTab: z.enum(["builds", "profile"]).default("builds"),
+    profileRace: z.enum(PROFILE_PICKS).nullable().default(null),
   }),
 );
 
@@ -187,6 +239,10 @@ export const SETTINGS: StoreKey<Settings> = {
     shortcuts: { ...DEFAULT_SHORTCUTS },
     autoUpdate: true,
     skippedVersion: null,
+    myBattleTag: null,
+    opponentCard: true,
+    opponentAutoOpen: true,
+    pickerTab: "builds",
   }),
 };
 
@@ -263,4 +319,56 @@ export const ICONS_CACHE: StoreKey<IconsCache> = {
   name: "wc3gym.iconsCache",
   schema: iconsCacheSchema,
   defaultValue: () => ({ fetchedAt: "", apiBase: DEFAULT_API_BASE, icons: [] }),
+};
+
+// --- wc3gym.opponent --------------------------------------------------------
+
+/**
+ * The opponent card for the player's current (or last) W3Champions 1v1,
+ * written by the picker window's watcher (`opponentWatcher.ts`) and read by
+ * the in-game overlay. `live` is false once the match has ended; the card
+ * stays so the picker can still show who you just played.
+ */
+export const opponentStateSchema = z.object({
+  status: z.enum(["idle", "loading", "ok", "error"]),
+  matchId: z.string().nullable(),
+  live: z.boolean(),
+  error: z.string().nullable(),
+  card: opponentCardSchema.nullable(),
+  updatedAt: z.string().nullable(),
+});
+export type OpponentState = z.infer<typeof opponentStateSchema>;
+
+export const OPPONENT: StoreKey<OpponentState> = {
+  name: "wc3gym.opponent",
+  schema: opponentStateSchema,
+  defaultValue: () => ({ status: "idle", matchId: null, live: false, error: null, card: null, updatedAt: null }),
+};
+
+/**
+ * Your own W3Champions profile for the picker's Profile tab, written by
+ * `profileLoader.ts`. A refresh keeps the previous profile visible
+ * (status "loading" with `profile` still set).
+ */
+/** Bump when `Profile` gains fields: a profile saved by an older version
+ *  is reloaded instead of shown without them. */
+export const PROFILE_STATE_VERSION = 2;
+
+export const profileStateSchema = z.object({
+  /** PROFILE_STATE_VERSION of the app that saved this (0: before 0.6). */
+  version: z.number().default(0),
+  status: z.enum(["idle", "loading", "ok", "error"]),
+  tag: z.string().nullable(),
+  /** The race asked for when this was loaded (null: the one you pick most). */
+  race: z.enum(PROFILE_PICKS).nullable().default(null),
+  profile: profileSchema.nullable(),
+  error: z.string().nullable(),
+  fetchedAt: z.string().nullable(),
+});
+export type ProfileState = z.infer<typeof profileStateSchema>;
+
+export const PROFILE: StoreKey<ProfileState> = {
+  name: "wc3gym.profile",
+  schema: profileStateSchema,
+  defaultValue: () => ({ version: PROFILE_STATE_VERSION, status: "idle", tag: null, race: null, profile: null, error: null, fetchedAt: null }),
 };

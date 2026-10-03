@@ -25,6 +25,7 @@ function settingsValue(autoUpdate: boolean): Settings {
     scale: 1,
     shortcuts: {
       toggle_overlay: "CommandOrControl+Shift+O",
+      toggle_opponent: "CommandOrControl+Shift+M",
       timer_play_pause: "CommandOrControl+Shift+P",
       timer_reset: "CommandOrControl+Shift+R",
       step_next: "CommandOrControl+Shift+]",
@@ -32,6 +33,9 @@ function settingsValue(autoUpdate: boolean): Settings {
     },
     autoUpdate,
     skippedVersion: null,
+    myBattleTag: null,
+    opponentCard: true,
+    opponentAutoOpen: true,
   };
 }
 

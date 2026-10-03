@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Button } from "../../components/Button";
 import type { BuildRace, BuildVsRace } from "../../components/BuildBadges";
 import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
 import { isLocalBuild, useAllBuilds, type AnyBuild } from "../../data/useAllBuilds";
@@ -11,17 +10,22 @@ import { deleteLocalBuild } from "../../lib/localBuilds";
 import { filterBuilds, sortBuilds } from "../../lib/filterBuilds";
 import { applySelftestShortcutOverride, runSelftest } from "../../selftest";
 import { applyShortcuts } from "../../shortcuts";
-import { UPDATE_CHECK_DELAY_MS } from "../../config";
+import { startOpponentWatcher } from "../../opponentWatcher";
+import { UPDATE_CHECK_DELAY_MS, WINDOW_OPPONENT } from "../../config";
 import { SELECTED_BUILD_SLUG, SETTINGS } from "../../store/keys";
-import { writeKey } from "../../store/state";
+import { readKey, writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
 import { BuildList } from "./BuildList";
 import type { BuildEditorMode } from "./editor/BuildEditorModal";
-import { EmptyState } from "./EmptyState";
+import { EmptyState, NoMatches } from "./EmptyState";
 import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
+import { PickerHeader } from "./PickerHeader";
+import { BuildsToolbar } from "./BuildsToolbar";
+import { panelId, tabId, type PickerSection } from "./PickerTabs";
+import { ProfileTab } from "./profile/ProfileTab";
 import { SelectedBuildHeader } from "./SelectedBuildHeader";
-import { SETTINGS_DIALOG_ID, SettingsModal } from "./SettingsModal";
+import { SettingsPanel } from "./SettingsPanel";
 import { UpdateBanner } from "./UpdateBanner";
 import { useUpdateFlow } from "./useUpdateFlow";
 
@@ -108,7 +112,8 @@ export function App() {
   const { status, builds, fetchedAt, error, retry } = useAllBuilds();
 
   const [registrations, setRegistrations] = useState<ShortcutRegistrationResult[]>([]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Settings is a tab but never remembered (see PickerTabs).
+  const [section, setSection] = useState<PickerSection>(() => settings.pickerTab ?? "builds");
   const [filters, setFilters] = useState<Filters>(() => parseHashFilters(location.hash));
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [replayImport, setReplayImport] = useState<ReplayImportSource | null>(null);
@@ -141,6 +146,10 @@ export function App() {
     setReplayImport(null);
     setEditor({ mode: "new", sourceBuild: null, initialValues });
   }
+
+  // The opponent card's watcher lives here: the picker window stays alive
+  // while hidden, and the overlay window just reads the store.
+  useEffect(() => startOpponentWatcher(), []);
 
   useEffect(() => {
     applySelftestShortcutOverride()
@@ -180,6 +189,11 @@ export function App() {
   // the EmptyState when there is truly nothing (site or local) to show.
   const nothingToShow = status === "empty" && builds.length === 0;
 
+  function selectTab(next: PickerSection): void {
+    setSection(next);
+    if (next !== "settings") void writeKey(SETTINGS, { ...readKey(SETTINGS), pickerTab: next });
+  }
+
   function selectBuild(slug: string): void {
     void writeKey(SELECTED_BUILD_SLUG, slug);
   }
@@ -192,36 +206,38 @@ export function App() {
     <>
       <UpdateBanner flow={updateFlow} />
 
-      <header className="flex items-center justify-between gap-3 border-b border-line/60 px-6 py-4">
-        <div>
-          <h1 className="font-display text-sm font-extrabold uppercase tracking-[0.12em] text-gold">
-            Warcraft 3 Gym
-          </h1>
-          <p className="text-xs text-muted">Build picker</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="gold" onClick={() => setEditor({ mode: "new", sourceBuild: null })}>
-            New private build
-          </Button>
-          <Button variant="ghost" onClick={() => void handleImportReplay()}>
-            Import replay
-          </Button>
-          <Button variant="ghost" onClick={handleImportFromW3Champions}>
-            From W3Champions
-          </Button>
-          <Button
-            variant="ghost"
-            aria-expanded={settingsOpen}
-            aria-controls={SETTINGS_DIALOG_ID}
-            onClick={() => setSettingsOpen((v) => !v)}
-          >
-            Settings
-          </Button>
-        </div>
-      </header>
+      <PickerHeader
+        tab={section}
+        onTab={selectTab}
+        opponentShortcut={settings.shortcuts.toggle_opponent}
+        onToggleOpponent={() => void host.toggleWindow(WINDOW_OPPONENT)}
+        actions={
+          section === "builds" ? (
+            <BuildsToolbar
+              onNewBuild={() => setEditor({ mode: "new", sourceBuild: null })}
+              onImportReplay={() => void handleImportReplay()}
+              onImportFromW3Champions={handleImportFromW3Champions}
+            />
+          ) : null
+        }
+      />
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="flex flex-col gap-5">
+      <main className="mx-auto max-w-6xl px-6 py-6">
+        {section === "profile" ? (
+          <div role="tabpanel" id={panelId("profile")} aria-labelledby={tabId("profile")}>
+            <ProfileTab onOpenSettings={() => selectTab("settings")} />
+          </div>
+        ) : section === "settings" ? (
+          <div role="tabpanel" id={panelId("settings")} aria-labelledby={tabId("settings")}>
+            <SettingsPanel
+              settings={settings}
+              registrations={registrations}
+              onRegistrations={setRegistrations}
+              onOpenUpdate={updateFlow.open}
+            />
+          </div>
+        ) : (
+        <div role="tabpanel" id={panelId("builds")} aria-labelledby={tabId("builds")} className="flex flex-col gap-5">
           <SelectedBuildHeader
             build={selectedBuild}
             apiBase={settings.apiBase}
@@ -232,12 +248,20 @@ export function App() {
             }
           />
 
-          <FilterBar apiBase={settings.apiBase} filters={filters} onChange={updateFilters} matchCount={filtered.length} />
+          <FilterBar
+            apiBase={settings.apiBase}
+            filters={filters}
+            onChange={updateFilters}
+            matchCount={filtered.length}
+            totalCount={builds.length}
+          />
 
           {status === "offline" ? <OfflineBanner fetchedAt={fetchedAt} onRetry={retry} /> : null}
 
           {nothingToShow ? (
             <EmptyState error={error} onRetry={retry} />
+          ) : status !== "loading" && builds.length > 0 && filtered.length === 0 ? (
+            <NoMatches onClear={() => updateFilters({ sort: filters.sort })} />
           ) : (
             <BuildList
               builds={filtered}
@@ -251,16 +275,7 @@ export function App() {
             />
           )}
         </div>
-
-        {settingsOpen ? (
-          <SettingsModal
-            settings={settings}
-            registrations={registrations}
-            onRegistrations={setRegistrations}
-            onClose={() => setSettingsOpen(false)}
-            onOpenUpdate={updateFlow.open}
-          />
-        ) : null}
+        )}
 
         {editor ? (
           <Suspense fallback={null}>

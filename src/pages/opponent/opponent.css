@@ -1,0 +1,367 @@
+/*
+ * Opponent window. Reads at a glance over a running game: tags first (what to
+ * expect), then a few big numbers, then the detail. Colour carries meaning
+ * from YOUR point of view: --wg-loss (red) is a threat, --wg-difficulty-
+ * beginner (green) an opening, gold only for headings. Nothing wraps
+ * mid-number; the body scrolls when the window is short.
+ */
+
+.oc-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0.6rem 0.7rem 0.8rem;
+  font-size: 12px;
+}
+
+.oc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.oc-title {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.oc-title__name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-badge {
+  flex-shrink: 0;
+  border: 1px solid var(--wg-gold);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--wg-gold);
+  white-space: nowrap;
+}
+
+.oc-badge--muted {
+  border-color: var(--wg-line);
+  color: var(--wg-text-muted);
+}
+
+.oc-race {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.oc-sub,
+.oc-faint {
+  color: var(--wg-text-muted);
+}
+
+.oc-note {
+  color: var(--wg-text-muted);
+  font-style: italic;
+}
+
+.oc-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.3rem;
+  font-family: var(--wg-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wg-gold);
+}
+
+/* Tags ----------------------------------------------------------------------*/
+
+.oc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oc-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.oc-tag--threat {
+  color: var(--wg-loss);
+  background: color-mix(in oklab, var(--wg-loss) 12%, transparent);
+}
+
+.oc-tag--opening {
+  color: var(--wg-difficulty-beginner);
+  background: color-mix(in oklab, var(--wg-difficulty-beginner) 12%, transparent);
+}
+
+.oc-tag--info {
+  color: var(--wg-text-muted);
+  background: var(--wg-surface-2);
+}
+
+/* Tones on numbers ---------------------------------------------------------*/
+
+.oc-tone--threat .oc-tile__value,
+.oc-tone--threat .oc-phase__value {
+  color: var(--wg-loss);
+}
+
+.oc-tone--opening .oc-tile__value,
+.oc-tone--opening .oc-phase__value {
+  color: var(--wg-difficulty-beginner);
+}
+
+/* Win chance ---------------------------------------------------------------*/
+
+.oc-chance {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.oc-chance__label {
+  color: var(--wg-text-muted);
+}
+
+.oc-chance__bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--wg-surface-3);
+}
+
+.oc-chance__bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: currentColor;
+}
+
+.oc-chance {
+  color: var(--wg-gold);
+}
+
+.oc-tone--threat.oc-chance {
+  color: var(--wg-loss);
+}
+
+.oc-tone--opening.oc-chance {
+  color: var(--wg-difficulty-beginner);
+}
+
+.oc-chance__value {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+.oc-chance__value {
+  color: inherit;
+}
+
+/* Form ---------------------------------------------------------------------*/
+
+.oc-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.oc-form__squares {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.oc-sq {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.oc-sq--w {
+  background: var(--wg-win);
+}
+
+.oc-sq--l {
+  background: var(--wg-loss);
+}
+
+/* Records tiles ------------------------------------------------------------*/
+
+.oc-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.oc-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  border: 1px solid var(--wg-line);
+  border-radius: var(--wg-radius);
+  padding: 0.35rem 0.45rem;
+  background: var(--wg-surface-2);
+}
+
+.oc-tile__label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--wg-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-tile__value {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.oc-tile__rate {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* Game length --------------------------------------------------------------*/
+
+.oc-phases {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.oc-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  border: 1px solid var(--wg-line);
+  border-radius: var(--wg-radius);
+  padding: 0.3rem 0.2rem;
+  color: var(--wg-text-muted);
+}
+
+.oc-phase__label {
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.oc-phase__value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--wg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Heroes and army rows -----------------------------------------------------*/
+
+.oc-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.oc-row__main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.oc-row__stat {
+  flex-shrink: 0;
+  color: var(--wg-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.oc-chain {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.oc-hero {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.oc-hero__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Play style ---------------------------------------------------------------*/
+
+.oc-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.6rem;
+  margin-bottom: 0.3rem;
+}
+
+.oc-stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.35rem;
+  align-items: center;
+  color: var(--wg-text-muted);
+}
+
+.oc-stat > svg {
+  grid-row: span 2;
+}
+
+.oc-stat__value {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--wg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-stat__label {
+  font-size: 10px;
+  line-height: 1.2;
+}

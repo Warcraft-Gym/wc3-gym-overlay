@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../components/Button";
-import { IconButton } from "../../components/IconButton";
-import { Modal } from "../../components/Modal";
-import { TextField } from "../../components/TextField";
+import type { ReactNode } from "react";
 import { host } from "../../host";
 import type { ShortcutRegistrationResult, UpdateInfo } from "../../host/bridge";
 import { readLocalBuilds, writeLocalBuilds } from "../../data/localBuildsStore";
@@ -12,6 +10,7 @@ import { updateKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
 import { APP_VERSION } from "../../version";
 import { ShortcutEditor } from "./ShortcutEditor";
+import { W3ChampionsSettings } from "./W3ChampionsSettings";
 
 /** F002: Settings' own "Check for updates" state — independent of the
  *  banner's `useUpdateFlow` (see that module's doc comment): this always
@@ -71,7 +70,14 @@ async function quitApp(): Promise<void> {
   await invoke("quit_app");
 }
 
-export const SETTINGS_DIALOG_ID = "settings-dialog";
+function Group({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
+  return (
+    <section aria-label={title} className={`panel space-y-4 p-5 ${className ?? ""}`}>
+      <h3 className="kicker">{title}</h3>
+      {children}
+    </section>
+  );
+}
 
 function RangeField({
   label,
@@ -107,33 +113,25 @@ function RangeField({
   );
 }
 
-/** Settings dialog: API base override, overlay opacity/scale and the
- *  shortcut editor. The API base is only written to the store once it
- *  parses as a valid URL — an invalid draft stays local and shows an
- *  inline error instead of clobbering the working value.
- *
- *  Renders as a centred modal (see `Modal`) portalled onto `document.body`,
- *  so it stays correctly positioned regardless of any containing block
- *  (transform/filter/backdrop-filter) an ancestor in the page tree forms. */
-export function SettingsModal({
+/** The Settings tab: overlay look, W3Champions, shortcuts, updates and
+ *  private-build backup, as panels on the page. The site address is not a
+ *  setting: developers point the app elsewhere with the `?api=` override
+ *  (see `applyApiBaseOverride.ts`). */
+export function SettingsPanel({
   settings,
   registrations,
   onRegistrations,
-  onClose,
   onOpenUpdate,
 }: {
   settings: Settings;
   registrations: ShortcutRegistrationResult[];
   onRegistrations: (results: ShortcutRegistrationResult[]) => void;
-  onClose: () => void;
   /** F002: "Update" / "Update anyway" below — (re)opens the shared update
-   *  banner for whatever this modal's own check found. Optional so call
+   *  banner for whatever this panel's own check found. Optional so call
    *  sites with no banner to open (none in this app, but keeps the prop
    *  from being a hard requirement for every test render) can omit it. */
   onOpenUpdate?: (info: UpdateInfo) => void;
 }) {
-  const [apiBaseInput, setApiBaseInput] = useState(settings.apiBase);
-  const [apiBaseError, setApiBaseError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckState>({ kind: "idle" });
   const localBuildCount = useStoreValue(LOCAL_BUILDS).length;
@@ -148,62 +146,58 @@ export function SettingsModal({
     setUpdateCheck(await runUpdateCheck(settings.skippedVersion));
   }
 
-  function handleApiBaseChange(value: string) {
-    setApiBaseInput(value);
-    try {
-      const url = new URL(value);
-      setApiBaseError(null);
-      void updateKey(SETTINGS, (s) => ({ ...s, apiBase: url.toString().replace(/\/$/, "") }));
-    } catch {
-      setApiBaseError("Enter a valid URL, e.g. https://warcraft-gym.com");
-    }
-  }
-
   return (
-    <Modal label="Settings" id={SETTINGS_DIALOG_ID} onClose={onClose}>
-      <div className="flex items-center justify-between">
-        <h2 className="text-base">Settings</h2>
-        <IconButton aria-label="Close settings" onClick={onClose}>
-          ×
-        </IconButton>
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
+        <Group title="Overlay">
+          <RangeField
+            label="Overlay opacity"
+            min={0.5}
+            max={1}
+            step={0.05}
+            value={settings.opacity}
+            onChange={(v) => void updateKey(SETTINGS, (s) => ({ ...s, opacity: v }))}
+          />
+          <RangeField
+            label="Overlay scale"
+            min={0.8}
+            max={1.25}
+            step={0.05}
+            value={settings.scale}
+            onChange={(v) => void updateKey(SETTINGS, (s) => ({ ...s, scale: v }))}
+          />
+          <p className="text-xs text-faint">
+            Warcraft III must run in windowed or borderless mode for the overlay to be visible.
+          </p>
+        </Group>
+
+        <Group title="W3Champions">
+          <W3ChampionsSettings settings={settings} />
+        </Group>
+
+        <Group title="Private builds">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" disabled={localBuildCount === 0} onClick={() => void exportAllPrivateBuilds()}>
+              Export all private builds
+            </Button>
+            <Button variant="ghost" onClick={() => void handleImportClick()}>
+              Import builds…
+            </Button>
+          </div>
+          {importStatus ? (
+            <p role="status" className="text-xs text-muted">
+              {importStatus}
+            </p>
+          ) : null}
+        </Group>
       </div>
 
-      <div className="mt-5 space-y-5">
-        <TextField
-          label="API base"
-          value={apiBaseInput}
-          error={apiBaseError}
-          onChange={(e) => handleApiBaseChange(e.target.value)}
-        />
+      <div className="space-y-4">
+        <Group title="Shortcuts">
+          <ShortcutEditor shortcuts={settings.shortcuts} registrations={registrations} onRegistrations={onRegistrations} />
+        </Group>
 
-        <RangeField
-          label="Overlay opacity"
-          min={0.5}
-          max={1}
-          step={0.05}
-          value={settings.opacity}
-          onChange={(v) => void updateKey(SETTINGS, (s) => ({ ...s, opacity: v }))}
-        />
-        <RangeField
-          label="Overlay scale"
-          min={0.8}
-          max={1.25}
-          step={0.05}
-          value={settings.scale}
-          onChange={(v) => void updateKey(SETTINGS, (s) => ({ ...s, scale: v }))}
-        />
-
-        <div>
-          <h3 className="kicker mb-2">Shortcuts</h3>
-          <ShortcutEditor
-            shortcuts={settings.shortcuts}
-            registrations={registrations}
-            onRegistrations={onRegistrations}
-          />
-        </div>
-
-        <div>
-          <h3 className="kicker mb-2">Updates</h3>
+        <Group title="Updates">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -212,7 +206,7 @@ export function SettingsModal({
             />
             Auto-update on launch
           </label>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="ghost" onClick={() => void handleCheckForUpdates()}>
               Check for updates
             </Button>
@@ -223,7 +217,7 @@ export function SettingsModal({
             ) : null}
           </div>
           {updateCheck.kind !== "idle" ? (
-            <p role="status" className="mt-2 text-xs text-muted">
+            <p role="status" className="text-xs text-muted">
               {updateCheck.kind === "checking" && "Checking…"}
               {updateCheck.kind === "up-to-date" && `You're on the latest version (${APP_VERSION})`}
               {updateCheck.kind === "available" &&
@@ -231,39 +225,19 @@ export function SettingsModal({
               {updateCheck.kind === "failed" && "Couldn't check for updates"}
             </p>
           ) : null}
-        </div>
+        </Group>
 
-        <div>
-          <h3 className="kicker mb-2">Private builds</h3>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              disabled={localBuildCount === 0}
-              onClick={() => void exportAllPrivateBuilds()}
-            >
-              Export all private builds
-            </Button>
-            <Button variant="ghost" onClick={() => void handleImportClick()}>
-              Import builds…
-            </Button>
+        <Group title="App">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-faint">Version {APP_VERSION}</p>
+            {host.kind === "tauri" && (
+              <Button variant="ghost" aria-label="Quit app" onClick={() => void quitApp()}>
+                Quit app
+              </Button>
+            )}
           </div>
-          {importStatus ? (
-            <p role="status" className="mt-2 text-xs text-muted">
-              {importStatus}
-            </p>
-          ) : null}
-        </div>
-
-        <p className="text-xs text-faint">
-          Warcraft III must run in windowed or borderless mode for the overlay to be visible.
-        </p>
-
-        {host.kind === "tauri" && (
-          <Button variant="ghost" aria-label="Quit app" onClick={() => void quitApp()}>
-            Quit app
-          </Button>
-        )}
+        </Group>
       </div>
-    </Modal>
+    </div>
   );
 }
