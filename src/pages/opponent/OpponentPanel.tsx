@@ -106,6 +106,41 @@ export function momentumLine(card: Card): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
+/** "7 per game", "0.4 per game". */
+export function perGameLabel(perGame: number): string {
+  return `${Number.isInteger(perGame) ? perGame : perGame.toFixed(1)} per game`;
+}
+
+function ArmySection({ card, apiBase }: { card: Card; apiBase: string }) {
+  if (card.armyStatus === "loading") return <p className="opponent-card__note">Loading army…</p>;
+  const army = card.composition;
+  if (!army || army.units.length === 0) return null;
+  return (
+    <div className="opponent-card__openers">
+      <p className="opponent-card__kicker">
+        Army · last {army.games}
+        {card.openersBasis === "vs-your-race" ? (
+          <>
+            {" "}
+            vs <RaceIcon race={card.myRace} apiBase={apiBase} size={14} />
+          </>
+        ) : null}
+      </p>
+      {army.units.map((unit) => (
+        <p key={unit.name} className="opponent-card__opener">
+          <span className="opponent-card__hero">
+            <GameIcon icon={unit.icon ?? undefined} iconUrl={heroIconUrl(apiBase, unit.icon ?? undefined)} size={18} />
+            {unit.name}
+          </span>
+          <span className="opponent-card__faint">
+            {perGameLabel(unit.perGame)} · {unit.inGames} of {army.games}
+          </span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function StyleSection({ card, apiBase }: { card: Card; apiBase: string }) {
   if (card.extrasStatus === "loading") return <p className="opponent-card__note">Loading play style…</p>;
   const style = card.style;
@@ -233,6 +268,7 @@ function CardBody({ card, apiBase }: { card: Card; apiBase: string }) {
               ))}
             </div>
           ) : null}
+          <ArmySection card={card} apiBase={apiBase} />
           <StyleSection card={card} apiBase={apiBase} />
           {card.thinSample ? <p className="opponent-card__note">Few games, take the numbers lightly.</p> : null}
         </>

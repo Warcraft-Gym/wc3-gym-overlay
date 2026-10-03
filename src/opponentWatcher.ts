@@ -17,6 +17,7 @@
 import { WINDOW_OPPONENT } from "./config";
 import { host } from "./host";
 import { OPPONENT, SETTINGS, type OpponentState } from "./store/keys";
+import { buildComposition, COMPOSITION_GAMES, fetchMatchSteps, type Composition, type ImportedSteps } from "./w3c/composition";
 import { readKey, writeKey } from "./store/state";
 import {
   fetchAka,
@@ -56,6 +57,7 @@ export type OpponentWatcherDeps = {
   fetchAka: typeof fetchAka;
   fetchProfile: typeof fetchProfile;
   fetchMatchDetail: typeof fetchMatchDetail;
+  fetchMatchSteps: typeof fetchMatchSteps;
   /** Opens the opponent window (it never takes focus, so the game keeps it). */
   showOpponentWindow: () => Promise<void>;
   now: () => number;
@@ -68,6 +70,7 @@ const defaultDeps: OpponentWatcherDeps = {
   fetchAka,
   fetchProfile,
   fetchMatchDetail,
+  fetchMatchSteps,
   showOpponentWindow: () => host.showWindow(WINDOW_OPPONENT),
   now: () => Date.now(),
 };
@@ -83,6 +86,7 @@ type Caches = {
   seasons: { ids: number[]; at: number } | null;
   history: Map<string, { matches: W3cMatch[]; at: number }>;
   extras?: Map<string, { value: Extras; at: number }>;
+  army?: Map<string, { value: Composition | null; at: number }>;
   /** The match this watcher built a card for. A card stored by an earlier
    *  app run (possibly an older version, without newer fields) is rebuilt
    *  once rather than trusted. */
@@ -146,6 +150,32 @@ async function opponentExtras(card: OpponentCard, history: W3cMatch[], deps: Opp
   return value;
 }
 
+/** Their usual army: up to COMPOSITION_GAMES replays parsed by our site,
+ *  2 at a time, cached per opponent. A failed replay is skipped. */
+async function opponentArmy(
+  card: OpponentCard,
+  history: W3cMatch[],
+  apiBase: string,
+  deps: OpponentWatcherDeps,
+  caches: Caches,
+): Promise<Composition | null> {
+  const tag = card.opponent.battleTag;
+  const key = `${tag.toLowerCase()}|${card.myRace}`;
+  caches.army ??= new Map();
+  const cached = caches.army.get(key);
+  if (cached && deps.now() - cached.at < HISTORY_CACHE_MS) return cached.value;
+  const ids = styleGameIds(card, history, COMPOSITION_GAMES);
+  const games = await inBatches(ids, DETAIL_CONCURRENCY, (id) =>
+    deps.fetchMatchSteps(apiBase, id, tag).catch((err: unknown) => {
+      console.warn("[wc3gym] could not read a replay for the army", id, err);
+      return null;
+    }),
+  );
+  const value = buildComposition(games.filter((g): g is ImportedSteps => g !== null));
+  caches.army.set(key, { value, at: deps.now() });
+  return value;
+}
+
 /** One poll. Returns the delay before the next one. Exported for tests. */
 export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promise<number> {
   const settings = readKey(SETTINGS);
@@ -188,7 +218,7 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
   try {
     const history = await opponentHistory(live.opponent.battleTag, deps, caches);
     const card = buildOpponentCard(live, history);
-    await write({ status: "ok", live: true, card: { ...card, extrasStatus: "loading" } }, deps.now());
+    await write({ status: "ok", live: true, card: { ...card, extrasStatus: "loading", armyStatus: "loading" } }, deps.now());
     // The basics are on screen; identity and play style follow.
     const extras = await opponentExtras(card, history, deps, caches).then(
       (value) => ({ ...value, extrasStatus: "ok" as const }),
@@ -197,7 +227,14 @@ export async function pollOnce(deps: OpponentWatcherDeps, caches: Caches): Promi
     // Your own record in this matchup: your history, cached like theirs.
     const myHistory = await opponentHistory(tag, deps, caches).catch(() => null);
     const myRecord = myHistory ? buildMyRecord(myHistory, tag, card.myRace, card.opponent.race, card.map) : null;
-    if (readKey(OPPONENT).matchId === live.matchId) await write({ card: { ...card, ...extras, myRecord } }, deps.now());
+    const withExtras = { ...card, ...extras, myRecord, armyStatus: "loading" as const };
+    if (readKey(OPPONENT).matchId === live.matchId) await write({ card: withExtras }, deps.now());
+    // Their army last: it reads replays, a few seconds after everything else.
+    const army = await opponentArmy(card, history, settings.apiBase, deps, caches).then(
+      (composition) => ({ composition, armyStatus: "ok" as const }),
+      () => ({ composition: null, armyStatus: "error" as const }),
+    );
+    if (readKey(OPPONENT).matchId === live.matchId) await write({ card: { ...withExtras, ...army } }, deps.now());
     return OPPONENT_POLL_MS;
   } catch (err) {
     console.warn("[wc3gym] could not build the opponent card", err);

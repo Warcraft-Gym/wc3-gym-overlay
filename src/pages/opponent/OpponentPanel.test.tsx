@@ -9,6 +9,8 @@ import season25 from "../../w3c/__fixtures__/search.d0wi.season25.json";
 import akaLife from "../../w3c/__fixtures__/aka.Medusa.json";
 import detailsFixture from "../../w3c/__fixtures__/match-details.d0wi.vsUndead.json";
 import profileD0wi from "../../w3c/__fixtures__/player.d0wi.json";
+import unitsFixture from "../../w3c/__fixtures__/replay-units.d0wi.vsUndead.json";
+import { buildComposition } from "../../w3c/composition";
 import { matchDetailSchema, w3cMatchSchema } from "../../w3c/client";
 import { buildIdentity, buildOpponentCard, buildStyle, type LiveMatch } from "../../w3c/opponentCard";
 import {
@@ -18,6 +20,7 @@ import {
   identityLine,
   momentumLine,
   OpponentPanel,
+  perGameLabel,
   phasesLine,
   winLossSuffix,
 } from "./OpponentPanel";
@@ -203,5 +206,26 @@ describe("top picks (real d0wi data)", () => {
     expect(screen.getByText("Your games on Hammerfall")).toBeTruthy();
     expect(screen.getByText("1–1 (50%)")).toBeTruthy();
     expect(screen.getAllByText("12–6 (67%)")).toHaveLength(2); // their record vs you-race, and yours vs their race
+  });
+});
+
+describe("army (real d0wi replays)", () => {
+  it("perGameLabel", () => {
+    expect(perGameLabel(7)).toBe("7 per game");
+    expect(perGameLabel(4.2)).toBe("4.2 per game");
+  });
+
+  it("lists the usual units with how often", async () => {
+    await show(state({ card: { ...card, armyStatus: "ok", composition: buildComposition(unitsFixture.map((g) => g.steps)) } }));
+    expect(screen.getByText(/^Army · last 5/)).toBeTruthy();
+    expect(screen.getByText("Dryad")).toBeTruthy();
+    expect(screen.getByText("7 per game · 5 of 5")).toBeTruthy();
+    expect(screen.getByText("Druid of the Claw")).toBeTruthy();
+    expect(screen.getByText("3.2 per game · 3 of 5")).toBeTruthy();
+  });
+
+  it("says the army is loading", async () => {
+    await show(state({ card: { ...card, armyStatus: "loading" } }));
+    expect(screen.getByText("Loading army…")).toBeTruthy();
   });
 });

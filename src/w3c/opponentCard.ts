@@ -15,6 +15,7 @@
  */
 
 import { z } from "zod";
+import { compositionSchema } from "./composition";
 import { isKnownHero } from "./heroes";
 import type { W3cAka, W3cMatch, W3cMatchDetail, W3cPlayer, W3cProfile } from "./client";
 
@@ -126,6 +127,9 @@ export const opponentCardSchema = z.object({
   winChance: z.number().nullable().optional(),
   /** Their record by game length (same basis as the openers). */
   phases: z.object({ early: recordSchema, mid: recordSchema, late: recordSchema }).nullable().optional(),
+  /** Their usual army against your race, from their replays. */
+  composition: compositionSchema.nullable().optional(),
+  armyStatus: z.enum(["loading", "ok", "error"]).optional(),
   /** Your own record with your race against theirs, overall and on this map. */
   myRecord: z.object({ vsRace: recordSchema, onMap: recordSchema }).nullable().optional(),
   identity: z

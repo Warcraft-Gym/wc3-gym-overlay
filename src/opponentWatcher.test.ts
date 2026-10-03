@@ -15,6 +15,7 @@ import { readKey, writeKey } from "./store/state";
 import akaLife from "./w3c/__fixtures__/aka.Medusa.json";
 import detailsFixture from "./w3c/__fixtures__/match-details.d0wi.vsUndead.json";
 import profileD0wi from "./w3c/__fixtures__/player.d0wi.json";
+import unitsFixture from "./w3c/__fixtures__/replay-units.d0wi.vsUndead.json";
 import { matchDetailSchema, w3cMatchSchema, type W3cMatch } from "./w3c/client";
 
 const liveMatch = w3cMatchSchema.parse(ongoing); // ElTurry#1520 vs CactusPunch#2510, Autumn Leaves v2
@@ -29,6 +30,7 @@ function deps(overrides: Partial<OpponentWatcherDeps> = {}): OpponentWatcherDeps
     fetchAka: vi.fn(async () => akaLife),
     fetchProfile: vi.fn(async () => profileD0wi),
     fetchMatchDetail: vi.fn(async () => matchDetailSchema.parse(detailsFixture[0])),
+    fetchMatchSteps: vi.fn(async (_apiBase: string, id: string) => unitsFixture.find((g) => g.id === id)?.steps ?? null),
     showOpponentWindow: vi.fn(async () => {}),
     now: () => Date.parse("2026-10-03T00:00:00Z"),
     ...overrides,
@@ -145,6 +147,14 @@ describe("pollOnce", () => {
     // Your own history is d0wi's too in this test, cast as Undead: no Undead games, so 0-0.
     expect(card.myRecord).toEqual({ vsRace: { wins: 0, losses: 0 }, onMap: { wins: 0, losses: 0 } });
     expect(d.fetchMatchDetail).toHaveBeenCalledTimes(8);
+    // The army: d0wi's 5 most recent replays against Undead, parsed by the site.
+    expect(d.fetchMatchSteps).toHaveBeenCalledTimes(5);
+    expect(card.armyStatus).toBe("ok");
+    expect(card.composition?.units.slice(0, 3)).toEqual([
+      { name: "Dryad", icon: "ne-dryad", perGame: 7, inGames: 5 },
+      { name: "Archer", icon: "ne-archer", perGame: 4.2, inGames: 5 },
+      { name: "Druid of the Claw", icon: "ne-druid-of-the-claw", perGame: 3.2, inGames: 3 },
+    ]);
     expect(d.fetchAka).toHaveBeenCalledWith("d0wi#2726");
   });
 
