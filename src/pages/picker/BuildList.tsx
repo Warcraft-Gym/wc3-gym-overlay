@@ -5,7 +5,7 @@ function SkeletonRow({ index }: { index: number }) {
   return (
     <li
       aria-hidden="true"
-      className="panel flex h-[4.75rem] items-center gap-3 overflow-hidden px-4 py-2.5"
+      className="panel flex h-[4.25rem] items-center gap-3 overflow-hidden px-4 py-2.5"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       <div className="size-6 shrink-0 animate-pulse rounded-full bg-surface-3" />

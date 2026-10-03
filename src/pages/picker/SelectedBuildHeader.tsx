@@ -1,4 +1,5 @@
 import { Button } from "../../components/Button";
+import { GameIcon } from "../../components/GameIcon";
 import { DifficultyBadge, Matchup, PrivateBadge } from "../../components/BuildBadges";
 import { relativeTime } from "../../lib/relativeTime";
 import { WINDOW_OVERLAY } from "../../config";
@@ -8,6 +9,9 @@ import { SETTINGS } from "../../store/keys";
 import { useStoreValue } from "../../store/useStore";
 import { formatCombo } from "../../shortcuts";
 import { isLocalBuild, type AnyBuild } from "../../data/useAllBuilds";
+
+/** Steps previewed under the selected build. */
+const FIRST_STEPS = 3;
 
 /** F004: single-build export, from the selected-build header — see
  *  `BuildRow.tsx`'s row-level twin. */
@@ -58,10 +62,10 @@ export function SelectedBuildHeader({
           aria-hidden
           className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.85)_0%,rgba(0,0,0,.6)_45%,rgba(0,0,0,.15)_100%)]"
         />
-        <div className="relative flex flex-col items-start gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
             <p className="kicker">Build picker</p>
-            <h2 className="mt-2 font-display text-[1.6rem] uppercase tracking-[0.06em] text-fg">Pick a build</h2>
+            <h2 className="mt-1 font-display text-[1.3rem] uppercase tracking-[0.06em] text-fg">Pick a build</h2>
             <p className="mt-1 max-w-md text-sm text-muted">
               Choose a build below, then show the overlay in game.
             </p>
@@ -89,19 +93,18 @@ export function SelectedBuildHeader({
         aria-hidden
         className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.85)_0%,rgba(0,0,0,.6)_45%,rgba(0,0,0,.15)_100%)]"
       />
-      <div className="relative grid gap-5 p-6 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-7">
+      <div className="relative grid gap-4 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-5 sm:p-5">
         <img
           src={`${apiBase}/factions/large/${build.race}.webp`}
           alt=""
-          className="size-20 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,.9)] sm:size-24"
+          className="size-14 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,.9)] sm:size-16"
         />
         <div className="min-w-0">
           <p className="kicker">Selected build</p>
-          <h2 className="mt-2 truncate font-display text-[1.6rem] uppercase tracking-[0.06em] text-fg">
+          <h2 className="mt-1 line-clamp-2 font-display text-[1.3rem] uppercase leading-tight tracking-[0.05em] text-fg" title={build.title}>
             {build.title}
           </h2>
-          <p className="mt-2 line-clamp-2 max-w-2xl text-sm text-muted">{build.summary}</p>
-          <div className="tnum mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
+          <div className="tnum mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted">
             <Matchup race={build.race} vsRaces={build.vsRaces} apiBase={apiBase} />
             <DifficultyBadge level={build.difficulty} />
             {build.source === "local" ? <PrivateBadge /> : null}
@@ -110,8 +113,8 @@ export function SelectedBuildHeader({
             </span>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-start gap-1.5 rounded-lg bg-black/50 p-3 sm:items-end">
-          <div className="flex gap-2">
+        <div className="flex shrink-0 flex-col items-start gap-1.5 rounded-lg bg-black/50 p-2.5 sm:items-end">
+          <div className="flex flex-wrap gap-2">
             <Button variant="gold" onClick={() => void host.showWindow(WINDOW_OVERLAY)}>
               Show overlay
             </Button>
@@ -143,6 +146,21 @@ export function SelectedBuildHeader({
           </div>
           {hint}
         </div>
+        {build.steps.length > 0 ? (
+          <ol aria-label="First steps" className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 sm:col-span-3">
+            <li className="kicker">First steps</li>
+            {build.steps.slice(0, FIRST_STEPS).map((step, i) => (
+              <li key={i} className="flex min-w-0 max-w-[16rem] items-center gap-1.5 text-xs text-muted">
+                <span className="tnum text-faint">{step.time ?? (step.supply !== undefined ? step.supply : "")}</span>
+                <GameIcon icon={step.icon} iconUrl={step.iconUrl} size={18} />
+                <span className="truncate text-fg/90">{step.instruction}</span>
+              </li>
+            ))}
+            {build.steps.length > FIRST_STEPS ? (
+              <li className="text-xs text-faint">+{build.steps.length - FIRST_STEPS} more</li>
+            ) : null}
+          </ol>
+        ) : null}
       </div>
     </header>
   );

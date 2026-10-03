@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import { Copy, Download, Pencil, Send, Trash2 } from "lucide-react";
+import { Check, Copy, Download, Pencil, Play, Send, Trash2 } from "lucide-react";
 import { Button } from "../../components/Button";
 import { IconButton } from "../../components/IconButton";
 import { DifficultyBadge, PrivateBadge, TagChip, vsLabel, type Difficulty } from "../../components/BuildBadges";
@@ -36,7 +36,7 @@ function LargeCrest({ race, apiBase }: { race: Race; apiBase: string }) {
     return (
       <span
         className={cn(
-          "grid size-14 shrink-0 place-items-center rounded-full border border-line-strong bg-surface-2 font-display font-bold",
+          "grid size-10 shrink-0 place-items-center rounded-full border border-line-strong bg-surface-2 font-display text-xs font-bold",
           raceTextClass(race),
         )}
       >
@@ -48,10 +48,10 @@ function LargeCrest({ race, apiBase }: { race: Race; apiBase: string }) {
     <img
       src={`${apiBase}/factions/large/${race}.webp`}
       alt={RACE_LABEL[race]}
-      width={56}
-      height={56}
+      width={40}
+      height={40}
       onError={() => setBroken(true)}
-      className="size-14 shrink-0 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,.8)]"
+      className="size-10 shrink-0 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,.8)]"
     />
   );
 }
@@ -110,22 +110,27 @@ export function BuildRow({
       data-build={build.slug}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      aria-current={selected ? "true" : undefined}
       className={cn(
-        "panel relative grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-x-5 overflow-hidden py-3 pl-5 pr-4",
-        "transition-[border-color,transform] duration-[var(--wg-dur)] ease-[var(--ease-out-expo)] hover:-translate-y-0.5 hover:border-gold/50",
+        "panel relative grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-4 overflow-hidden py-2.5 pl-4 pr-3",
+        "transition-[border-color,background-color] duration-[var(--wg-dur)] ease-[var(--ease-out-expo)] hover:border-gold/50",
         "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:opacity-80",
         DIFFICULTY_RAIL[build.difficulty],
-        selected ? "border-gold/60 bg-gold/5" : undefined,
+        selected ? "border-gold/70 bg-gold/[0.06]" : undefined,
       )}
     >
       <LargeCrest race={build.race} apiBase={apiBase} />
 
       <div className="min-w-0">
-        <p className="truncate font-display text-[0.98rem] font-bold uppercase leading-snug tracking-[0.05em] text-fg transition-colors hover:text-gold">
-          {build.title}
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate font-display text-[0.9rem] font-bold uppercase leading-snug tracking-[0.05em] text-fg">
+            {build.title}
+          </p>
+          <DifficultyBadge level={build.difficulty} className="shrink-0" />
+          {build.source === "local" ? <PrivateBadge className="shrink-0" /> : null}
+        </div>
         <p className="mt-0.5 line-clamp-1 text-sm text-muted">{build.summary}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           <span className="inline-flex items-center gap-1">
             <span className="text-faint">vs</span>
             {build.vsRaces.length ? (
@@ -137,20 +142,19 @@ export function BuildRow({
           </span>
           <span className="text-faint">·</span>
           <span>by {build.author}</span>
-          {build.tags.slice(0, 3).map((tag) => (
+          {build.tags.slice(0, 2).map((tag) => (
             <TagChip key={tag}>{tag}</TagChip>
           ))}
+          <span className="text-faint">·</span>
+          <span className="tnum text-faint">
+            {build.steps.length} steps{build.patch ? ` · ${build.patch}` : ""} · {formatDate(build.updatedAt)}
+          </span>
         </div>
       </div>
 
-      <div className="flex flex-col items-end gap-1.5">
-        <div className="flex items-center gap-1.5">
-          {build.source === "local" ? <PrivateBadge /> : null}
-          <DifficultyBadge level={build.difficulty} />
-        </div>
-
+      <div className="flex items-center gap-1">
         {confirmDelete ? (
-          <div className="flex items-center gap-1.5">
+          <>
             <span className="text-xs text-loss">Delete?</span>
             <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
               Keep
@@ -158,45 +162,45 @@ export function BuildRow({
             <Button variant="danger" size="sm" onClick={() => onDelete?.()}>
               Delete
             </Button>
-          </div>
+          </>
         ) : (
-          <div className="flex items-center gap-1">
-            <IconButton aria-label={`Duplicate ${build.title}`} onClick={onDuplicate}>
+          <>
+            <IconButton aria-label={`Duplicate ${build.title}`} title="Duplicate" onClick={onDuplicate}>
               <Copy size={13} />
             </IconButton>
             {onEdit ? (
-              <IconButton aria-label={`Edit ${build.title}`} onClick={onEdit}>
+              <IconButton aria-label={`Edit ${build.title}`} title="Edit" onClick={onEdit}>
                 <Pencil size={13} />
               </IconButton>
             ) : null}
             {onDelete ? (
-              <IconButton aria-label={`Delete ${build.title}`} onClick={() => setConfirmDelete(true)}>
+              <IconButton aria-label={`Delete ${build.title}`} title="Delete" onClick={() => setConfirmDelete(true)}>
                 <Trash2 size={13} />
               </IconButton>
             ) : null}
             {isLocalBuild(build) ? (
               <>
-                <IconButton aria-label={`Export ${build.title}`} onClick={() => void handleExport()}>
+                <IconButton aria-label={`Export ${build.title}`} title="Export" onClick={() => void handleExport()}>
                   <Download size={13} />
                 </IconButton>
-                <IconButton aria-label={`Submit ${build.title} to site`} onClick={handleSubmit}>
+                <IconButton aria-label={`Submit ${build.title} to site`} title="Submit to site" onClick={handleSubmit}>
                   <Send size={13} />
                 </IconButton>
               </>
             ) : null}
-          </div>
+          </>
         )}
-
-        <span className="tnum text-xs text-faint">
-          {build.steps.length} steps{build.patch ? ` · ${build.patch}` : ""} · {formatDate(build.updatedAt)}
-        </span>
         <Button
-          variant={selected ? "ghost" : "gold"}
-          className={selected ? "border-gold/60 text-gold hover:border-gold" : undefined}
+          variant="ghost"
+          size="sm"
+          className={cn("ml-1 min-w-[5.5rem]", selected ? "border-gold text-gold" : undefined)}
           aria-pressed={selected}
+          aria-label={selected ? "In game" : "Use in game"}
+          title={selected ? "This build is in the overlay" : "Use this build in the overlay"}
           onClick={onSelect}
         >
-          {selected ? "In game" : "Use in game"}
+          {selected ? <Check size={13} aria-hidden="true" /> : <Play size={12} aria-hidden="true" />}
+          {selected ? "In game" : "Use"}
         </Button>
       </div>
     </li>

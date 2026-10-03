@@ -17,7 +17,7 @@ import { writeKey } from "../../store/state";
 import { useStoreValue } from "../../store/useStore";
 import { BuildList } from "./BuildList";
 import type { BuildEditorMode } from "./editor/BuildEditorModal";
-import { EmptyState } from "./EmptyState";
+import { EmptyState, NoMatches } from "./EmptyState";
 import { FilterBar, type Filters, type SourceFilter } from "./FilterBar";
 import { OfflineBanner } from "./OfflineBanner";
 import { PickerHeader } from "./PickerHeader";
@@ -219,12 +219,20 @@ export function App() {
             }
           />
 
-          <FilterBar apiBase={settings.apiBase} filters={filters} onChange={updateFilters} matchCount={filtered.length} />
+          <FilterBar
+            apiBase={settings.apiBase}
+            filters={filters}
+            onChange={updateFilters}
+            matchCount={filtered.length}
+            totalCount={builds.length}
+          />
 
           {status === "offline" ? <OfflineBanner fetchedAt={fetchedAt} onRetry={retry} /> : null}
 
           {nothingToShow ? (
             <EmptyState error={error} onRetry={retry} />
+          ) : status !== "loading" && builds.length > 0 && filtered.length === 0 ? (
+            <NoMatches onClear={() => updateFilters({ sort: filters.sort })} />
           ) : (
             <BuildList
               builds={filtered}

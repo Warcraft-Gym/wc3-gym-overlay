@@ -21,3 +21,15 @@ export function EmptyState({ error, onRetry }: { error: ApiError | null; onRetry
     </div>
   );
 }
+
+/** The list has builds, but none match the filters. */
+export function NoMatches({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="panel flex flex-col items-center gap-3 border-dashed px-5 py-10 text-center">
+      <p className="text-sm text-muted">No builds match these filters.</p>
+      <Button variant="ghost" onClick={onClear}>
+        Clear filters
+      </Button>
+    </div>
+  );
+}
