@@ -1,6 +1,7 @@
 import { useOverlayBounds } from "../../data/useOverlayBounds";
 import { OpponentPanel } from "./OpponentPanel";
 import "../overlay/overlay.css";
+import "./opponent.css";
 
 /**
  * The opponent window: a transparent, draggable, always-on-top window like
