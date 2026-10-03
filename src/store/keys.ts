@@ -15,7 +15,7 @@ import {
   type ApiBuildListItem,
   type GameIconEntry,
 } from "../api/schema";
-import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES } from "../config";
+import { DEFAULT_API_BASE, DEFAULT_SHORTCUTS, LEGACY_API_BASES, LEGACY_DEFAULT_SHORTCUTS } from "../config";
 import type { ShortcutMap } from "../host/bridge";
 
 /** JSON key name of the pre-F005 single-opponent field, before the site's
@@ -141,15 +141,41 @@ export type Settings = {
   opponentBounds?: OverlayBounds;
 };
 
-const shortcutMapSchema: z.ZodType<ShortcutMap> = z.object({
-  toggle_overlay: z.string(),
-  // Opponent window: absent in shortcut maps saved by 0.5.x.
-  toggle_opponent: z.string().default(DEFAULT_SHORTCUTS.toggle_opponent),
-  timer_play_pause: z.string(),
-  timer_reset: z.string(),
-  step_next: z.string(),
-  step_prev: z.string(),
-});
+/**
+ * 0.6.0 moved the defaults: the build overlay from Shift+O to Shift+B, and
+ * the new opponent window onto Shift+O. A saved map still holding an old
+ * *default* is moved to the new one; a combo the user picked is kept. The
+ * opponent shortcut only takes Shift+O when nothing else in the map uses it,
+ * so a migration can never create a clash.
+ */
+export function migrateLegacyShortcuts(raw: unknown): unknown {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const map = { ...(raw as Record<string, unknown>) };
+  if (map.toggle_overlay === LEGACY_DEFAULT_SHORTCUTS.toggle_overlay) {
+    map.toggle_overlay = DEFAULT_SHORTCUTS.toggle_overlay;
+  }
+  if (map.toggle_opponent === undefined || map.toggle_opponent === LEGACY_DEFAULT_SHORTCUTS.toggle_opponent) {
+    const taken = Object.entries(map).some(
+      ([action, combo]) => action !== "toggle_opponent" && combo === DEFAULT_SHORTCUTS.toggle_opponent,
+    );
+    map.toggle_opponent = taken
+      ? (map.toggle_opponent ?? LEGACY_DEFAULT_SHORTCUTS.toggle_opponent)
+      : DEFAULT_SHORTCUTS.toggle_opponent;
+  }
+  return map;
+}
+
+const shortcutMapSchema: z.ZodType<ShortcutMap> = z.preprocess(
+  migrateLegacyShortcuts,
+  z.object({
+    toggle_overlay: z.string(),
+    toggle_opponent: z.string(),
+    timer_play_pause: z.string(),
+    timer_reset: z.string(),
+    step_next: z.string(),
+    step_prev: z.string(),
+  }),
+);
 
 const overlayBoundsSchema: z.ZodType<OverlayBounds> = z.object({
   x: z.number(),

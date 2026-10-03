@@ -18,9 +18,18 @@ export const WINDOW_OPPONENT = "opponent";
 /** Store polling / clock tick interval, in milliseconds. */
 export const TICK_MS = 250;
 
-export const DEFAULT_SHORTCUTS: ShortcutMap = {
+/** Defaults that shipped earlier: a saved map still holding them is moved to
+ *  the current defaults (see `migrateLegacyShortcuts` in store/keys.ts). */
+export const LEGACY_DEFAULT_SHORTCUTS = {
+  /** 0.1.0 to 0.5.1. */
   toggle_overlay: "CommandOrControl+Shift+O",
+  /** 0.6.0 local betas only. */
   toggle_opponent: "CommandOrControl+Shift+M",
+} as const;
+
+export const DEFAULT_SHORTCUTS: ShortcutMap = {
+  toggle_overlay: "CommandOrControl+Shift+B",
+  toggle_opponent: "CommandOrControl+Shift+O",
   timer_play_pause: "CommandOrControl+Shift+P",
   timer_reset: "CommandOrControl+Shift+R",
   step_next: "CommandOrControl+Shift+]",

@@ -32,7 +32,7 @@ below; flip it to `true` to publish.
    continue — this is expected until the app is code-signed.
 3. First launch opens the **picker** window: pick a build, then click
    **Show overlay** to open the floating build-order panel (or press
-   `Ctrl+Shift+O`).
+   `Ctrl+Shift+B`).
 4. Settings (API base, shortcuts, overlay opacity/scale) are stored in the
    app's WebView local storage, not a config file under `%APPDATA%`.
    Uninstalling the app clears this app data along with it.
@@ -108,7 +108,8 @@ downloads those directly — there is no proxy in between.
 
 | Action | Windows/Linux | macOS | What it does |
 |---|---|---|---|
-| Toggle overlay | `Ctrl+Shift+O` | `⌘⇧O` | Show/hide the floating overlay window |
+| Toggle build order | `Ctrl+Shift+B` | `⌘⇧B` | Show/hide the floating build-order window |
+| Toggle opponent card | `Ctrl+Shift+O` | `⌘⇧O` | Show/hide the opponent window (it also opens by itself when a W3Champions 1v1 starts) |
 | Play / pause timer | `Ctrl+Shift+P` | `⌘⇧P` | Start or pause the build-order clock |
 | Reset timer | `Ctrl+Shift+R` | `⌘⇧R` | Reset the clock to 0:00 |
 | Next step | `Ctrl+Shift+]` | `⌘⇧]` | Jump the clock to the next timed step |
@@ -381,7 +382,7 @@ enforces that the two stay equal).
 ## Troubleshooting
 
 - **Overlay not visible.** Confirm Warcraft III is windowed/borderless, not
-  exclusive fullscreen. Press the toggle shortcut (`Ctrl+Shift+O` / `⌘⇧O`)
+  exclusive fullscreen. Press the toggle shortcut (`Ctrl+Shift+B` / `⌘⇧B`)
   or click **Show overlay** again in the picker. Check that "always on top"
   hasn't been defeated by another always-on-top window.
 - **Shortcuts not working.** Another app may already own that global
@@ -431,7 +432,7 @@ line as **pass/fail + notes**.
   `warcraft-gym.com`.
   _record: pass/fail + notes:_
 - [ ] **M-2** — With Warcraft III running borderless, open the overlay via
-  the picker button and via `Ctrl+Shift+O`; confirm it stays on top while
+  the picker button and via `Ctrl+Shift+B`; confirm it stays on top while
   the game window has focus, and that the game is still readable behind
   the transparent panel.
   _record: pass/fail + notes:_
