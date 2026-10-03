@@ -185,7 +185,7 @@ export function ProfileView({
         <RaceCrest race={p.race} apiBase={apiBase} size={48} />
         <div className="min-w-0 flex-1">
           <p className="kicker">Your profile · {RACE_LABEL[p.race]}</p>
-          <h2 className="mt-1 flex items-center gap-2 text-[1.45rem] font-semibold leading-tight text-fg">
+          <h2 className="mt-1 flex items-center gap-2 font-sans text-[1.45rem] font-semibold normal-case leading-tight tracking-normal text-fg">
             <span>{p.name}</span>
             {p.identity?.aka ? <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs normal-case tracking-normal text-gold">aka {p.identity.aka}</span> : null}
           </h2>
